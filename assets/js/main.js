@@ -96,46 +96,6 @@
     }
 
     /**
-     * Animate elements on scroll
-     */
-    function initScrollAnimations() {
-        var elements = document.querySelectorAll('.sw-feature-card, .sw-product-card, .sw-category-card, .sw-testimonial-card');
-        if (!elements.length) return;
-
-        if (!('IntersectionObserver' in window)) {
-            elements.forEach(function (el) {
-                el.style.opacity = '1';
-                el.style.transform = 'none';
-            });
-            return;
-        }
-
-        // Set initial state
-        elements.forEach(function (el) {
-            el.style.opacity = '0';
-            el.style.transform = 'translateY(20px)';
-            el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-        });
-
-        var observer = new IntersectionObserver(function (entries) {
-            entries.forEach(function (entry) {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'none';
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px',
-        });
-
-        elements.forEach(function (el) {
-            observer.observe(el);
-        });
-    }
-
-    /**
      * Search form toggle (mobile)
      */
     function initSearchToggle() {
@@ -161,7 +121,6 @@
         initStickyHeader();
         initCopyButtons();
         initSmoothScroll();
-        initScrollAnimations();
         initSearchToggle();
     });
 })();

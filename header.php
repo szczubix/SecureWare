@@ -31,16 +31,10 @@ if ( ! defined( 'ABSPATH' ) ) {
                 ?>
                 <img src="<?php echo esc_url( $logo_url ); ?>" alt="<?php bloginfo( 'name' ); ?>">
             <?php else : ?>
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="32" height="32" rx="8" fill="url(#logo-grad)"/>
-                    <path d="M16 6L8 10v6c0 5.55 3.42 10.74 8 12 4.58-1.26 8-6.45 8-12v-6l-8-4z" fill="rgba(255,255,255,0.9)"/>
-                    <path d="M14 16l2 2 4-4" stroke="#0a0e17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <defs>
-                        <linearGradient id="logo-grad" x1="0" y1="0" x2="32" y2="32">
-                            <stop stop-color="#00d4ff"/>
-                            <stop offset="1" stop-color="#7c3aed"/>
-                        </linearGradient>
-                    </defs>
+                <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="32" height="32" rx="7" fill="#4f8fea"/>
+                    <path d="M16 6L8 10v6c0 5.55 3.42 10.74 8 12 4.58-1.26 8-6.45 8-12v-6l-8-4z" fill="rgba(255,255,255,0.95)"/>
+                    <path d="M14 16l2 2 4-4" stroke="#4f8fea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 <span><?php bloginfo( 'name' ); ?></span>
             <?php endif; ?>
