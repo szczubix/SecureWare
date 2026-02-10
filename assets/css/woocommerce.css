@@ -1,0 +1,399 @@
+/* ============================================
+   SecureWare - WooCommerce Additional Styles
+   ============================================ */
+
+/* --- Product loop - license badge --- */
+.woocommerce ul.products li.product .sw-product-card__badge {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 2;
+}
+
+/* --- Star Ratings --- */
+.woocommerce .star-rating {
+    color: var(--sw-warning);
+}
+
+.woocommerce .star-rating::before {
+    color: var(--sw-border);
+}
+
+/* --- Quantity input --- */
+.woocommerce .quantity .qty {
+    background: var(--sw-bg-input);
+    border: 1px solid var(--sw-border);
+    color: var(--sw-text-primary);
+    border-radius: var(--sw-radius);
+    width: 60px;
+    text-align: center;
+    padding: 0.5rem;
+}
+
+/* --- Coupon --- */
+.woocommerce .coupon .input-text {
+    background: var(--sw-bg-input) !important;
+    border: 1px solid var(--sw-border) !important;
+    color: var(--sw-text-primary) !important;
+}
+
+.woocommerce .coupon .button {
+    background: var(--sw-bg-card) !important;
+    border: 1px solid var(--sw-border) !important;
+    color: var(--sw-text-primary) !important;
+    border-radius: var(--sw-radius) !important;
+}
+
+.woocommerce .coupon .button:hover {
+    border-color: var(--sw-accent) !important;
+    color: var(--sw-accent) !important;
+}
+
+/* --- Update cart button --- */
+.woocommerce button[name="update_cart"] {
+    background: var(--sw-bg-card) !important;
+    border: 1px solid var(--sw-border) !important;
+    color: var(--sw-text-primary) !important;
+    border-radius: var(--sw-radius) !important;
+}
+
+/* --- Remove button --- */
+.woocommerce a.remove {
+    color: var(--sw-error) !important;
+    font-weight: 700;
+}
+
+.woocommerce a.remove:hover {
+    background: var(--sw-error) !important;
+    color: #fff !important;
+}
+
+/* --- Cart totals --- */
+.woocommerce-cart .cart-collaterals .cart_totals h2 {
+    color: var(--sw-text-primary);
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.woocommerce-cart .cart-collaterals .cart_totals .order-total td {
+    color: var(--sw-accent);
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+/* --- Checkout form --- */
+.woocommerce-checkout .woocommerce-billing-fields h3,
+.woocommerce-checkout .woocommerce-shipping-fields h3,
+.woocommerce-checkout .woocommerce-additional-fields h3 {
+    color: var(--sw-text-primary);
+    font-size: 1.25rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--sw-border);
+}
+
+/* --- Select2 (WooCommerce selects) --- */
+.select2-container .select2-selection--single {
+    background: var(--sw-bg-input) !important;
+    border: 1px solid var(--sw-border) !important;
+    border-radius: var(--sw-radius) !important;
+    height: auto !important;
+    padding: 0.5rem 1rem !important;
+}
+
+.select2-container .select2-selection--single .select2-selection__rendered {
+    color: var(--sw-text-primary) !important;
+    line-height: 1.5 !important;
+    padding: 0 !important;
+}
+
+.select2-dropdown {
+    background: var(--sw-bg-card) !important;
+    border-color: var(--sw-border) !important;
+}
+
+.select2-results__option {
+    color: var(--sw-text-secondary) !important;
+    padding: 0.5rem 1rem !important;
+}
+
+.select2-results__option--highlighted {
+    background: rgba(0, 212, 255, 0.1) !important;
+    color: var(--sw-accent) !important;
+}
+
+.select2-container--default .select2-search--dropdown .select2-search__field {
+    background: var(--sw-bg-input) !important;
+    border-color: var(--sw-border) !important;
+    color: var(--sw-text-primary) !important;
+}
+
+/* --- Payment methods --- */
+.woocommerce-checkout #payment ul.payment_methods {
+    border-bottom: 1px solid var(--sw-border);
+}
+
+.woocommerce-checkout #payment ul.payment_methods li {
+    border-bottom: 1px solid var(--sw-border);
+    padding: 1rem;
+}
+
+.woocommerce-checkout #payment ul.payment_methods li label {
+    color: var(--sw-text-primary);
+    font-weight: 600;
+}
+
+.woocommerce-checkout #payment .payment_box {
+    background: var(--sw-bg-secondary);
+    color: var(--sw-text-secondary);
+}
+
+.woocommerce-checkout #payment .payment_box::before {
+    border-bottom-color: var(--sw-bg-secondary);
+}
+
+/* --- My Account page --- */
+.woocommerce-account .woocommerce-MyAccount-navigation ul li:last-child a {
+    border-bottom: none;
+}
+
+/* Orders table */
+.woocommerce-account .woocommerce-orders-table {
+    border: 1px solid var(--sw-border);
+    border-radius: var(--sw-radius-lg);
+    overflow: hidden;
+}
+
+/* --- Login/Register forms --- */
+.woocommerce form.login,
+.woocommerce form.register {
+    background: var(--sw-bg-card);
+    border: 1px solid var(--sw-border);
+    border-radius: var(--sw-radius-lg);
+    padding: 2rem;
+}
+
+.woocommerce form.login h2,
+.woocommerce form.register h2 {
+    color: var(--sw-text-primary);
+    margin-bottom: 1.5rem;
+}
+
+/* --- Widget styles --- */
+.sw-widget {
+    background: var(--sw-bg-card);
+    border: 1px solid var(--sw-border);
+    border-radius: var(--sw-radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.sw-widget__title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--sw-border);
+    color: var(--sw-text-primary);
+}
+
+/* Price filter widget */
+.woocommerce .widget_price_filter .price_slider_wrapper .ui-widget-content {
+    background: var(--sw-border);
+}
+
+.woocommerce .widget_price_filter .ui-slider .ui-slider-range {
+    background: var(--sw-gradient);
+}
+
+.woocommerce .widget_price_filter .ui-slider .ui-slider-handle {
+    background: var(--sw-accent);
+    border: none;
+}
+
+/* --- Footer payment badges --- */
+.sw-footer__payment-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    background: var(--sw-bg-card);
+    border: 1px solid var(--sw-border);
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--sw-text-muted);
+    letter-spacing: 0.05em;
+}
+
+/* --- Footer company info --- */
+.sw-footer__company {
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--sw-border);
+}
+
+.sw-footer__company-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    font-size: 0.85rem;
+    color: var(--sw-text-muted);
+}
+
+.sw-footer__company-inner a {
+    color: var(--sw-text-muted);
+}
+
+.sw-footer__company-inner a:hover {
+    color: var(--sw-accent);
+}
+
+/* --- Thank you page licenses --- */
+.sw-thankyou-licenses {
+    background: var(--sw-bg-card);
+    border: 1px solid var(--sw-border);
+    border-radius: var(--sw-radius-lg);
+    padding: 2rem;
+    margin: 2rem 0;
+}
+
+.sw-thankyou-licenses h2 {
+    color: var(--sw-text-primary);
+    margin-bottom: 1rem;
+}
+
+.sw-thankyou-licenses p {
+    color: var(--sw-text-muted);
+    margin-bottom: 1.5rem;
+}
+
+/* --- Delivery info box --- */
+.sw-delivery-info {
+    margin: 1.5rem 0;
+    padding: 1rem 1.25rem;
+    background: rgba(0, 212, 255, 0.05);
+    border: 1px solid rgba(0, 212, 255, 0.15);
+    border-radius: var(--sw-radius);
+}
+
+/* --- Page title styles --- */
+.sw-page__header,
+.sw-single__header,
+.sw-archive__header {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--sw-border);
+}
+
+.sw-single__meta {
+    display: flex;
+    gap: 1.5rem;
+    color: var(--sw-text-muted);
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+}
+
+.sw-single__thumbnail {
+    margin-bottom: 2rem;
+    border-radius: var(--sw-radius-lg);
+    overflow: hidden;
+}
+
+.sw-single__content,
+.sw-page__content {
+    color: var(--sw-text-secondary);
+    line-height: 1.8;
+}
+
+.sw-single__content h2,
+.sw-single__content h3,
+.sw-page__content h2,
+.sw-page__content h3 {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+.sw-single__content a,
+.sw-page__content a {
+    color: var(--sw-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.sw-single__content img,
+.sw-page__content img {
+    border-radius: var(--sw-radius);
+    margin: 1.5rem 0;
+}
+
+.sw-single__content blockquote,
+.sw-page__content blockquote {
+    border-left: 3px solid var(--sw-accent);
+    padding-left: 1.5rem;
+    margin: 1.5rem 0;
+    color: var(--sw-text-muted);
+    font-style: italic;
+}
+
+.sw-single__content code,
+.sw-page__content code {
+    font-family: var(--sw-font-mono);
+    background: var(--sw-bg-card);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: var(--sw-accent);
+}
+
+.sw-single__content pre,
+.sw-page__content pre {
+    background: var(--sw-bg-card);
+    border: 1px solid var(--sw-border);
+    border-radius: var(--sw-radius);
+    padding: 1.5rem;
+    overflow-x: auto;
+}
+
+.sw-single__content pre code,
+.sw-page__content pre code {
+    background: none;
+    padding: 0;
+}
+
+/* --- WordPress Pagination --- */
+.navigation.pagination {
+    margin-top: 3rem;
+}
+
+.navigation.pagination .nav-links {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.navigation.pagination .page-numbers {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 0.5rem;
+    background: var(--sw-bg-card);
+    border: 1px solid var(--sw-border);
+    border-radius: var(--sw-radius);
+    color: var(--sw-text-secondary);
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.navigation.pagination .page-numbers:hover,
+.navigation.pagination .page-numbers.current {
+    background: var(--sw-accent);
+    border-color: var(--sw-accent);
+    color: #fff;
+}
+
+/* --- My Licenses page --- */
+.sw-my-licenses h2 {
+    color: var(--sw-text-primary);
+    margin-bottom: 1.5rem;
+}
