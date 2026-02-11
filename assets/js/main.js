@@ -15,17 +15,17 @@
         if (!toggle) return;
 
         toggle.addEventListener('click', function () {
-            var menu = document.querySelector('.sw-nav__menu');
-            if (menu) {
-                menu.classList.toggle('is-open');
+            var nav = document.querySelector('.sw-header__nav');
+            if (nav) {
+                nav.classList.toggle('is-open');
             }
         });
 
         // Close menu when clicking outside
         document.addEventListener('click', function (e) {
-            var menu = document.querySelector('.sw-nav__menu');
-            if (menu && menu.classList.contains('is-open') && !e.target.closest('.sw-nav') && !e.target.closest('.sw-menu-toggle')) {
-                menu.classList.remove('is-open');
+            var nav = document.querySelector('.sw-header__nav');
+            if (nav && nav.classList.contains('is-open') && !e.target.closest('.sw-header__nav') && !e.target.closest('.sw-menu-toggle')) {
+                nav.classList.remove('is-open');
             }
         });
     }

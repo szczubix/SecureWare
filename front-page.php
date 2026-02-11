@@ -8,84 +8,36 @@
 get_header();
 ?>
 
-<section class="sw-hero">
+<!-- Trust bar -->
+<div class="sw-trustbar">
     <div class="sw-container">
-        <div class="sw-hero__content">
-            <div class="sw-hero__badge">
-                <?php esc_html_e( 'Autoryzowany sprzedawca licencji', 'secureware' ); ?>
+        <div class="sw-trustbar__inner">
+            <div class="sw-trustbar__item">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <?php esc_html_e( 'Natychmiastowa dostawa', 'secureware' ); ?>
             </div>
-            <h1 class="sw-hero__title">
-                <?php echo wp_kses_post( get_theme_mod( 'secureware_hero_title', __( 'Oryginalne licencje na <span>oprogramowanie</span>', 'secureware' ) ) ); ?>
-            </h1>
-            <p class="sw-hero__description">
-                <?php echo esc_html( get_theme_mod( 'secureware_hero_description', __( 'Kup licencje na najlepsze oprogramowanie w najniższych cenach. Natychmiastowa dostawa kluczy na e-mail.', 'secureware' ) ) ); ?>
-            </p>
-            <div class="sw-hero__buttons">
-                <a href="<?php echo esc_url( class_exists( 'WooCommerce' ) ? wc_get_page_permalink( 'shop' ) : '#' ); ?>" class="sw-btn sw-btn--primary sw-btn--lg">
-                    <?php esc_html_e( 'Przeglądaj sklep', 'secureware' ); ?>
-                </a>
-                <a href="#sw-categories" class="sw-btn sw-btn--secondary sw-btn--lg">
-                    <?php esc_html_e( 'Kategorie', 'secureware' ); ?>
-                </a>
+            <div class="sw-trustbar__item">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <?php esc_html_e( '100% oryginalne licencje', 'secureware' ); ?>
             </div>
-
-            <div class="sw-hero__stats">
-                <div class="sw-hero__stat">
-                    <div class="sw-hero__stat-value"><?php echo esc_html( get_theme_mod( 'secureware_stat_products', '500+' ) ); ?></div>
-                    <div class="sw-hero__stat-label"><?php esc_html_e( 'Produktów', 'secureware' ); ?></div>
-                </div>
-                <div class="sw-hero__stat">
-                    <div class="sw-hero__stat-value"><?php echo esc_html( get_theme_mod( 'secureware_stat_clients', '10k+' ) ); ?></div>
-                    <div class="sw-hero__stat-label"><?php esc_html_e( 'Klientów', 'secureware' ); ?></div>
-                </div>
-                <div class="sw-hero__stat">
-                    <div class="sw-hero__stat-value"><?php echo esc_html( get_theme_mod( 'secureware_stat_delivery', '< 1 min' ) ); ?></div>
-                    <div class="sw-hero__stat-label"><?php esc_html_e( 'Dostawa', 'secureware' ); ?></div>
-                </div>
+            <div class="sw-trustbar__item">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <?php esc_html_e( 'Wsparcie techniczne 24/7', 'secureware' ); ?>
+            </div>
+            <div class="sw-trustbar__item">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <?php esc_html_e( 'Najlepsze ceny', 'secureware' ); ?>
             </div>
         </div>
     </div>
-</section>
-
-<section class="sw-features">
-    <div class="sw-container">
-        <div class="sw-grid sw-grid-4">
-            <div class="sw-feature-card">
-                <div class="sw-feature-card__icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                </div>
-                <h3 class="sw-feature-card__title"><?php esc_html_e( 'Natychmiastowa dostawa', 'secureware' ); ?></h3>
-                <p class="sw-feature-card__desc"><?php esc_html_e( 'Klucz licencyjny na e-mail w kilka sekund po zakupie.', 'secureware' ); ?></p>
-            </div>
-            <div class="sw-feature-card">
-                <div class="sw-feature-card__icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                </div>
-                <h3 class="sw-feature-card__title"><?php esc_html_e( '100% oryginalne', 'secureware' ); ?></h3>
-                <p class="sw-feature-card__desc"><?php esc_html_e( 'Licencje od autoryzowanych dystrybutorów.', 'secureware' ); ?></p>
-            </div>
-            <div class="sw-feature-card">
-                <div class="sw-feature-card__icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                </div>
-                <h3 class="sw-feature-card__title"><?php esc_html_e( 'Najlepsze ceny', 'secureware' ); ?></h3>
-                <p class="sw-feature-card__desc"><?php esc_html_e( 'Konkurencyjne ceny i regularne promocje.', 'secureware' ); ?></p>
-            </div>
-            <div class="sw-feature-card">
-                <div class="sw-feature-card__icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                </div>
-                <h3 class="sw-feature-card__title"><?php esc_html_e( 'Wsparcie 24/7', 'secureware' ); ?></h3>
-                <p class="sw-feature-card__desc"><?php esc_html_e( 'Pomoc z instalacją i aktywacją oprogramowania.', 'secureware' ); ?></p>
-            </div>
-        </div>
-    </div>
-</section>
+</div>
 
 <?php if ( class_exists( 'WooCommerce' ) ) : ?>
-<section class="sw-categories" id="sw-categories">
+
+<!-- Categories -->
+<section class="sw-categories">
     <div class="sw-container">
-        <div class="sw-products__header">
+        <div class="sw-section-header">
             <h2><?php esc_html_e( 'Kategorie', 'secureware' ); ?></h2>
         </div>
         <div class="sw-grid sw-grid-3">
@@ -133,58 +85,77 @@ get_header();
                 endforeach;
             else :
             ?>
-                <div class="sw-category-card">
+                <a href="<?php echo esc_url( class_exists( 'WooCommerce' ) ? wc_get_page_permalink( 'shop' ) : '#' ); ?>" class="sw-category-card">
                     <div class="sw-category-card__icon"><?php echo $category_icons[0]; // phpcs:ignore ?></div>
                     <div>
                         <h3 class="sw-category-card__title"><?php esc_html_e( 'Systemy operacyjne', 'secureware' ); ?></h3>
                         <span class="sw-category-card__count"><?php esc_html_e( 'Windows, macOS', 'secureware' ); ?></span>
                     </div>
-                </div>
-                <div class="sw-category-card">
+                </a>
+                <a href="<?php echo esc_url( class_exists( 'WooCommerce' ) ? wc_get_page_permalink( 'shop' ) : '#' ); ?>" class="sw-category-card">
                     <div class="sw-category-card__icon"><?php echo $category_icons[1]; // phpcs:ignore ?></div>
                     <div>
                         <h3 class="sw-category-card__title"><?php esc_html_e( 'Antywirus', 'secureware' ); ?></h3>
                         <span class="sw-category-card__count"><?php esc_html_e( 'Norton, Kaspersky, ESET', 'secureware' ); ?></span>
                     </div>
-                </div>
-                <div class="sw-category-card">
+                </a>
+                <a href="<?php echo esc_url( class_exists( 'WooCommerce' ) ? wc_get_page_permalink( 'shop' ) : '#' ); ?>" class="sw-category-card">
                     <div class="sw-category-card__icon"><?php echo $category_icons[2]; // phpcs:ignore ?></div>
                     <div>
                         <h3 class="sw-category-card__title"><?php esc_html_e( 'Pakiety biurowe', 'secureware' ); ?></h3>
                         <span class="sw-category-card__count"><?php esc_html_e( 'Microsoft Office, Adobe', 'secureware' ); ?></span>
                     </div>
-                </div>
+                </a>
             <?php endif; ?>
         </div>
     </div>
 </section>
 
+<!-- Featured products -->
 <section class="sw-products">
     <div class="sw-container">
-        <div class="sw-products__header">
+        <div class="sw-section-header">
             <h2><?php esc_html_e( 'Polecane', 'secureware' ); ?></h2>
-            <p><?php esc_html_e( 'Najpopularniejsze licencje w naszym sklepie', 'secureware' ); ?></p>
-        </div>
-        <?php echo do_shortcode( '[products limit="8" columns="4" orderby="popularity" visibility="featured"]' ); ?>
-        <div class="sw-products__more">
-            <a href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>" class="sw-btn sw-btn--secondary">
-                <?php esc_html_e( 'Wszystkie produkty', 'secureware' ); ?>
+            <a href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>" class="sw-section-header__link">
+                <?php esc_html_e( 'Zobacz wszystkie', 'secureware' ); ?>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </a>
         </div>
+        <?php echo do_shortcode( '[products limit="8" columns="4" orderby="popularity" visibility="featured"]' ); ?>
     </div>
 </section>
 
+<!-- Sale products -->
 <section class="sw-products sw-products--alt">
     <div class="sw-container">
-        <div class="sw-products__header">
+        <div class="sw-section-header">
             <h2><?php esc_html_e( 'Promocje', 'secureware' ); ?></h2>
-            <p><?php esc_html_e( 'Aktualne obniżki cen', 'secureware' ); ?></p>
+            <a href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>?on_sale=1" class="sw-section-header__link">
+                <?php esc_html_e( 'Wszystkie promocje', 'secureware' ); ?>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
         </div>
         <?php echo do_shortcode( '[products limit="4" columns="4" on_sale="true" orderby="date"]' ); ?>
     </div>
 </section>
+
+<!-- Latest products -->
+<section class="sw-products">
+    <div class="sw-container">
+        <div class="sw-section-header">
+            <h2><?php esc_html_e( 'Nowości', 'secureware' ); ?></h2>
+            <a href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>?orderby=date" class="sw-section-header__link">
+                <?php esc_html_e( 'Zobacz wszystkie', 'secureware' ); ?>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+        </div>
+        <?php echo do_shortcode( '[products limit="4" columns="4" orderby="date"]' ); ?>
+    </div>
+</section>
+
 <?php endif; ?>
 
+<!-- Newsletter CTA -->
 <section class="sw-cta">
     <div class="sw-container">
         <div class="sw-cta__box">
