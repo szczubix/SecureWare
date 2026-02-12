@@ -8,50 +8,67 @@
     'use strict';
 
     /**
-     * Mobile menu toggle
-     */
-    function initMobileMenu() {
-        var toggle = document.getElementById('sw-menu-toggle');
-        if (!toggle) return;
-
-        toggle.addEventListener('click', function () {
-            var catnav = document.getElementById('sw-catnav');
-            if (catnav) {
-                catnav.classList.toggle('is-open');
-                toggle.classList.toggle('is-active');
-            }
-        });
-
-        // Close menu when clicking outside
-        document.addEventListener('click', function (e) {
-            var catnav = document.getElementById('sw-catnav');
-            if (catnav && catnav.classList.contains('is-open') && !e.target.closest('#sw-catnav') && !e.target.closest('#sw-menu-toggle')) {
-                catnav.classList.remove('is-open');
-                toggle.classList.remove('is-active');
-            }
-        });
-    }
-
-    /**
-     * Sticky header - hide topbar on scroll
+     * Sticky header - add bg on scroll
      */
     function initStickyHeader() {
         var header = document.getElementById('sw-header');
         if (!header) return;
 
-        var lastScroll = 0;
-
-        window.addEventListener('scroll', function () {
-            var currentScroll = window.scrollY;
-
-            if (currentScroll > 50) {
+        function updateHeader() {
+            if (window.scrollY > 30) {
                 header.classList.add('is-scrolled');
             } else {
                 header.classList.remove('is-scrolled');
             }
+        }
 
-            lastScroll = currentScroll;
-        }, { passive: true });
+        updateHeader();
+        window.addEventListener('scroll', updateHeader, { passive: true });
+    }
+
+    /**
+     * Mobile burger menu
+     */
+    function initBurgerMenu() {
+        var burger = document.getElementById('sw-burger');
+        var nav = document.getElementById('sw-nav');
+        if (!burger || !nav) return;
+
+        burger.addEventListener('click', function () {
+            burger.classList.toggle('is-active');
+            nav.classList.toggle('is-open');
+        });
+
+        document.addEventListener('click', function (e) {
+            if (nav.classList.contains('is-open') && !e.target.closest('#sw-nav') && !e.target.closest('#sw-burger')) {
+                nav.classList.remove('is-open');
+                burger.classList.remove('is-active');
+            }
+        });
+    }
+
+    /**
+     * Search toggle (dropdown)
+     */
+    function initSearchToggle() {
+        var toggle = document.getElementById('sw-search-toggle');
+        var form = document.getElementById('sw-search-form');
+        if (!toggle || !form) return;
+
+        toggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            form.classList.toggle('is-open');
+            if (form.classList.contains('is-open')) {
+                var input = form.querySelector('input[type="search"]');
+                if (input) input.focus();
+            }
+        });
+
+        document.addEventListener('click', function (e) {
+            if (form.classList.contains('is-open') && !e.target.closest('#sw-search')) {
+                form.classList.remove('is-open');
+            }
+        });
     }
 
     /**
@@ -67,7 +84,7 @@
 
             navigator.clipboard.writeText(key).then(function () {
                 var originalText = button.textContent;
-                button.textContent = securewareData && securewareData.strings
+                button.textContent = typeof securewareData !== 'undefined' && securewareData.strings
                     ? securewareData.strings.copied
                     : 'Skopiowano!';
                 button.style.borderColor = 'var(--sw-success)';
@@ -104,31 +121,13 @@
     }
 
     /**
-     * Search form focus state
-     */
-    function initSearchToggle() {
-        var searchForm = document.querySelector('.sw-header__search');
-        if (!searchForm) return;
-
-        var input = searchForm.querySelector('input');
-        if (input) {
-            input.addEventListener('focus', function () {
-                searchForm.classList.add('is-active');
-            });
-            input.addEventListener('blur', function () {
-                searchForm.classList.remove('is-active');
-            });
-        }
-    }
-
-    /**
-     * Initialize all components when DOM is ready
+     * Initialize
      */
     document.addEventListener('DOMContentLoaded', function () {
-        initMobileMenu();
         initStickyHeader();
+        initBurgerMenu();
+        initSearchToggle();
         initCopyButtons();
         initSmoothScroll();
-        initSearchToggle();
     });
 })();

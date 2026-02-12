@@ -182,6 +182,8 @@ if ( ! defined( 'ABSPATH' ) ) {
     </div>
 </footer>
 
+</div><!-- #sw-wrapper -->
+
 <?php wp_footer(); ?>
 </body>
 </html>
