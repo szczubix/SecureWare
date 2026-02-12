@@ -59,7 +59,6 @@ if ( ! defined( 'ABSPATH' ) ) {
                         ) );
                     } elseif ( class_exists( 'WooCommerce' ) ) {
                         echo '<ul class="sw-nav">';
-                        echo '<li><a href="' . esc_url( wc_get_page_permalink( 'shop' ) ) . '">' . esc_html__( 'Sklep', 'secureware' ) . '</a></li>';
                         $cats = get_terms( array(
                             'taxonomy'   => 'product_cat',
                             'hide_empty' => true,

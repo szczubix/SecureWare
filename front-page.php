@@ -14,10 +14,10 @@ get_header();
     <div class="sw-container">
         <div class="sw-hero__content">
             <h1 class="sw-hero__title">
-                <?php echo wp_kses_post( get_theme_mod( 'secureware_hero_title', __( 'ORYGINALNE LICENCJE<br><span>NA OPROGRAMOWANIE</span>', 'secureware' ) ) ); ?>
+                <?php echo wp_kses_post( get_theme_mod( 'secureware_hero_title', __( 'LICENCJE, KTÓRE<br><span>PO PROSTU DZIAŁAJĄ</span>', 'secureware' ) ) ); ?>
             </h1>
             <p class="sw-hero__text">
-                <?php echo esc_html( get_theme_mod( 'secureware_hero_description', __( 'Klucze aktywacyjne z natychmiastową dostawą na e-mail. Najlepsze ceny na rynku, profesjonalne wsparcie techniczne i pomoc przy aktywacji.', 'secureware' ) ) ); ?>
+                <?php echo esc_html( get_theme_mod( 'secureware_hero_description', __( 'Oryginalne klucze aktywacyjne — kupujesz, dostajesz na maila i od razu korzystasz. Bez czekania, bez komplikacji.', 'secureware' ) ) ); ?>
             </p>
             <?php if ( class_exists( 'WooCommerce' ) ) : ?>
             <a class="sw-hero__btn" href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>">
@@ -35,8 +35,8 @@ get_header();
 <section class="sw-why">
     <div class="sw-container">
         <header class="sw-section-head">
-            <h5><?php esc_html_e( 'Dlaczego warto kupić u nas', 'secureware' ); ?></h5>
-            <h3><?php esc_html_e( 'OPROGRAMOWANIE?', 'secureware' ); ?></h3>
+            <h5><?php esc_html_e( 'Dlaczego my', 'secureware' ); ?></h5>
+            <h3><?php esc_html_e( '4 POWODY', 'secureware' ); ?></h3>
         </header>
         <div class="sw-why__grid">
             <div class="sw-why__item">
@@ -44,28 +44,28 @@ get_header();
                     <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                 </div>
                 <h6><?php esc_html_e( 'BŁYSKAWICZNA DOSTAWA', 'secureware' ); ?></h6>
-                <p><?php esc_html_e( 'Klucz aktywacyjny na Twój e-mail w ciągu kilku sekund od zakupu.', 'secureware' ); ?></p>
+                <p><?php esc_html_e( 'Kupujesz — klucz ląduje na Twoim mailu. Dosłownie w kilka sekund.', 'secureware' ); ?></p>
             </div>
             <div class="sw-why__item">
                 <div class="sw-why__icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 </div>
                 <h6><?php esc_html_e( '100% ORYGINALNE', 'secureware' ); ?></h6>
-                <p><?php esc_html_e( 'Wszystkie licencje są oryginalne i pochodzą od autoryzowanych dystrybutorów.', 'secureware' ); ?></p>
+                <p><?php esc_html_e( 'Żadnych podróbek. Tylko oficjalne licencje od autoryzowanych dystrybutorów.', 'secureware' ); ?></p>
             </div>
             <div class="sw-why__item">
                 <div class="sw-why__icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 </div>
                 <h6><?php esc_html_e( 'GWARANCJA DZIAŁANIA', 'secureware' ); ?></h6>
-                <p><?php esc_html_e( 'Każdy klucz jest sprawdzony. Gwarantujemy pełną aktywację produktu.', 'secureware' ); ?></p>
+                <p><?php esc_html_e( 'Każdy klucz testujemy. Jeśli coś nie zadziała — wymienimy lub zwrócimy pieniądze.', 'secureware' ); ?></p>
             </div>
             <div class="sw-why__item">
                 <div class="sw-why__icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                 </div>
                 <h6><?php esc_html_e( 'WSPARCIE TECHNICZNE', 'secureware' ); ?></h6>
-                <p><?php esc_html_e( 'Profesjonalna pomoc przy instalacji i aktywacji oprogramowania.', 'secureware' ); ?></p>
+                <p><?php esc_html_e( 'Nie wiesz jak zainstalować? Piszesz lub dzwonisz — pomagamy od ręki.', 'secureware' ); ?></p>
             </div>
         </div>
     </div>
@@ -76,16 +76,16 @@ get_header();
     <div class="sw-container">
         <div class="sw-divided__inner">
             <div class="sw-divided__left">
-                <h4><?php esc_html_e( 'POMAGAMY Z INSTALACJĄ', 'secureware' ); ?></h4>
-                <h4><?php esc_html_e( 'I AKTYWACJĄ KAŻDEGO PRODUKTU.', 'secureware' ); ?></h4>
+                <h4><?php esc_html_e( 'NIE ZOSTAWIAMY CIĘ', 'secureware' ); ?></h4>
+                <h4><?php esc_html_e( 'Z KLUCZEM I PYTANIAMI.', 'secureware' ); ?></h4>
             </div>
             <div class="sw-divided__right">
                 <header class="sw-section-head sw-section-head--left">
                     <h5><?php esc_html_e( 'Profesjonalne', 'secureware' ); ?></h5>
                     <h3><?php esc_html_e( 'WSPARCIE', 'secureware' ); ?></h3>
                 </header>
-                <p><?php esc_html_e( 'Kupując u nas, otrzymujesz nie tylko klucz licencyjny, ale pełne wsparcie techniczne. Pomożemy Ci z instalacją, konfiguracją i aktywacją oprogramowania — bez dodatkowych opłat.', 'secureware' ); ?></p>
-                <p><?php esc_html_e( 'Nasz zespół jest dostępny przez e-mail i telefon, abyś mógł cieszyć się swoim oprogramowaniem od pierwszej minuty.', 'secureware' ); ?></p>
+                <p><?php esc_html_e( 'Kupno to dopiero początek — pomożemy Ci wszystko uruchomić, skonfigurować i ogarnąć. Zero stresu, zero dodatkowych kosztów.', 'secureware' ); ?></p>
+                <p><?php esc_html_e( 'Piszesz maila albo dzwonisz i temat załatwiony. Tak to u nas wygląda.', 'secureware' ); ?></p>
             </div>
         </div>
     </div>
@@ -95,8 +95,8 @@ get_header();
 <section class="sw-offer">
     <div class="sw-container">
         <header class="sw-section-head">
-            <h5><?php esc_html_e( 'Oferujemy', 'secureware' ); ?></h5>
-            <h3><?php esc_html_e( 'W NASZYM SKLEPIE', 'secureware' ); ?></h3>
+            <h5><?php esc_html_e( 'Co u nas znajdziesz', 'secureware' ); ?></h5>
+            <h3><?php esc_html_e( 'KATEGORIE', 'secureware' ); ?></h3>
         </header>
         <a class="sw-cta-btn" href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>">
             <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -173,8 +173,8 @@ get_header();
 <section class="sw-products-section">
     <div class="sw-container">
         <header class="sw-section-head">
-            <h5><?php esc_html_e( 'Polecane', 'secureware' ); ?></h5>
-            <h3><?php esc_html_e( 'PRODUKTY', 'secureware' ); ?></h3>
+            <h5><?php esc_html_e( 'Sprawdź co mamy', 'secureware' ); ?></h5>
+            <h3><?php esc_html_e( 'BESTSELLERY', 'secureware' ); ?></h3>
         </header>
         <?php echo do_shortcode( '[products limit="8" columns="4" orderby="popularity" visibility="featured"]' ); ?>
     </div>
@@ -205,21 +205,21 @@ get_header();
             </div>
             <div class="sw-divided__right">
                 <header class="sw-section-head sw-section-head--left sw-section-head--light">
-                    <h5><?php esc_html_e( 'Profesjonalne', 'secureware' ); ?></h5>
-                    <h3><?php esc_html_e( 'DORADZTWO', 'secureware' ); ?></h3>
+                    <h5><?php esc_html_e( 'Nie wiesz co wybrać?', 'secureware' ); ?></h5>
+                    <h3><?php esc_html_e( 'DORADZIMY', 'secureware' ); ?></h3>
                 </header>
                 <div class="sw-divided__list">
                     <div class="sw-divided__list-item">
                         <span class="sw-divided__list-num">1</span>
-                        <span><?php esc_html_e( 'Pomoc w wyborze odpowiedniej licencji dla Twojej firmy lub domu.', 'secureware' ); ?></span>
+                        <span><?php esc_html_e( 'Dobierzemy licencję do Twoich potrzeb — do firmy, do domu, na jedno lub wiele stanowisk.', 'secureware' ); ?></span>
                     </div>
                     <div class="sw-divided__list-item">
                         <span class="sw-divided__list-num">2</span>
-                        <span><?php esc_html_e( 'Wsparcie przy instalacji i aktywacji zakupionego oprogramowania.', 'secureware' ); ?></span>
+                        <span><?php esc_html_e( 'Przeprowadzimy Cię przez instalację i aktywację krok po kroku.', 'secureware' ); ?></span>
                     </div>
                     <div class="sw-divided__list-item">
                         <span class="sw-divided__list-num">3</span>
-                        <span><?php esc_html_e( 'Doradztwo w zakresie bezpieczeństwa i ochrony danych.', 'secureware' ); ?></span>
+                        <span><?php esc_html_e( 'Podpowiemy jak zabezpieczyć dane i dobrać optymalny pakiet ochrony.', 'secureware' ); ?></span>
                     </div>
                 </div>
             </div>
@@ -231,7 +231,7 @@ get_header();
 <section class="sw-products-section">
     <div class="sw-container">
         <header class="sw-section-head">
-            <h5><?php esc_html_e( 'Aktualne', 'secureware' ); ?></h5>
+            <h5><?php esc_html_e( 'Złap okazję', 'secureware' ); ?></h5>
             <h3><?php esc_html_e( 'PROMOCJE', 'secureware' ); ?></h3>
         </header>
         <?php echo do_shortcode( '[products limit="4" columns="4" on_sale="true" orderby="date"]' ); ?>
@@ -244,10 +244,10 @@ get_header();
         <div class="sw-divided__inner">
             <div class="sw-divided__left">
                 <header class="sw-section-head sw-section-head--left">
-                    <h5><?php echo esc_html( get_theme_mod( 'secureware_cta_title', __( 'Zapisz się', 'secureware' ) ) ); ?></h5>
-                    <h3><?php esc_html_e( 'NA NEWSLETTER', 'secureware' ); ?></h3>
+                    <h5><?php echo esc_html( get_theme_mod( 'secureware_cta_title', __( 'Bądź na bieżąco', 'secureware' ) ) ); ?></h5>
+                    <h3><?php esc_html_e( 'NEWSLETTER', 'secureware' ); ?></h3>
                 </header>
-                <p><?php echo esc_html( get_theme_mod( 'secureware_cta_description', __( 'Otrzymuj informacje o nowościach, promocjach i kodach rabatowych prosto na swój e-mail!', 'secureware' ) ) ); ?></p>
+                <p><?php echo esc_html( get_theme_mod( 'secureware_cta_description', __( 'Nowe produkty, kody rabatowe i promocje — prosto na Twój e-mail. Żadnego spamu, obiecujemy.', 'secureware' ) ) ); ?></p>
             </div>
             <div class="sw-divided__right sw-divided__right--newsletter">
                 <form class="sw-newsletter-form" action="#" method="post">
