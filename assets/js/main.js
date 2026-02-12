@@ -15,35 +15,43 @@
         if (!toggle) return;
 
         toggle.addEventListener('click', function () {
-            var nav = document.querySelector('.sw-header__nav');
-            if (nav) {
-                nav.classList.toggle('is-open');
+            var catnav = document.getElementById('sw-catnav');
+            if (catnav) {
+                catnav.classList.toggle('is-open');
+                toggle.classList.toggle('is-active');
             }
         });
 
         // Close menu when clicking outside
         document.addEventListener('click', function (e) {
-            var nav = document.querySelector('.sw-header__nav');
-            if (nav && nav.classList.contains('is-open') && !e.target.closest('.sw-header__nav') && !e.target.closest('.sw-menu-toggle')) {
-                nav.classList.remove('is-open');
+            var catnav = document.getElementById('sw-catnav');
+            if (catnav && catnav.classList.contains('is-open') && !e.target.closest('#sw-catnav') && !e.target.closest('#sw-menu-toggle')) {
+                catnav.classList.remove('is-open');
+                toggle.classList.remove('is-active');
             }
         });
     }
 
     /**
-     * Sticky header background on scroll
+     * Sticky header - hide topbar on scroll
      */
     function initStickyHeader() {
         var header = document.getElementById('sw-header');
         if (!header) return;
 
+        var lastScroll = 0;
+
         window.addEventListener('scroll', function () {
-            if (window.scrollY > 50) {
+            var currentScroll = window.scrollY;
+
+            if (currentScroll > 50) {
                 header.classList.add('is-scrolled');
             } else {
                 header.classList.remove('is-scrolled');
             }
-        });
+
+            lastScroll = currentScroll;
+        }, { passive: true });
     }
 
     /**
@@ -96,7 +104,7 @@
     }
 
     /**
-     * Search form toggle (mobile)
+     * Search form focus state
      */
     function initSearchToggle() {
         var searchForm = document.querySelector('.sw-header__search');
