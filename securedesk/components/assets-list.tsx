@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { formatDateShort, ASSET_TYPE_LABELS, CLASSIFICATION_LABELS } from '@/lib/utils'
 
 interface Asset {
@@ -179,13 +180,17 @@ export function AssetsList() {
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   <td style={{ padding: '12px 16px' }}>
-                    <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '12px', color: '#3b82f6' }}>
-                      {asset.assetNumber}
-                    </span>
+                    <Link href={`/assets/${asset.id}`} style={{ textDecoration: 'none' }}>
+                      <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '12px', color: '#3b82f6' }}>
+                        {asset.assetNumber}
+                      </span>
+                    </Link>
                   </td>
                   <td style={{ padding: '12px 16px', maxWidth: '280px' }}>
-                    <div style={{ fontSize: '13px', color: '#e8eaf0', fontWeight: 500, marginBottom: '2px' }}>{asset.name}</div>
-                    {asset.location && <div style={{ fontSize: '11px', color: '#555b6e' }}>{asset.location}</div>}
+                    <Link href={`/assets/${asset.id}`} style={{ textDecoration: 'none' }}>
+                      <div style={{ fontSize: '13px', color: '#e8eaf0', fontWeight: 500, marginBottom: '2px' }}>{asset.name}</div>
+                      {asset.location && <div style={{ fontSize: '11px', color: '#555b6e' }}>{asset.location}</div>}
+                    </Link>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <span style={{ fontSize: '12px', color: '#8b90a0' }}>{ASSET_TYPE_LABELS[asset.type]}</span>
