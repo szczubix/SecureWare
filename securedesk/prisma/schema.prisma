@@ -28,6 +28,7 @@ model User {
   id             String       @id @default(cuid())
   email          String       @unique
   name           String?
+  password       String?      @db.Text
   role           UserRole     @default(ABSI)
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
