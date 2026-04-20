@@ -88,10 +88,13 @@ model Incident {
   category               IncidentCategory
   reportedBy             String
   assignedTo             String?
-  nis2Active             Boolean          @default(false)
-  nis2StartedAt          DateTime?
-  nis2EarlyWarningSentAt DateTime?
-  nis2ReportSentAt       DateTime?
+  nis2Active                  Boolean          @default(false)
+  nis2StartedAt               DateTime?
+  nis2EarlyWarningSentAt      DateTime?
+  nis2ReportSentAt            DateTime?
+  reminder24hSentAt           DateTime?
+  reminder72hSentAt           DateTime?
+  reminder30dSentAt           DateTime?
   closedAt               DateTime?
   closureRootCause       String?          @db.Text
   closureActions         String?          @db.Text
