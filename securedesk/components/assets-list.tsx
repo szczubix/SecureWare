@@ -162,12 +162,22 @@ export function AssetsList() {
           <h1 style={{ fontSize: '20px', fontWeight: 600, color: '#e8eaf0', margin: 0 }}>Aktywa</h1>
           <p style={{ fontSize: '13px', color: '#555b6e', margin: '4px 0 0' }}>Rejestr aktywów informacyjnych organizacji</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          style={{ padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
-        >
-          + Nowe aktywo
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <a
+            href={`/api/assets/export?${buildParams()}`}
+            download
+            style={{ padding: '8px 14px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', fontSize: '13px', color: '#8b90a0', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            CSV
+          </a>
+          <button
+            onClick={() => setShowForm(true)}
+            style={{ padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+          >
+            + Nowe aktywo
+          </button>
+        </div>
       </div>
 
       {/* Stats */}

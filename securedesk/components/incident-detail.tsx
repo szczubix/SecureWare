@@ -202,10 +202,21 @@ export function IncidentDetail({ incident: initial, currentUser }: Props) {
     <div style={{ padding: '24px', display: 'flex', gap: '24px' }}>
       {/* ── Left column ── */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Breadcrumb */}
-        <div style={{ fontSize: '12px', color: '#555b6e', marginBottom: '16px', fontFamily: 'IBM Plex Mono, monospace' }}>
-          <Link href="/incidents" style={{ color: '#3b82f6', textDecoration: 'none' }}>Incydenty</Link>
-          {' › '}{incident.incidentNumber}
+        {/* Breadcrumb + PDF button */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <div style={{ fontSize: '12px', color: '#555b6e', fontFamily: 'IBM Plex Mono, monospace' }}>
+            <Link href="/incidents" style={{ color: '#3b82f6', textDecoration: 'none' }}>Incydenty</Link>
+            {' › '}{incident.incidentNumber}
+          </div>
+          <a
+            href={`/incidents/${incident.id}/print`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#8b90a0', fontSize: '12px', textDecoration: 'none' }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Raport PDF
+          </a>
         </div>
 
         <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#e8eaf0', margin: '0 0 12px' }}>
