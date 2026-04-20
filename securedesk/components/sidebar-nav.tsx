@@ -19,22 +19,22 @@ const ROLE_LABELS: Record<string, string> = {
 export function SidebarNav({ openIncidents, userName, userRole }: SidebarNavProps) {
   const pathname = usePathname()
 
-  function isActive(href: string) {
-    return pathname.startsWith(href)
+  function isActive(href: string, exact = false) {
+    return exact ? pathname === href : pathname.startsWith(href)
   }
 
-  const linkStyle = (href: string) => ({
+  const linkStyle = (href: string, exact = false) => ({
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
     padding: '7px 12px',
     borderRadius: '6px',
     fontSize: '13px',
-    color: isActive(href) ? '#e8eaf0' : '#8b90a0',
-    background: isActive(href) ? 'rgba(59,130,246,0.1)' : 'transparent',
+    color: isActive(href, exact) ? '#e8eaf0' : '#8b90a0',
+    background: isActive(href, exact) ? 'rgba(59,130,246,0.1)' : 'transparent',
     textDecoration: 'none',
     transition: 'all 0.15s',
-    fontWeight: isActive(href) ? 500 : 400,
+    fontWeight: isActive(href, exact) ? 500 : 400,
   })
 
   return (
@@ -81,6 +81,12 @@ export function SidebarNav({ openIncidents, userName, userRole }: SidebarNavProp
         }}>
           Operacje
         </div>
+        <Link href="/" style={linkStyle('/', true)}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          Dashboard
+        </Link>
         <Link href="/incidents" style={linkStyle('/incidents')}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
