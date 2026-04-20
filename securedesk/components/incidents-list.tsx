@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { formatDate, SEVERITY_LABELS, STATUS_LABELS, CATEGORY_LABELS } from '@/lib/utils'
 
@@ -19,90 +20,144 @@ interface Incident {
   _count: { evidences: number }
 }
 
-const SEVERITY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+interface PagedResponse {
+  data: Incident[]
+  total: number
+  page: number
+  pages: number
+  stats: { open: number; closed: number }
+}
+
+const SEV_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   CRITICAL: { bg: 'rgba(239,68,68,0.15)', text: '#fca5a5', border: 'rgba(239,68,68,0.25)' },
   HIGH: { bg: 'rgba(249,115,22,0.15)', text: '#fdba74', border: 'rgba(249,115,22,0.25)' },
   MEDIUM: { bg: 'rgba(245,158,11,0.15)', text: '#fcd34d', border: 'rgba(245,158,11,0.25)' },
   LOW: { bg: 'rgba(59,130,246,0.15)', text: '#93c5fd', border: 'rgba(59,130,246,0.25)' },
 }
 
-const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+const ST_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   NEW: { bg: 'rgba(239,68,68,0.15)', text: '#fca5a5', border: 'rgba(239,68,68,0.25)' },
   IN_PROGRESS: { bg: 'rgba(245,158,11,0.15)', text: '#fcd34d', border: 'rgba(245,158,11,0.25)' },
   ANALYSIS: { bg: 'rgba(59,130,246,0.15)', text: '#93c5fd', border: 'rgba(59,130,246,0.25)' },
   CLOSED: { bg: 'rgba(34,197,94,0.15)', text: '#86efac', border: 'rgba(34,197,94,0.25)' },
 }
 
-interface StatsData {
-  open: number
-  nis2: number
-  closedLast30: number
-  overdue: number
+type SortField = 'createdAt' | 'severity' | 'status' | 'incidentNumber'
+
+function SortIcon({ field, current, dir }: { field: string; current: string; dir: string }) {
+  if (field !== current) return <span style={{ color: '#3a3f52', marginLeft: '4px' }}>↕</span>
+  return <span style={{ color: '#3b82f6', marginLeft: '4px' }}>{dir === 'asc' ? '↑' : '↓'}</span>
 }
 
 export function IncidentsList() {
-  const [incidents, setIncidents] = useState<Incident[]>([])
-  const [stats, setStats] = useState<StatsData>({ open: 0, nis2: 0, closedLast30: 0, overdue: 0 })
-  const [filter, setFilter] = useState<string>('all')
-  const [search, setSearch] = useState('')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const [result, setResult] = useState<PagedResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
 
+  // Filter state — initialized from URL
+  const [search, setSearch] = useState(searchParams.get('search') || '')
+  const [severity, setSeverity] = useState(searchParams.get('severity') || '')
+  const [status, setStatus] = useState(searchParams.get('status') || '')
+  const [category, setCategory] = useState(searchParams.get('category') || '')
+  const [nis2, setNis2] = useState(searchParams.get('nis2') === 'true')
+  const [dateFrom, setDateFrom] = useState(searchParams.get('dateFrom') || '')
+  const [dateTo, setDateTo] = useState(searchParams.get('dateTo') || '')
+  const [sortBy, setSortBy] = useState<SortField>((searchParams.get('sortBy') as SortField) || 'createdAt')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>(searchParams.get('sortDir') === 'asc' ? 'asc' : 'desc')
+  const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10))
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [debouncedSearch, setDebouncedSearch] = useState(search)
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => setDebouncedSearch(search), 350)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [search])
+
+  const buildParams = useCallback(() => {
+    const p = new URLSearchParams()
+    if (debouncedSearch) p.set('search', debouncedSearch)
+    if (severity) p.set('severity', severity)
+    if (status) p.set('status', status)
+    if (category) p.set('category', category)
+    if (nis2) p.set('nis2', 'true')
+    if (dateFrom) p.set('dateFrom', dateFrom)
+    if (dateTo) p.set('dateTo', dateTo)
+    if (sortBy !== 'createdAt') p.set('sortBy', sortBy)
+    if (sortDir !== 'desc') p.set('sortDir', sortDir)
+    if (page > 1) p.set('page', String(page))
+    return p
+  }, [debouncedSearch, severity, status, category, nis2, dateFrom, dateTo, sortBy, sortDir, page])
+
+  // Sync URL
+  useEffect(() => {
+    const p = buildParams()
+    router.replace(`/incidents${p.toString() ? '?' + p.toString() : ''}`, { scroll: false })
+  }, [buildParams, router])
+
   const fetchIncidents = useCallback(async () => {
     setLoading(true)
-    const params = new URLSearchParams()
-    if (filter === 'open') params.set('status', 'NEW')
-    if (filter === 'nis2') params.set('nis2', 'true')
-    if (filter === 'critical') params.set('severity', 'CRITICAL')
-    if (filter === 'closed') params.set('status', 'CLOSED')
-    if (search) params.set('search', search)
-
-    const res = await fetch(`/api/incidents?${params}`)
-    const data = await res.json()
-    setIncidents(data.data || [])
-    setLoading(false)
-  }, [filter, search])
-
-  useEffect(() => {
-    fetchIncidents()
-  }, [fetchIncidents])
-
-  useEffect(() => {
-    async function loadStats() {
-      const [allRes, nis2Res, closedRes] = await Promise.all([
-        fetch('/api/incidents'),
-        fetch('/api/incidents?nis2=true'),
-        fetch('/api/incidents?status=CLOSED'),
-      ])
-      const [all, nis2data, closedData] = await Promise.all([
-        allRes.json(), nis2Res.json(), closedRes.json(),
-      ])
-      const allIncidents: Incident[] = all.data || []
-      const openCount = allIncidents.filter((i) => i.status !== 'CLOSED').length
-      const closedLast30 = (closedData.data || []).filter((i: Incident) => {
-        const d = new Date(i.createdAt)
-        return Date.now() - d.getTime() < 30 * 24 * 60 * 60 * 1000
-      }).length
-      setStats({
-        open: openCount,
-        nis2: (nis2data.data || []).length,
-        closedLast30,
-        overdue: 0,
-      })
+    const p = buildParams()
+    p.set('limit', '25')
+    const res = await fetch(`/api/incidents?${p}`)
+    if (res.ok) {
+      const json = await res.json()
+      setResult(json)
     }
-    loadStats()
-  }, [incidents])
+    setLoading(false)
+  }, [buildParams])
 
-  const filters = [
-    { key: 'all', label: 'Wszystkie' },
-    { key: 'open', label: 'Otwarte' },
-    { key: 'nis2', label: 'NIS2' },
-    { key: 'critical', label: 'Krytyczne' },
-    { key: 'closed', label: 'Zamknięte' },
-  ]
+  useEffect(() => { fetchIncidents() }, [fetchIncidents])
+
+  function handleSort(field: SortField) {
+    if (field === sortBy) {
+      setSortDir(d => d === 'desc' ? 'asc' : 'desc')
+    } else {
+      setSortBy(field)
+      setSortDir('desc')
+    }
+    setPage(1)
+  }
+
+  function resetFilters() {
+    setSearch(''); setSeverity(''); setStatus(''); setCategory('')
+    setNis2(false); setDateFrom(''); setDateTo('')
+    setSortBy('createdAt'); setSortDir('desc'); setPage(1)
+  }
+
+  const hasFilters = !!(search || severity || status || category || nis2 || dateFrom || dateTo)
+  const incidents = result?.data || []
+
+  const thStyle = (field: SortField): React.CSSProperties => ({
+    padding: '10px 16px',
+    textAlign: 'left',
+    fontSize: '11px',
+    color: sortBy === field ? '#93c5fd' : '#555b6e',
+    fontFamily: 'IBM Plex Mono, monospace',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    fontWeight: 500,
+    cursor: 'pointer',
+    userSelect: 'none',
+    whiteSpace: 'nowrap',
+  })
+
+  const selStyle: React.CSSProperties = {
+    padding: '7px 10px',
+    background: '#161922',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: '6px',
+    color: '#8b90a0',
+    fontSize: '12px',
+    outline: 'none',
+  }
 
   return (
-    <div style={{ padding: '24px', flex: 1 }}>
+    <div style={{ padding: '24px', flex: 1, minWidth: 0 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
@@ -113,16 +168,7 @@ export function IncidentsList() {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          style={{
-            padding: '8px 16px',
-            background: '#3b82f6',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '13px',
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
+          style={{ padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
         >
           + Nowy incydent
         </button>
@@ -131,175 +177,141 @@ export function IncidentsList() {
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
         {[
-          { label: 'Otwarte', value: stats.open, color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
-          { label: 'NIS2 aktywny', value: stats.nis2, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-          { label: 'Zamknięte 30 dni', value: stats.closedLast30, color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
-          { label: 'Przeterminowane', value: stats.overdue, color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
-        ].map((stat) => (
-          <div key={stat.label} style={{
-            background: '#161922',
-            border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: '8px',
-            padding: '16px',
-          }}>
-            <div style={{ fontSize: '28px', fontWeight: 600, color: stat.color, fontFamily: 'IBM Plex Mono, monospace' }}>
-              {stat.value}
-            </div>
-            <div style={{ fontSize: '12px', color: '#8b90a0', marginTop: '4px' }}>{stat.label}</div>
+          { label: 'Otwarte', value: result?.stats.open ?? '—', color: '#ef4444' },
+          { label: 'NIS2 aktywny', value: result ? incidents.filter(i => i.nis2Active).length : '—', color: '#f59e0b' },
+          { label: 'Zamknięte', value: result?.stats.closed ?? '—', color: '#22c55e' },
+          { label: 'Wyników (filtr)', value: result?.total ?? '—', color: '#3b82f6' },
+        ].map((s) => (
+          <div key={s.label} style={{ background: '#161922', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '16px' }}>
+            <div style={{ fontSize: '28px', fontWeight: 600, color: s.color, fontFamily: 'IBM Plex Mono, monospace' }}>{s.value}</div>
+            <div style={{ fontSize: '12px', color: '#8b90a0', marginTop: '4px' }}>{s.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Filters + Search */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '4px' }}>
-          {filters.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                fontSize: '12px',
-                border: filter === f.key ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.07)',
-                background: filter === f.key ? 'rgba(59,130,246,0.1)' : 'transparent',
-                color: filter === f.key ? '#93c5fd' : '#8b90a0',
-                cursor: 'pointer',
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
         <input
           type="text"
-          placeholder="Szukaj incydentów..."
+          placeholder="Szukaj (tytuł, nr, zgłaszający)..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{
-            flex: 1,
-            padding: '7px 12px',
-            background: '#161922',
-            border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: '6px',
-            color: '#e8eaf0',
-            fontSize: '13px',
-            outline: 'none',
-          }}
+          onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+          style={{ flex: '1', minWidth: '200px', padding: '7px 12px', background: '#161922', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', color: '#e8eaf0', fontSize: '13px', outline: 'none' }}
         />
+        <select value={severity} onChange={(e) => { setSeverity(e.target.value); setPage(1) }} style={selStyle}>
+          <option value="">Wszystkie poziomy</option>
+          <option value="CRITICAL">Krytyczny</option>
+          <option value="HIGH">Wysoki</option>
+          <option value="MEDIUM">Średni</option>
+          <option value="LOW">Niski</option>
+        </select>
+        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1) }} style={selStyle}>
+          <option value="">Wszystkie statusy</option>
+          <option value="NEW">Nowy</option>
+          <option value="IN_PROGRESS">W toku</option>
+          <option value="ANALYSIS">Analiza</option>
+          <option value="CLOSED">Zamknięty</option>
+        </select>
+        <select value={category} onChange={(e) => { setCategory(e.target.value); setPage(1) }} style={selStyle}>
+          <option value="">Wszystkie kategorie</option>
+          <option value="UNAUTHORIZED_ACCESS">Nieautoryzowany dostęp</option>
+          <option value="DATA_LEAK">Wyciek danych</option>
+          <option value="AVAILABILITY">Niedostępność</option>
+          <option value="PHISHING">Phishing</option>
+          <option value="MALWARE">Złośliwe oprog.</option>
+          <option value="PHYSICAL">Fizyczny</option>
+          <option value="OTHER">Inne</option>
+        </select>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', padding: '7px 10px', border: nis2 ? '1px solid rgba(245,158,11,0.4)' : '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', background: nis2 ? 'rgba(245,158,11,0.1)' : '#161922', fontSize: '12px', color: nis2 ? '#fcd34d' : '#8b90a0', userSelect: 'none' }}>
+          <input type="checkbox" checked={nis2} onChange={(e) => { setNis2(e.target.checked); setPage(1) }} style={{ accentColor: '#f59e0b' }} />
+          NIS2
+        </label>
+      </div>
+
+      {/* Date range + reset */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '12px', color: '#555b6e' }}>Od:</span>
+          <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1) }} style={{ ...selStyle, colorScheme: 'dark' }} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '12px', color: '#555b6e' }}>Do:</span>
+          <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1) }} style={{ ...selStyle, colorScheme: 'dark' }} />
+        </div>
+        {hasFilters && (
+          <button onClick={resetFilters} style={{ marginLeft: 'auto', padding: '6px 12px', background: 'transparent', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', color: '#fca5a5', fontSize: '12px', cursor: 'pointer' }}>
+            ✕ Wyczyść filtry
+          </button>
+        )}
       </div>
 
       {/* Table */}
-      <div style={{
-        background: '#161922',
-        border: '1px solid rgba(255,255,255,0.07)',
-        borderRadius: '8px',
-        overflow: 'hidden',
-      }}>
+      <div style={{ background: '#161922', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-              {['ID', 'Incydent', 'Klasyfikacja', 'Status', 'NIS2', 'Data'].map((col) => (
-                <th key={col} style={{
-                  padding: '10px 16px',
-                  textAlign: 'left',
-                  fontSize: '11px',
-                  color: '#555b6e',
-                  fontFamily: 'IBM Plex Mono, monospace',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  fontWeight: 500,
-                }}>
-                  {col}
-                </th>
-              ))}
+              <th onClick={() => handleSort('incidentNumber')} style={thStyle('incidentNumber')}>
+                Nr <SortIcon field="incidentNumber" current={sortBy} dir={sortDir} />
+              </th>
+              <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', color: '#555b6e', fontFamily: 'IBM Plex Mono, monospace', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
+                Incydent
+              </th>
+              <th onClick={() => handleSort('severity')} style={thStyle('severity')}>
+                Poziom <SortIcon field="severity" current={sortBy} dir={sortDir} />
+              </th>
+              <th onClick={() => handleSort('status')} style={thStyle('status')}>
+                Status <SortIcon field="status" current={sortBy} dir={sortDir} />
+              </th>
+              <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', color: '#555b6e', fontFamily: 'IBM Plex Mono, monospace', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
+                NIS2
+              </th>
+              <th onClick={() => handleSort('createdAt')} style={thStyle('createdAt')}>
+                Data <SortIcon field="createdAt" current={sortBy} dir={sortDir} />
+              </th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#555b6e', fontSize: '13px' }}>
-                  Ładowanie...
-                </td>
-              </tr>
+              <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#555b6e', fontSize: '13px' }}>Ładowanie...</td></tr>
             ) : incidents.length === 0 ? (
-              <tr>
-                <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#555b6e', fontSize: '13px' }}>
-                  Brak incydentów spełniających kryteria
-                </td>
-              </tr>
+              <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#555b6e', fontSize: '13px' }}>Brak incydentów spełniających kryteria</td></tr>
             ) : incidents.map((incident) => {
-              const sevColor = SEVERITY_COLORS[incident.severity] || SEVERITY_COLORS.LOW
-              const stColor = STATUS_COLORS[incident.status] || STATUS_COLORS.NEW
+              const sc = SEV_COLORS[incident.severity] || SEV_COLORS.LOW
+              const stc = ST_COLORS[incident.status] || ST_COLORS.NEW
               return (
-                <tr
-                  key={incident.id}
-                  style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }}
+                <tr key={incident.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                   <td style={{ padding: '12px 16px' }}>
                     <Link href={`/incidents/${incident.id}`} style={{ textDecoration: 'none' }}>
-                      <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '12px', color: '#3b82f6' }}>
-                        {incident.incidentNumber}
-                      </span>
+                      <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '12px', color: '#3b82f6' }}>{incident.incidentNumber}</span>
                     </Link>
                   </td>
                   <td style={{ padding: '12px 16px', maxWidth: '320px' }}>
                     <Link href={`/incidents/${incident.id}`} style={{ textDecoration: 'none' }}>
-                      <div style={{ fontSize: '13px', color: '#e8eaf0', fontWeight: 500, marginBottom: '3px' }}>
-                        {incident.title}
-                      </div>
+                      <div style={{ fontSize: '13px', color: '#e8eaf0', fontWeight: 500, marginBottom: '3px' }}>{incident.title}</div>
                       <div style={{ fontSize: '11px', color: '#555b6e' }}>
                         {CATEGORY_LABELS[incident.category]} · zgł. {incident.reportedBy}
-                        {incident._count.evidences > 0 && ` · ${incident._count.evidences} dowodów`}
+                        {incident._count.evidences > 0 && ` · ${incident._count.evidences} dow.`}
                       </div>
                     </Link>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <span style={{
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      fontFamily: 'IBM Plex Mono, monospace',
-                      background: sevColor.bg,
-                      color: sevColor.text,
-                      border: `1px solid ${sevColor.border}`,
-                    }}>
+                    <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontFamily: 'IBM Plex Mono, monospace', background: sc.bg, color: sc.text, border: `1px solid ${sc.border}` }}>
                       {SEVERITY_LABELS[incident.severity]}
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <span style={{
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      fontFamily: 'IBM Plex Mono, monospace',
-                      background: stColor.bg,
-                      color: stColor.text,
-                      border: `1px solid ${stColor.border}`,
-                    }}>
+                    <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontFamily: 'IBM Plex Mono, monospace', background: stc.bg, color: stc.text, border: `1px solid ${stc.border}` }}>
                       {STATUS_LABELS[incident.status]}
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    {incident.nis2Active ? (
-                      <span style={{
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontFamily: 'IBM Plex Mono, monospace',
-                        background: 'rgba(245,158,11,0.15)',
-                        color: '#fcd34d',
-                        border: '1px solid rgba(245,158,11,0.25)',
-                      }}>
-                        NIS2
-                      </span>
-                    ) : (
-                      <span style={{ color: '#3a3f52', fontSize: '11px' }}>—</span>
-                    )}
+                    {incident.nis2Active
+                      ? <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontFamily: 'IBM Plex Mono, monospace', background: 'rgba(245,158,11,0.15)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.25)' }}>NIS2</span>
+                      : <span style={{ color: '#3a3f52', fontSize: '11px' }}>—</span>}
                   </td>
-                  <td style={{ padding: '12px 16px', fontSize: '12px', color: '#555b6e', fontFamily: 'IBM Plex Mono, monospace' }}>
+                  <td style={{ padding: '12px 16px', fontSize: '12px', color: '#555b6e', fontFamily: 'IBM Plex Mono, monospace', whiteSpace: 'nowrap' }}>
                     {formatDate(incident.createdAt)}
                   </td>
                 </tr>
@@ -308,6 +320,45 @@ export function IncidentsList() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {result && result.pages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px' }}>
+          <span style={{ fontSize: '12px', color: '#555b6e', fontFamily: 'IBM Plex Mono, monospace' }}>
+            Strona {result.page} z {result.pages} · {result.total} wyników
+          </span>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage(p => p - 1)}
+              style={{ padding: '6px 12px', background: '#161922', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', color: page <= 1 ? '#3a3f52' : '#8b90a0', fontSize: '12px', cursor: page <= 1 ? 'default' : 'pointer' }}
+            >
+              ← Poprzednia
+            </button>
+            {Array.from({ length: Math.min(result.pages, 7) }, (_, i) => {
+              const p = result.pages <= 7 ? i + 1 : page <= 4 ? i + 1 : page >= result.pages - 3 ? result.pages - 6 + i : page - 3 + i
+              return (
+                <button key={p} onClick={() => setPage(p)}
+                  style={{ padding: '6px 10px', borderRadius: '6px', fontSize: '12px', border: p === page ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.07)', background: p === page ? 'rgba(59,130,246,0.1)' : '#161922', color: p === page ? '#93c5fd' : '#8b90a0', cursor: 'pointer', fontFamily: 'IBM Plex Mono, monospace' }}>
+                  {p}
+                </button>
+              )
+            })}
+            <button
+              disabled={page >= result.pages}
+              onClick={() => setPage(p => p + 1)}
+              style={{ padding: '6px 12px', background: '#161922', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', color: page >= result.pages ? '#3a3f52' : '#8b90a0', fontSize: '12px', cursor: page >= result.pages ? 'default' : 'pointer' }}
+            >
+              Następna →
+            </button>
+          </div>
+        </div>
+      )}
+      {result && result.total > 0 && result.pages <= 1 && (
+        <div style={{ marginTop: '12px', fontSize: '12px', color: '#3a3f52', fontFamily: 'IBM Plex Mono, monospace', textAlign: 'right' }}>
+          {result.total} wyników
+        </div>
+      )}
 
       {showForm && (
         <NewIncidentModal
@@ -349,52 +400,37 @@ function NewIncidentModal({ onClose, onCreated }: { onClose: () => void; onCreat
     }
   }
 
+  const iStyle: React.CSSProperties = { width: '100%', padding: '8px 12px', background: '#0f1117', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#e8eaf0', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }
+  const F = ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <div>
+      <label style={{ display: 'block', fontSize: '12px', color: '#8b90a0', marginBottom: '6px', fontFamily: 'IBM Plex Mono, monospace' }}>{label}</label>
+      {children}
+    </div>
+  )
+
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50,
-    }}>
-      <div style={{
-        background: '#161922', border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: '10px', padding: '32px', width: '540px', maxWidth: '95vw',
-      }}>
-        <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#e8eaf0', marginBottom: '24px' }}>
-          Nowy incydent bezpieczeństwa
-        </h2>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+      <div style={{ background: '#161922', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '32px', width: '540px', maxWidth: '95vw' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#e8eaf0', marginBottom: '24px' }}>Nowy incydent bezpieczeństwa</h2>
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <FormField label="Tytuł incydentu">
-              <input
-                required
-                minLength={3}
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="Krótki opis zdarzenia..."
-                style={inputStyle}
-              />
-            </FormField>
-            <FormField label="Opis zdarzenia">
-              <textarea
-                required
-                minLength={10}
-                rows={3}
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Szczegółowy opis incydentu..."
-                style={{ ...inputStyle, resize: 'vertical' }}
-              />
-            </FormField>
+            <F label="Tytuł incydentu">
+              <input required minLength={3} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Krótki opis zdarzenia..." style={iStyle} />
+            </F>
+            <F label="Opis zdarzenia">
+              <textarea required minLength={10} rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Szczegółowy opis incydentu..." style={{ ...iStyle, resize: 'vertical' }} />
+            </F>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <FormField label="Klasyfikacja">
-                <select value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })} style={inputStyle}>
+              <F label="Klasyfikacja">
+                <select value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })} style={iStyle}>
                   <option value="CRITICAL">Krytyczny</option>
                   <option value="HIGH">Wysoki</option>
                   <option value="MEDIUM">Średni</option>
                   <option value="LOW">Niski</option>
                 </select>
-              </FormField>
-              <FormField label="Kategoria">
-                <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} style={inputStyle}>
+              </F>
+              <F label="Kategoria">
+                <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} style={iStyle}>
                   <option value="UNAUTHORIZED_ACCESS">Nieautoryzowany dostęp</option>
                   <option value="DATA_LEAK">Wyciek danych</option>
                   <option value="AVAILABILITY">Niedostępność</option>
@@ -403,68 +439,27 @@ function NewIncidentModal({ onClose, onCreated }: { onClose: () => void; onCreat
                   <option value="PHYSICAL">Incydent fizyczny</option>
                   <option value="OTHER">Inne</option>
                 </select>
-              </FormField>
+              </F>
             </div>
-            <FormField label="Zgłaszający">
-              <input
-                required
-                value={form.reportedBy}
-                onChange={(e) => setForm({ ...form, reportedBy: e.target.value })}
-                placeholder="Imię i nazwisko zgłaszającego"
-                style={inputStyle}
-              />
-            </FormField>
+            <F label="Zgłaszający">
+              <input required value={form.reportedBy} onChange={(e) => setForm({ ...form, reportedBy: e.target.value })} placeholder="Imię i nazwisko zgłaszającego" style={iStyle} />
+            </F>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={form.nis2Active}
-                onChange={(e) => setForm({ ...form, nis2Active: e.target.checked })}
-              />
-              <span style={{ fontSize: '13px', color: '#8b90a0' }}>
-                Incydent podlega raportowaniu NIS2 (Art. 21)
-              </span>
+              <input type="checkbox" checked={form.nis2Active} onChange={(e) => setForm({ ...form, nis2Active: e.target.checked })} />
+              <span style={{ fontSize: '13px', color: '#8b90a0' }}>Incydent podlega raportowaniu NIS2 (Art. 21)</span>
             </label>
           </div>
-
           {error && (
-            <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', color: '#fca5a5', fontSize: '12px' }}>
-              {error}
-            </div>
+            <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', color: '#fca5a5', fontSize: '12px' }}>{error}</div>
           )}
-
           <div style={{ display: 'flex', gap: '8px', marginTop: '24px', justifyContent: 'flex-end' }}>
-            <button type="button" onClick={onClose} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#8b90a0', fontSize: '13px', cursor: 'pointer' }}>
-              Anuluj
-            </button>
+            <button type="button" onClick={onClose} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#8b90a0', fontSize: '13px', cursor: 'pointer' }}>Anuluj</button>
             <button type="submit" disabled={loading} style={{ padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', opacity: loading ? 0.7 : 1 }}>
               {loading ? 'Tworzenie...' : 'Utwórz incydent'}
             </button>
           </div>
         </form>
       </div>
-    </div>
-  )
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 12px',
-  background: '#0f1117',
-  border: '1px solid rgba(255,255,255,0.1)',
-  borderRadius: '6px',
-  color: '#e8eaf0',
-  fontSize: '13px',
-  outline: 'none',
-  boxSizing: 'border-box',
-}
-
-function FormField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label style={{ display: 'block', fontSize: '12px', color: '#8b90a0', marginBottom: '6px', fontFamily: 'IBM Plex Mono, monospace' }}>
-        {label}
-      </label>
-      {children}
     </div>
   )
 }

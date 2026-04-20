@@ -15,6 +15,9 @@ const createSchema = z.object({
   assetIds: z.array(z.string()).optional(),
 })
 
+const VALID_SORT = ['createdAt', 'severity', 'status', 'incidentNumber'] as const
+type SortField = typeof VALID_SORT[number]
+
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -23,33 +26,77 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status')
   const severity = searchParams.get('severity')
+  const category = searchParams.get('category')
   const nis2 = searchParams.get('nis2')
   const search = searchParams.get('search')
+  const dateFrom = searchParams.get('dateFrom')
+  const dateTo = searchParams.get('dateTo')
+  const noOwner = searchParams.get('noOwner')
+  const overdueReview = searchParams.get('overdueReview')
+  const sortBy: SortField = VALID_SORT.includes(searchParams.get('sortBy') as SortField)
+    ? (searchParams.get('sortBy') as SortField)
+    : 'createdAt'
+  const sortDir = searchParams.get('sortDir') === 'asc' ? 'asc' : 'desc'
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '25', 10)))
 
-  const incidents = await prisma.incident.findMany({
-    where: {
-      organizationId: orgId,
-      deletedAt: null,
-      ...(status && { status: status as 'NEW' | 'IN_PROGRESS' | 'ANALYSIS' | 'CLOSED' }),
-      ...(severity && { severity: severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' }),
-      ...(nis2 === 'true' && { nis2Active: true }),
-      ...(search && {
-        OR: [
-          { title: { contains: search, mode: 'insensitive' } },
-          { incidentNumber: { contains: search, mode: 'insensitive' } },
-          { reportedBy: { contains: search, mode: 'insensitive' } },
-        ],
-      }),
-    },
-    include: {
-      actions: { orderBy: { createdAt: 'desc' }, take: 1 },
-      assets: { include: { asset: true } },
-      _count: { select: { evidences: true } },
-    },
-    orderBy: { createdAt: 'desc' },
+  const where = {
+    organizationId: orgId,
+    deletedAt: null,
+    ...(status && { status: status as 'NEW' | 'IN_PROGRESS' | 'ANALYSIS' | 'CLOSED' }),
+    ...(severity && { severity: severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' }),
+    ...(category && { category: category as 'UNAUTHORIZED_ACCESS' | 'DATA_LEAK' | 'AVAILABILITY' | 'PHISHING' | 'MALWARE' | 'PHYSICAL' | 'OTHER' }),
+    ...(nis2 === 'true' && { nis2Active: true }),
+    ...(noOwner === 'true' && { assignedTo: null }),
+    ...(dateFrom || dateTo ? {
+      createdAt: {
+        ...(dateFrom && { gte: new Date(dateFrom) }),
+        ...(dateTo && { lte: new Date(dateTo + 'T23:59:59Z') }),
+      },
+    } : {}),
+    ...(search && {
+      OR: [
+        { title: { contains: search, mode: 'insensitive' as const } },
+        { incidentNumber: { contains: search, mode: 'insensitive' as const } },
+        { reportedBy: { contains: search, mode: 'insensitive' as const } },
+      ],
+    }),
+  }
+
+  const [total, incidents, stats] = await Promise.all([
+    prisma.incident.count({ where }),
+    prisma.incident.findMany({
+      where,
+      include: {
+        actions: { orderBy: { createdAt: 'desc' }, take: 1 },
+        _count: { select: { evidences: true } },
+      },
+      orderBy: { [sortBy]: sortDir },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    // Always return global stats (unfiltered)
+    prisma.incident.groupBy({
+      by: ['status'],
+      where: { organizationId: orgId, deletedAt: null },
+      _count: { _all: true },
+    }),
+  ])
+
+  const statsByStatus: Record<string, number> = {}
+  for (const row of stats) {
+    statsByStatus[row.status] = row._count?._all ?? 0
+  }
+  const openCount = (statsByStatus['NEW'] || 0) + (statsByStatus['IN_PROGRESS'] || 0) + (statsByStatus['ANALYSIS'] || 0)
+
+  return NextResponse.json({
+    data: incidents,
+    total,
+    page,
+    limit,
+    pages: Math.ceil(total / limit),
+    stats: { open: openCount, closed: statsByStatus['CLOSED'] || 0 },
   })
-
-  return NextResponse.json({ data: incidents })
 }
 
 export async function POST(req: Request) {
