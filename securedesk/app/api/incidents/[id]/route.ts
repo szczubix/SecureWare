@@ -87,6 +87,19 @@ export async function PATCH(
     })
   }
 
+  if ('assignedTo' in parsed.data && parsed.data.assignedTo !== existing.assignedTo) {
+    const prev = existing.assignedTo || 'nieprzypisany'
+    const next = parsed.data.assignedTo || 'nieprzypisany'
+    await prisma.incidentAction.create({
+      data: {
+        incidentId: id,
+        content: `Przypisanie zmienione: ${prev} → ${next}.`,
+        authorId: userId,
+        authorName: session.user?.name || session.user?.email || '',
+      },
+    })
+  }
+
   return NextResponse.json({ data: incident })
 }
 

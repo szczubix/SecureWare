@@ -28,6 +28,7 @@ export async function GET(req: Request) {
   const severity = searchParams.get('severity')
   const category = searchParams.get('category')
   const nis2 = searchParams.get('nis2')
+  const assignedTo = searchParams.get('assignedTo')
   const search = searchParams.get('search')
   const dateFrom = searchParams.get('dateFrom')
   const dateTo = searchParams.get('dateTo')
@@ -47,6 +48,7 @@ export async function GET(req: Request) {
     ...(severity && { severity: severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' }),
     ...(category && { category: category as 'UNAUTHORIZED_ACCESS' | 'DATA_LEAK' | 'AVAILABILITY' | 'PHISHING' | 'MALWARE' | 'PHYSICAL' | 'OTHER' }),
     ...(nis2 === 'true' && { nis2Active: true }),
+    ...(assignedTo && { assignedTo: { contains: assignedTo, mode: 'insensitive' as const } }),
     ...(noOwner === 'true' && { assignedTo: null }),
     ...(dateFrom || dateTo ? {
       createdAt: {

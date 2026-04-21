@@ -49,7 +49,7 @@ function SortIcon({ field, current, dir }: { field: string; current: string; dir
   return <span style={{ color: '#3b82f6', marginLeft: '4px' }}>{dir === 'asc' ? '↑' : '↓'}</span>
 }
 
-export function IncidentsList() {
+export function IncidentsList({ currentUserName = '' }: { currentUserName?: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -63,6 +63,7 @@ export function IncidentsList() {
   const [status, setStatus] = useState(searchParams.get('status') || '')
   const [category, setCategory] = useState(searchParams.get('category') || '')
   const [nis2, setNis2] = useState(searchParams.get('nis2') === 'true')
+  const [onlyMine, setOnlyMine] = useState(searchParams.get('mine') === 'true')
   const [dateFrom, setDateFrom] = useState(searchParams.get('dateFrom') || '')
   const [dateTo, setDateTo] = useState(searchParams.get('dateTo') || '')
   const [sortBy, setSortBy] = useState<SortField>((searchParams.get('sortBy') as SortField) || 'createdAt')
@@ -85,13 +86,14 @@ export function IncidentsList() {
     if (status) p.set('status', status)
     if (category) p.set('category', category)
     if (nis2) p.set('nis2', 'true')
+    if (onlyMine && currentUserName) p.set('assignedTo', currentUserName)
     if (dateFrom) p.set('dateFrom', dateFrom)
     if (dateTo) p.set('dateTo', dateTo)
     if (sortBy !== 'createdAt') p.set('sortBy', sortBy)
     if (sortDir !== 'desc') p.set('sortDir', sortDir)
     if (page > 1) p.set('page', String(page))
     return p
-  }, [debouncedSearch, severity, status, category, nis2, dateFrom, dateTo, sortBy, sortDir, page])
+  }, [debouncedSearch, severity, status, category, nis2, onlyMine, currentUserName, dateFrom, dateTo, sortBy, sortDir, page])
 
   // Sync URL
   useEffect(() => {
@@ -125,11 +127,11 @@ export function IncidentsList() {
 
   function resetFilters() {
     setSearch(''); setSeverity(''); setStatus(''); setCategory('')
-    setNis2(false); setDateFrom(''); setDateTo('')
+    setNis2(false); setOnlyMine(false); setDateFrom(''); setDateTo('')
     setSortBy('createdAt'); setSortDir('desc'); setPage(1)
   }
 
-  const hasFilters = !!(search || severity || status || category || nis2 || dateFrom || dateTo)
+  const hasFilters = !!(search || severity || status || category || nis2 || onlyMine || dateFrom || dateTo)
   const incidents = result?.data || []
 
   const thStyle = (field: SortField): React.CSSProperties => ({
@@ -236,6 +238,12 @@ export function IncidentsList() {
           <input type="checkbox" checked={nis2} onChange={(e) => { setNis2(e.target.checked); setPage(1) }} style={{ accentColor: '#f59e0b' }} />
           NIS2
         </label>
+        {currentUserName && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', padding: '7px 10px', border: onlyMine ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', background: onlyMine ? 'rgba(59,130,246,0.1)' : '#161922', fontSize: '12px', color: onlyMine ? '#93c5fd' : '#8b90a0', userSelect: 'none' }}>
+            <input type="checkbox" checked={onlyMine} onChange={(e) => { setOnlyMine(e.target.checked); setPage(1) }} style={{ accentColor: '#3b82f6' }} />
+            Moje
+          </label>
+        )}
       </div>
 
       {/* Date range + reset */}
@@ -275,6 +283,9 @@ export function IncidentsList() {
               <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', color: '#555b6e', fontFamily: 'IBM Plex Mono, monospace', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
                 NIS2
               </th>
+              <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', color: '#555b6e', fontFamily: 'IBM Plex Mono, monospace', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
+                Przypisany
+              </th>
               <th onClick={() => handleSort('createdAt')} style={thStyle('createdAt')}>
                 Data <SortIcon field="createdAt" current={sortBy} dir={sortDir} />
               </th>
@@ -282,9 +293,9 @@ export function IncidentsList() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#555b6e', fontSize: '13px' }}>Ładowanie...</td></tr>
+              <tr><td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: '#555b6e', fontSize: '13px' }}>Ładowanie...</td></tr>
             ) : incidents.length === 0 ? (
-              <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#555b6e', fontSize: '13px' }}>Brak incydentów spełniających kryteria</td></tr>
+              <tr><td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: '#555b6e', fontSize: '13px' }}>Brak incydentów spełniających kryteria</td></tr>
             ) : incidents.map((incident) => {
               const sc = SEV_COLORS[incident.severity] || SEV_COLORS.LOW
               const stc = ST_COLORS[incident.status] || ST_COLORS.NEW
@@ -320,6 +331,11 @@ export function IncidentsList() {
                     {incident.nis2Active
                       ? <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontFamily: 'IBM Plex Mono, monospace', background: 'rgba(245,158,11,0.15)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.25)' }}>NIS2</span>
                       : <span style={{ color: '#3a3f52', fontSize: '11px' }}>—</span>}
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: '12px', maxWidth: '120px' }}>
+                    {incident.assignedTo
+                      ? <span style={{ color: '#8b90a0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }} title={incident.assignedTo}>{incident.assignedTo}</span>
+                      : <span style={{ color: '#3a3f52' }}>—</span>}
                   </td>
                   <td style={{ padding: '12px 16px', fontSize: '12px', color: '#555b6e', fontFamily: 'IBM Plex Mono, monospace', whiteSpace: 'nowrap' }}>
                     {formatDate(incident.createdAt)}

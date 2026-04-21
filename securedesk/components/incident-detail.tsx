@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { NIS2Timer } from './nis2-timer'
 import { formatDate, SEVERITY_LABELS, STATUS_LABELS, CATEGORY_LABELS, ASSET_TYPE_LABELS } from '@/lib/utils'
@@ -87,7 +87,15 @@ export function IncidentDetail({ incident: initial, currentUser }: Props) {
   })
   const [nis2Loading, setNis2Loading] = useState<string | null>(null)
   const [uploadingFile, setUploadingFile] = useState(false)
+  const [assigningTo, setAssigningTo] = useState(false)
+  const [members, setMembers] = useState<{ id: string; name: string | null; email: string }[]>([])
+  const [showAssignDropdown, setShowAssignDropdown] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Load org members once
+  useEffect(() => {
+    fetch('/api/settings/members').then(r => r.json()).then(d => setMembers(d.data || []))
+  }, [])
 
   async function addAction() {
     if (!newAction.trim()) return
@@ -126,6 +134,24 @@ export function IncidentDetail({ incident: initial, currentUser }: Props) {
       if (rd.data) setActions(rd.data.actions)
     }
     setUpdatingStatus(false)
+  }
+
+  async function assignTo(name: string | null) {
+    setAssigningTo(true)
+    setShowAssignDropdown(false)
+    const res = await fetch(`/api/incidents/${incident.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignedTo: name }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setIncident(prev => ({ ...prev, assignedTo: data.data.assignedTo }))
+      const reloaded = await fetch(`/api/incidents/${incident.id}`)
+      const rd = await reloaded.json()
+      if (rd.data) setActions(rd.data.actions)
+    }
+    setAssigningTo(false)
   }
 
   async function sendNis2Action(action: 'early_warning' | 'report_72h' | 'final_report') {
@@ -229,6 +255,51 @@ export function IncidentDetail({ incident: initial, currentUser }: Props) {
           <Badge bg={stColor.bg} text={stColor.text} border={stColor.border}>{STATUS_LABELS[incident.status]}</Badge>
           {incident.nis2Active && <Badge bg="rgba(245,158,11,0.15)" text="#fcd34d" border="rgba(245,158,11,0.25)">NIS2 Art. 21</Badge>}
           <Badge bg="rgba(59,130,246,0.1)" text="#93c5fd" border="rgba(59,130,246,0.2)">ISO A.6.8 · A.8.15</Badge>
+        </div>
+
+        {/* Assignee */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', position: 'relative' }}>
+          <span style={{ fontSize: '12px', color: '#555b6e', fontFamily: 'IBM Plex Mono, monospace' }}>Przypisany:</span>
+          <button
+            onClick={() => setShowAssignDropdown(v => !v)}
+            disabled={assigningTo}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 10px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: incident.assignedTo ? '#e8eaf0' : '#555b6e', fontSize: '13px', cursor: 'pointer' }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            {assigningTo ? 'Zapisywanie...' : (incident.assignedTo || 'Nieprzypisany')}
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          {incident.assignedTo && (
+            <button onClick={() => assignTo(null)} style={{ fontSize: '11px', color: '#555b6e', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 6px' }}>
+              ✕ usuń
+            </button>
+          )}
+          <button
+            onClick={() => assignTo(currentUser.name)}
+            style={{ fontSize: '11px', color: '#3b82f6', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 6px' }}
+          >
+            Przypisz do mnie
+          </button>
+
+          {showAssignDropdown && (
+            <div style={{ position: 'absolute', top: '100%', left: '60px', marginTop: '4px', background: '#1e2433', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', zIndex: 50, minWidth: '200px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden' }}>
+              {members.length === 0 && (
+                <div style={{ padding: '10px 14px', fontSize: '12px', color: '#555b6e' }}>Ładowanie...</div>
+              )}
+              {members.map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => assignTo(m.name || m.email)}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', background: 'transparent', border: 'none', color: '#e8eaf0', fontSize: '13px', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(59,130,246,0.1)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <span style={{ fontWeight: 500 }}>{m.name || m.email}</span>
+                  {m.name && <span style={{ fontSize: '11px', color: '#555b6e', marginLeft: '6px' }}>{m.email}</span>}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* NIS2 Timer + Actions */}
