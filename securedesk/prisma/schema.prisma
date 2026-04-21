@@ -17,6 +17,7 @@ model Organization {
   incidents Incident[]
   assets    Asset[]
   risks     Risk[]
+  controls  IsoControl[]
 }
 
 enum Plan {
@@ -274,4 +275,25 @@ enum RiskStatus {
   IN_TREATMENT
   ACCEPTED
   CLOSED
+}
+
+model IsoControl {
+  id             String        @id @default(cuid())
+  controlNumber  String
+  status         ControlStatus @default(NOT_REVIEWED)
+  justification  String?       @db.Text
+  owner          String?
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([organizationId, controlNumber])
+}
+
+enum ControlStatus {
+  NOT_REVIEWED
+  APPLICABLE
+  PLANNED
+  EXCLUDED
+  NOT_APPLICABLE
 }

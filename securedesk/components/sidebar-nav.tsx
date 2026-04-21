@@ -121,7 +121,7 @@ export function SidebarNav({ openIncidents, userName, userRole }: SidebarNavProp
         </Link>
       </div>
 
-      {/* ZGODNOŚĆ (disabled) */}
+      {/* ZGODNOŚĆ */}
       <div style={{ marginBottom: '20px' }}>
         <div style={{
           fontSize: '10px',
@@ -131,22 +131,16 @@ export function SidebarNav({ openIncidents, userName, userRole }: SidebarNavProp
           letterSpacing: '0.08em',
           padding: '0 12px',
           marginBottom: '6px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
         }}>
           Zgodność
-          <span style={{
-            fontSize: '9px',
-            background: 'rgba(59,130,246,0.1)',
-            color: '#3b82f6',
-            border: '1px solid rgba(59,130,246,0.2)',
-            borderRadius: '4px',
-            padding: '1px 4px',
-            fontFamily: 'IBM Plex Mono, monospace',
-          }}>v2</span>
         </div>
-        {['Kontrolki ISO', 'Dokumenty', 'Uprawnienia'].map((label) => (
+        <Link href="/controls" style={linkStyle('/controls')}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+          </svg>
+          Kontrolki ISO
+        </Link>
+        {['Dokumenty', 'Uprawnienia'].map((label) => (
           <div key={label} style={{
             display: 'flex',
             alignItems: 'center',
