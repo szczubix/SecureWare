@@ -135,6 +135,104 @@ function buildHtml(p: Nis2ReminderParams): string {
 </html>`
 }
 
+export interface RiskReviewReminderParams {
+  to: string[]
+  riskNumber: string
+  riskId: string
+  title: string
+  riskScore: number
+  owner: string
+  daysOverdue: number
+}
+
+function riskScoreLabel(s: number) {
+  if (s >= 15) return { label: 'Krytyczne', color: '#ef4444' }
+  if (s >= 10) return { label: 'Wysokie',   color: '#f97316' }
+  if (s >= 5)  return { label: 'Średnie',   color: '#f59e0b' }
+  return             { label: 'Niskie',    color: '#22c55e' }
+}
+
+function buildRiskReviewHtml(p: RiskReviewReminderParams): string {
+  const riskUrl = `${APP_URL}/risks/${p.riskId}`
+  const lvl = riskScoreLabel(p.riskScore)
+  const overdueText = p.daysOverdue === 1 ? '1 dzień' : `${p.daysOverdue} dni`
+
+  return `<!DOCTYPE html>
+<html lang="pl">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0f1117;font-family:'Segoe UI',Arial,sans-serif;">
+  <div style="max-width:600px;margin:32px auto;background:#161922;border:1px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;">
+
+    <div style="background:#1e2433;padding:24px 32px;border-bottom:3px solid #f59e0b;">
+      <div style="font-family:'Courier New',monospace;font-size:13px;color:#f59e0b;font-weight:600;letter-spacing:0.05em;margin-bottom:6px;">
+        SECUREDESK · REJESTR RYZYK ISO 27001
+      </div>
+      <h1 style="margin:0;font-size:18px;color:#e8eaf0;font-weight:600;line-height:1.4;">
+        ⚠️ Przegląd ryzyka jest przeterminowany
+      </h1>
+    </div>
+
+    <div style="padding:28px 32px;">
+
+      <div style="background:#0f1117;border:1px solid rgba(255,255,255,0.07);border-left:3px solid ${lvl.color};border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+        <div style="font-family:'Courier New',monospace;font-size:11px;color:#555b6e;margin-bottom:6px;">RYZYKO</div>
+        <div style="font-family:'Courier New',monospace;font-size:13px;color:#3b82f6;margin-bottom:4px;">${p.riskNumber}</div>
+        <div style="font-size:15px;color:#e8eaf0;font-weight:600;margin-bottom:8px;">${p.title}</div>
+        <span style="display:inline-block;padding:2px 10px;border-radius:4px;font-size:12px;font-family:'Courier New',monospace;font-weight:700;color:${lvl.color};background:${lvl.color}20;border:1px solid ${lvl.color}50;">
+          ${p.riskScore} · ${lvl.label}
+        </span>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-bottom:24px;">
+        <div style="flex:1;background:#0f1117;border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:14px 16px;text-align:center;">
+          <div style="font-size:11px;color:#555b6e;margin-bottom:4px;font-family:'Courier New',monospace;">WŁAŚCICIEL RYZYKA</div>
+          <div style="font-size:13px;color:#e8eaf0;font-weight:600;">${p.owner}</div>
+        </div>
+        <div style="flex:1;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:14px 16px;text-align:center;">
+          <div style="font-size:11px;color:#555b6e;margin-bottom:4px;font-family:'Courier New',monospace;">OPÓŹNIENIE PRZEGLĄDU</div>
+          <div style="font-size:16px;color:#f59e0b;font-weight:700;">${overdueText}</div>
+        </div>
+      </div>
+
+      <div style="background:#0f1117;border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:14px 20px;margin-bottom:24px;">
+        <div style="font-size:13px;color:#8b90a0;line-height:1.6;">
+          Zgodnie z wymaganiami ISO 27001:2022, ryzyka powinny być regularnie przeglądane.
+          Proszę dokonać przeglądu ryzyka, zaktualizować ocenę i datę następnego przeglądu.
+        </div>
+      </div>
+
+      <div style="text-align:center;">
+        <a href="${riskUrl}" style="display:inline-block;padding:12px 28px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">
+          Otwórz ryzyko w SecureDesk →
+        </a>
+      </div>
+    </div>
+
+    <div style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.05);text-align:center;">
+      <p style="margin:0;font-size:11px;color:#3a3f52;font-family:'Courier New',monospace;">
+        SecureDesk · Automatyczne przypomnienie ISO 27001 · Nie odpowiadaj na tę wiadomość
+      </p>
+    </div>
+  </div>
+</body>
+</html>`
+}
+
+export async function sendRiskReviewReminder(params: RiskReviewReminderParams): Promise<void> {
+  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_placeholder') {
+    console.log('[email] RESEND_API_KEY not set, skipping risk review reminder')
+    console.log(`[email] Would send to: ${params.to} | Risk: ${params.riskNumber} | Overdue: ${params.daysOverdue}d`)
+    return
+  }
+
+  await resend.emails.send({
+    from: FROM,
+    to: params.to,
+    subject: `[${params.riskNumber}] ⚠ Przegląd ryzyka przeterminowany o ${params.daysOverdue} ${params.daysOverdue === 1 ? 'dzień' : 'dni'}`,
+    html: buildRiskReviewHtml(params),
+  })
+}
+
 export async function sendNis2Reminder(params: Nis2ReminderParams): Promise<void> {
   if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_placeholder') {
     console.log('[email] RESEND_API_KEY not set, skipping email send')
