@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { SidebarNav } from '@/components/sidebar-nav'
+import { GlobalSearch } from '@/components/global-search'
 
 export default async function DashboardLayout({
   children,
@@ -31,6 +32,7 @@ export default async function DashboardLayout({
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
         {children}
       </main>
+      <GlobalSearch />
     </div>
   )
 }
