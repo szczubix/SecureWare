@@ -18,3 +18,14 @@ export async function generateAssetNumber(organizationId: string): Promise<strin
   })
   return result
 }
+
+export async function generateRiskNumber(organizationId: string): Promise<string> {
+  const year = new Date().getFullYear()
+  const result = await prisma.$transaction(async (tx) => {
+    const count = await tx.risk.count({
+      where: { organizationId, riskNumber: { startsWith: `RSK-${year}-` } },
+    })
+    return `RSK-${year}-${String(count + 1).padStart(3, '0')}`
+  })
+  return result
+}

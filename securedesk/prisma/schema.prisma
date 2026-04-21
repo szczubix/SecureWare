@@ -16,6 +16,7 @@ model Organization {
   users     User[]
   incidents Incident[]
   assets    Asset[]
+  risks     Risk[]
 }
 
 enum Plan {
@@ -175,6 +176,7 @@ model Asset {
 
   history   AssetHistory[]
   incidents IncidentAsset[]
+  risks     RiskAsset[]
 }
 
 enum AssetType {
@@ -211,4 +213,65 @@ model IncidentAsset {
   asset      Asset    @relation(fields: [assetId], references: [id])
 
   @@id([incidentId, assetId])
+}
+
+model Risk {
+  id              String        @id @default(cuid())
+  riskNumber      String
+  title           String
+  description     String        @db.Text
+  threat          String?       @db.Text
+  vulnerability   String?       @db.Text
+  category        RiskCategory  @default(OTHER)
+  probability     Int
+  impact          Int
+  riskScore       Int
+  treatment       RiskTreatment @default(MITIGATE)
+  status          RiskStatus    @default(OPEN)
+  owner           String
+  mitigationPlan  String?       @db.Text
+  residualProb    Int?
+  residualImpact  Int?
+  residualScore   Int?
+  nextReviewAt    DateTime?
+  closedAt        DateTime?
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  assets RiskAsset[]
+}
+
+model RiskAsset {
+  riskId  String
+  assetId String
+  risk    Risk  @relation(fields: [riskId], references: [id])
+  asset   Asset @relation(fields: [assetId], references: [id])
+
+  @@id([riskId, assetId])
+}
+
+enum RiskCategory {
+  CONFIDENTIALITY
+  INTEGRITY
+  AVAILABILITY
+  PHYSICAL
+  LEGAL
+  OTHER
+}
+
+enum RiskTreatment {
+  ACCEPT
+  MITIGATE
+  TRANSFER
+  AVOID
+}
+
+enum RiskStatus {
+  OPEN
+  IN_TREATMENT
+  ACCEPTED
+  CLOSED
 }
