@@ -18,6 +18,11 @@ export async function GET() {
     assetsOverdue,
     recentIncidents,
     incidentsLast30,
+    riskOpenCount,
+    riskCriticalCount,
+    riskOverdueCount,
+    topRisks,
+    riskMatrixData,
   ] = await Promise.all([
     // Count open incidents grouped by severity
     prisma.incident.groupBy({
@@ -89,6 +94,35 @@ export async function GET() {
       },
       select: { createdAt: true },
     }),
+
+    // Risk: open + in_treatment count
+    prisma.risk.count({
+      where: { organizationId: orgId, deletedAt: null, status: { in: ['OPEN', 'IN_TREATMENT'] } },
+    }),
+
+    // Risk: critical (score >= 15), any non-closed status
+    prisma.risk.count({
+      where: { organizationId: orgId, deletedAt: null, riskScore: { gte: 15 }, status: { not: 'CLOSED' } },
+    }),
+
+    // Risk: overdue review (nextReviewAt in past, not closed)
+    prisma.risk.count({
+      where: { organizationId: orgId, deletedAt: null, nextReviewAt: { lt: now }, status: { not: 'CLOSED' } },
+    }),
+
+    // Top 5 highest-score open risks
+    prisma.risk.findMany({
+      where: { organizationId: orgId, deletedAt: null, status: { in: ['OPEN', 'IN_TREATMENT'] } },
+      select: { id: true, riskNumber: true, title: true, riskScore: true, category: true, owner: true, treatment: true, status: true },
+      orderBy: { riskScore: 'desc' },
+      take: 5,
+    }),
+
+    // All open risks probability+impact for mini matrix
+    prisma.risk.findMany({
+      where: { organizationId: orgId, deletedAt: null, status: { in: ['OPEN', 'IN_TREATMENT'] } },
+      select: { probability: true, impact: true },
+    }),
   ])
 
   // Build 30-day chart data
@@ -117,6 +151,11 @@ export async function GET() {
       assetsOverdue,
       recentIncidents,
       chartData,
+      riskOpenCount,
+      riskCriticalCount,
+      riskOverdueCount,
+      topRisks,
+      riskMatrixData,
     },
   })
 }

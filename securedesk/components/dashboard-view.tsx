@@ -34,6 +34,19 @@ type RecentIncident = {
 
 type ChartPoint = { date: string; count: number }
 
+type TopRisk = {
+  id: string
+  riskNumber: string
+  title: string
+  riskScore: number
+  category: string
+  owner: string
+  treatment: string
+  status: string
+}
+
+type RiskMatrixPoint = { probability: number; impact: number }
+
 type DashboardData = {
   openCount: number
   severityMap: Record<string, number>
@@ -41,6 +54,11 @@ type DashboardData = {
   assetsOverdue: AssetOverdue[]
   recentIncidents: RecentIncident[]
   chartData: ChartPoint[]
+  riskOpenCount: number
+  riskCriticalCount: number
+  riskOverdueCount: number
+  topRisks: TopRisk[]
+  riskMatrixData: RiskMatrixPoint[]
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -129,6 +147,80 @@ function NIS2Row({ inc }: { inc: Nis2Incident }) {
   )
 }
 
+const RISK_CATEGORY_PL: Record<string, string> = {
+  CONFIDENTIALITY: 'Poufność', INTEGRITY: 'Integralność', AVAILABILITY: 'Dostępność',
+  PHYSICAL: 'Fizyczne', LEGAL: 'Prawne', OTHER: 'Inne',
+}
+const RISK_TREATMENT_PL: Record<string, string> = {
+  ACCEPT: 'Akceptacja', MITIGATE: 'Mitigacja', TRANSFER: 'Transfer', AVOID: 'Unikanie',
+}
+
+function riskScoreLevel(s: number) {
+  if (s >= 15) return { label: 'Krytyczne', color: '#fca5a5', bg: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.3)' }
+  if (s >= 10) return { label: 'Wysokie',   color: '#fdba74', bg: 'rgba(249,115,22,0.15)', border: 'rgba(249,115,22,0.3)' }
+  if (s >= 5)  return { label: 'Średnie',   color: '#fcd34d', bg: 'rgba(245,158,11,0.15)', border: 'rgba(245,158,11,0.3)' }
+  return             { label: 'Niskie',    color: '#86efac', bg: 'rgba(34,197,94,0.15)',  border: 'rgba(34,197,94,0.3)' }
+}
+
+function cellColor(p: number, i: number) {
+  const s = p * i
+  if (s >= 15) return 'rgba(239,68,68,0.4)'
+  if (s >= 10) return 'rgba(249,115,22,0.35)'
+  if (s >= 5)  return 'rgba(245,158,11,0.3)'
+  return 'rgba(34,197,94,0.2)'
+}
+
+function MiniRiskMatrix({ points }: { points: RiskMatrixPoint[] }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-sm font-semibold text-[var(--foreground)]">Macierz ryzyk</h2>
+        <Link href="/risks" className="text-xs text-blue-400 hover:underline">Rejestr →</Link>
+      </div>
+      <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '120px', paddingBottom: '16px' }}>
+          {[5,4,3,2,1].map(p => (
+            <div key={p} style={{ fontSize: '9px', color: '#555b6e', fontFamily: 'IBM Plex Mono, monospace', textAlign: 'right', lineHeight: '22px' }}>{p}</div>
+          ))}
+        </div>
+        <div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,22px)', gridTemplateRows: 'repeat(5,22px)', gap: '2px' }}>
+            {[5,4,3,2,1].map(p =>
+              [1,2,3,4,5].map(i => {
+                const count = points.filter(r => r.probability === p && r.impact === i).length
+                return (
+                  <div key={`${p}-${i}`}
+                    style={{ background: cellColor(p, i), borderRadius: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {count > 0 && <span style={{ fontSize: '8px', fontWeight: 700, color: '#fff', fontFamily: 'IBM Plex Mono, monospace' }}>{count}</span>}
+                  </div>
+                )
+              })
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,22px)', gap: '2px', marginTop: '3px' }}>
+            {[1,2,3,4,5].map(i => (
+              <div key={i} style={{ fontSize: '9px', color: '#555b6e', fontFamily: 'IBM Plex Mono, monospace', textAlign: 'center' }}>{i}</div>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', paddingBottom: '18px', marginLeft: '4px' }}>
+          {[
+            { c: 'rgba(239,68,68,0.5)',   l: '≥15' },
+            { c: 'rgba(249,115,22,0.45)', l: '10-14' },
+            { c: 'rgba(245,158,11,0.4)',  l: '5-9' },
+            { c: 'rgba(34,197,94,0.35)',  l: '1-4' },
+          ].map(({ c, l }) => (
+            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '1px', background: c, flexShrink: 0 }} />
+              <span style={{ fontSize: '9px', color: '#555b6e' }}>{l}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function BarChart({ data }: { data: ChartPoint[] }) {
   const max = Math.max(...data.map(d => d.count), 1)
   const last7 = data.slice(-7)
@@ -207,6 +299,7 @@ export function DashboardView() {
   const criticalCount = data.severityMap['CRITICAL'] || 0
   const highCount = data.severityMap['HIGH'] || 0
   const totalLast30 = data.chartData.reduce((a, b) => a + b.count, 0)
+  const hasAnyRisks = data.riskOpenCount > 0 || data.riskCriticalCount > 0
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -215,7 +308,7 @@ export function DashboardView() {
         <p className="text-sm text-gray-500 mt-1">Przegląd operacyjny — {new Date().toLocaleDateString('pl-PL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
       </div>
 
-      {/* Stat cards */}
+      {/* Incident stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Otwarte incydenty"
@@ -247,6 +340,31 @@ export function DashboardView() {
         />
       </div>
 
+      {/* Risk stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatCard
+          label="Otwarte ryzyka ISO 27001"
+          value={data.riskOpenCount}
+          sub={data.riskOpenCount === 0 ? 'Brak aktywnych ryzyk' : 'otwarte lub w trakcie'}
+          accent={data.riskOpenCount > 0 ? 'text-amber-400' : 'text-green-400'}
+          href="/risks"
+        />
+        <StatCard
+          label="Ryzyka krytyczne (≥15)"
+          value={data.riskCriticalCount}
+          sub={data.riskCriticalCount > 0 ? 'Wymagają natychmiastowej akcji' : 'Brak ryzyk krytycznych'}
+          accent={data.riskCriticalCount > 0 ? 'text-red-400' : 'text-green-400'}
+          href="/risks?minScore=15"
+        />
+        <StatCard
+          label="Przeglądy ryzyk po terminie"
+          value={data.riskOverdueCount}
+          sub={data.riskOverdueCount > 0 ? 'Termin przeglądu minął' : 'Wszystkie przeglądy aktualne'}
+          accent={data.riskOverdueCount > 0 ? 'text-yellow-400' : 'text-green-400'}
+          href="/risks"
+        />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* NIS2 active */}
         <div className="lg:col-span-2 space-y-4">
@@ -255,6 +373,56 @@ export function DashboardView() {
               <NIS2Row key={inc.id} inc={inc} />
             ))}
           </Section>
+
+          {/* Top risks */}
+          {hasAnyRisks && (
+            <Section title="Top ryzyka (wg wyniku)" count={data.topRisks.length} href="/risks" emptyText="Brak otwartych ryzyk">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-gray-500 text-xs border-b border-[var(--border)]">
+                      <th className="text-left py-2 font-normal">Nr</th>
+                      <th className="text-left py-2 font-normal">Ryzyko</th>
+                      <th className="text-left py-2 font-normal">Wynik</th>
+                      <th className="text-left py-2 font-normal">Podejście</th>
+                      <th className="text-left py-2 font-normal">Właściciel</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {data.topRisks.map(risk => {
+                      const lvl = riskScoreLevel(risk.riskScore)
+                      return (
+                        <tr key={risk.id} className="hover:bg-white/5 transition-colors">
+                          <td className="py-2 pr-3">
+                            <Link href={`/risks/${risk.id}`} className="font-mono text-xs text-blue-400 hover:underline whitespace-nowrap">
+                              {risk.riskNumber}
+                            </Link>
+                          </td>
+                          <td className="py-2 pr-3">
+                            <Link href={`/risks/${risk.id}`} className="hover:text-blue-400 transition-colors line-clamp-1">
+                              {risk.title}
+                            </Link>
+                            <div className="text-xs text-gray-500">{RISK_CATEGORY_PL[risk.category] || risk.category}</div>
+                          </td>
+                          <td className="py-2 pr-3">
+                            <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700, background: lvl.bg, color: lvl.color, border: `1px solid ${lvl.border}` }}>
+                              {risk.riskScore}
+                            </span>
+                          </td>
+                          <td className="py-2 pr-3 text-xs text-gray-400 whitespace-nowrap">
+                            {RISK_TREATMENT_PL[risk.treatment] || risk.treatment}
+                          </td>
+                          <td className="py-2 text-xs text-gray-500 max-w-[80px] truncate">
+                            {risk.owner}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Section>
+          )}
 
           {/* Recent incidents */}
           <Section title="Ostatnie incydenty" count={data.recentIncidents.length} href="/incidents" emptyText="Brak incydentów">
@@ -313,6 +481,13 @@ export function DashboardView() {
             </div>
             <BarChart data={data.chartData} />
           </div>
+
+          {/* Mini risk matrix */}
+          {data.riskMatrixData.length > 0 && (
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4">
+              <MiniRiskMatrix points={data.riskMatrixData} />
+            </div>
+          )}
 
           {/* Assets overdue */}
           <Section title="Aktywa po terminie przeglądu" count={data.assetsOverdue.length} href="/assets" emptyText="Brak aktywów po terminie">
