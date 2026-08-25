@@ -13,30 +13,32 @@ wystarczy skopiowac pliki na serwer.
 3. Zaimportuj schemat przez **phpMyAdmin**: wybierz baze -> zakladka
    *Importuj* -> wskaz plik `database/schema.sql`.
 
-## 2. Katalog publiczny (document root)
+## 2. Gdzie wgrac pliki
 
-Kod dzieli sie na katalog publiczny (`/public`) i katalogi poza nim
-(`/src`, `/config`, `/database`, `/storage`, `/views`) - te drugie **nie
-powinny byc dostepne z przegladarki** (zawieraja m.in. dane dostepowe do
-bazy w `.env`).
+Uklad repozytorium jest plaski: `index.php` i `.htaccess` leza w katalogu
+glownym razem z `src/`, `config/`, `database/`, `views/`, `assets/`,
+`uploads/`. **Nie trzeba zmieniac document root** ani wskazywac podfolderu
+`public` - caly zawartosc repozytorium wgrywasz wprost do katalogu, ktory
+DirectAdmin przypisal Twojej domenie:
 
-**Preferowana opcja:** w DirectAdmin, w *Domain Setup*, ustaw katalog
-publiczny (document root) domeny na `public_html/public` (czyli podkatalog
-`public` wewnatrz repozytorium wgranego do `public_html`). Wszystko poza
-`public/` zostaje wtedy automatycznie poza zasiegiem HTTP.
+- jesli to domena glowna konta - zwykle `public_html/`,
+- jesli to domena dodatkowa (addon domain) - zwykle wlasny podfolder w
+  `public_html/`, np. `public_html/secureware.pl/` (dokladna sciezke
+  pokazuje sekcja *Domain Setup* w DirectAdmin przy tej domenie).
 
-**Jesli DirectAdmin nie pozwala zmienic document root** (np. na hostingu
-współdzielonym bez tej opcji): wgraj cala zawartosc repozytorium do
-`public_html`. Katalogi `src/`, `config/`, `database/`, `storage/`, `views/`
-maja wlasne pliki `.htaccess` z `Deny from all` / `Require all denied`, wiec
-pozostaja zablokowane nawet w tym scenariuszu - upewnij sie tylko, ze
-serwer uzywa Apache z wlaczonym `mod_rewrite` i honoruje `.htaccess`
-(`AllowOverride All`).
+Pliki z `.env` (dane do bazy) oraz katalogi `src/`, `config/`, `database/`,
+`views/` fizycznie leza w tym samym miejscu co strona, ale kazdy z nich ma
+wlasny plik `.htaccess` z regula `Require all denied` (a `.env` dodatkowo
+blokuje glowny `.htaccess`), wiec nie sa dostepne z przegladarki mimo
+wspolnej lokalizacji. Dziala to na standardowym Apache/LiteSpeed z
+wlaczonym `mod_rewrite` i honorowaniem `.htaccess` (`AllowOverride All`) -
+domyslna konfiguracja na DirectAdmin. Po wdrozeniu warto to sprawdzic:
+wejscie na `https://secureware.pl/.env` albo `https://secureware.pl/config/config.php`
+powinno zwracac blad 403, nie tresc pliku.
 
 ## 3. Pliki srodowiskowe
 
-1. Skopiuj `.env.example` do `.env` (w katalogu glownym repozytorium, obok
-   `public/`, nie wewnatrz niego).
+1. Skopiuj `.env.example` do `.env` (w tym samym katalogu co `index.php`).
 2. Uzupelnij dane bazy (`DB_*`), `APP_URL` (pelny adres, np.
    `https://secureware.pl`), `MAIL_TO` (adres, na ktory maja przychodzic
    powiadomienia o nowych zapytaniach z formularza kontaktowego).
@@ -50,14 +52,10 @@ serwer uzywa Apache z wlaczonym `mod_rewrite` i honoruje `.htaccess`
 
 ## 4. Uprawnienia do zapisu
 
-Serwer PHP musi miec prawo zapisu do:
-
-- `public/uploads/` (biblioteka mediow)
-- `storage/uploads/`, `storage/logs/`
-
-Zwykle wystarczaja standardowe uprawnienia `755`/`775` nadawane przez
-DirectAdmin; jesli upload plikow zwraca blad zapisu, ustaw `775` na tych
-katalogach z poziomu File Managera.
+Serwer PHP musi miec prawo zapisu do katalogu `uploads/` (biblioteka
+mediow). Zwykle wystarczaja standardowe uprawnienia `755`/`775` nadawane
+przez DirectAdmin; jesli upload plikow zwraca blad zapisu, ustaw `775` na
+tym katalogu z poziomu File Managera.
 
 ## 5. Dane poczatkowe (role, admin, tresci)
 

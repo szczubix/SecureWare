@@ -70,7 +70,7 @@ class MediaController
         $uniqueName = $baseName . '-' . bin2hex(random_bytes(4)) . '.' . $ext;
 
         $subDir   = date('Y/m');
-        $uploadDir = ROOT_PATH . '/public/uploads/' . $subDir;
+        $uploadDir = ROOT_PATH . '/uploads/' . $subDir;
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
         }
@@ -95,7 +95,7 @@ class MediaController
         if (Csrf::verify($request->input('_csrf'))) {
             $media = Media::delete((int) $id);
             if ($media) {
-                $path = ROOT_PATH . '/public' . $media['path'];
+                $path = ROOT_PATH . $media['path'];
                 if (is_file($path)) {
                     unlink($path);
                 }

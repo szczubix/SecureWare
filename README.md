@@ -7,14 +7,28 @@ budowania - gotowa do wgrania na hosting DirectAdmin.
 
 ## Struktura
 
+Uklad jest plaski celowo - caly folder trafia bezposrednio do katalogu
+domeny na DirectAdmin (np. `public_html/` albo `public_html/secureware.pl/`,
+zaleznie jak hosting przypisuje domeny), bez potrzeby zmiany document root
+na podfolder.
+
 ```
-public/     dokument root serwera - front controller, assets, uploads
+index.php   front controller (punkt wejscia)
+.htaccess   przekierowanie ruchu do index.php + blokada .env/.sql/.log
+assets/     CSS, JS, ikony (publicznie dostepne)
+uploads/    pliki wgrywane przez biblioteke mediow (publicznie dostepne)
 src/        kod aplikacji (Core, Controllers, Models)
 views/      widoki PHP (site/ - strona publiczna, admin/ - panel)
 config/     config.php (odczytuje .env)
 database/   schema.sql + seed.php + przykladowe dane
-storage/    logi, katalog uploadow poza webrootem (zapasowy)
 ```
+
+`src/`, `config/`, `database/` i `views/` maja wlasne pliki `.htaccess`
+(`Require all denied`), wiec mimo ze fizycznie leza w tym samym katalogu co
+strona, nie sa dostepne bezposrednio przez przegladarke - dziala to na
+standardowym Apache/LiteSpeed z wlaczonym `.htaccess` (domyslne na
+DirectAdmin). To samo dotyczy pliku `.env` (blokowany osobna regula w
+glownym `.htaccess`).
 
 Panel administracyjny (CMS, RBAC, branding, logi aktywnosci, leady) jest
 dostepny pod adresem skonfigurowanym w `.env` jako `ADMIN_PATH` - domyslnie
@@ -29,7 +43,7 @@ serwer MySQL/MariaDB.
 cp .env.example .env       # uzupelnij dane bazy danych
 mysql -u root -p secureware < database/schema.sql
 php database/seed.php      # utworzy role, konto admina i przykladowa tresc
-php -S localhost:8080 -t public
+php -S localhost:8080
 ```
 
 Otworz `http://localhost:8080` (strona publiczna) oraz

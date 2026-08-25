@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-define('ROOT_PATH', dirname(__DIR__));
+define('ROOT_PATH', __DIR__);
 define('VIEWS_PATH', ROOT_PATH . '/views');
 
 spl_autoload_register(function (string $class): void {
