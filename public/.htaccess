@@ -1,0 +1,13 @@
+Options -Indexes -MultiViews
+RewriteEngine On
+
+# Blokuj bezposredni dostep do plikow wrazliwych, jesli trafily do webroot
+<FilesMatch "\.(env|sql|log)$">
+    Require all denied
+</FilesMatch>
+
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+RewriteRule ^ index.php [L]
