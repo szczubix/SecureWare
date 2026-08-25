@@ -3,11 +3,17 @@
 namespace SecureWare\Core;
 
 /**
- * Minimal .env parser - no Composer dependency required on shared hosting.
+ * Minimalny parser .env - bez zaleznosci od Composera. Celowo NIE uzywa
+ * putenv()/getenv(): niektore hostingi (np. shared hosting z "site sandbox")
+ * blokuja putenv() ze wzgledow bezpieczenstwa, wiec wartosci trzymamy
+ * wylacznie we wlasnej tablicy w pamieci procesu.
  */
 class Env
 {
     private static bool $loaded = false;
+
+    /** @var array<string, string> */
+    private static array $values = [];
 
     public static function load(string $path): void
     {
@@ -29,9 +35,8 @@ class Env
             $value = trim($value);
             $value = trim($value, "\"'");
 
-            if (getenv($key) === false) {
-                putenv("$key=$value");
-                $_ENV[$key] = $value;
+            if (!array_key_exists($key, self::$values)) {
+                self::$values[$key] = $value;
             }
         }
 
@@ -40,8 +45,8 @@ class Env
 
     public static function get(string $key, mixed $default = null): mixed
     {
-        $value = getenv($key);
-        if ($value === false) {
+        $value = self::$values[$key] ?? null;
+        if ($value === null) {
             return $default;
         }
 
