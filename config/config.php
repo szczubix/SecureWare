@@ -6,7 +6,6 @@ Env::load(ROOT_PATH . '/.env');
 
 return [
     'app' => [
-        'name'  => Env::get('APP_NAME', 'SecureWare'),
         'env'   => Env::get('APP_ENV', 'production'),
         'debug' => Env::get('APP_DEBUG', false),
         'url'   => rtrim(Env::get('APP_URL', 'http://localhost'), '/'),
@@ -27,15 +26,5 @@ return [
     'session' => [
         'name'   => Env::get('SESSION_NAME', 'sw_session'),
         'secure' => Env::get('SESSION_SECURE', true),
-    ],
-
-    'turnstile' => [
-        'site_key'   => Env::get('TURNSTILE_SITE_KEY', ''),
-        'secret_key' => Env::get('TURNSTILE_SECRET_KEY', ''),
-    ],
-
-    'mail' => [
-        'from' => Env::get('MAIL_FROM', 'no-reply@secureware.pl'),
-        'to'   => Env::get('MAIL_TO', 'kontakt@secureware.pl'),
     ],
 ];

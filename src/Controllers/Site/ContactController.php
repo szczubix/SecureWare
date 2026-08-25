@@ -106,9 +106,12 @@ class ContactController
             return;
         }
 
-        $subject = 'Nowe zapytanie ze strony SecureWare';
+        $siteName = Setting::get('site_name', 'SecureWare');
+        $from     = Setting::get('mail_from_address', '') ?: $to;
+
+        $subject = 'Nowe zapytanie ze strony ' . $siteName;
         $body    = "Imie: {$lead['name']}\nFirma: {$lead['company']}\nE-mail: {$lead['email']}\nTelefon: {$lead['phone']}\n\nWiadomosc:\n{$lead['message']}";
-        $headers = 'From: no-reply@secureware.pl' . "\r\n" . 'Reply-To: ' . $lead['email'];
+        $headers = 'From: ' . $from . "\r\n" . 'Reply-To: ' . $lead['email'];
 
         @mail($to, $subject, $body, $headers);
     }

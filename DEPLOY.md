@@ -10,8 +10,12 @@ wystarczy skopiowac pliki na serwer.
 2. W sekcji **MySQL Management** utworz baze danych i uzytkownika z pelnymi
    uprawnieniami do tej bazy. Zapisz: nazwe bazy, uzytkownika, haslo, host
    (zwykle `localhost`).
-3. Zaimportuj schemat przez **phpMyAdmin**: wybierz baze -> zakladka
-   *Importuj* -> wskaz plik `database/schema.sql`.
+
+Schemat bazy (tabele) **nie trzeba** importowac recznie przez phpMyAdmin -
+zrobi to za Ciebie instalator w kroku 5 (`install.php` albo
+`php database/seed.php`). Import recznie przez phpMyAdmin ma sens tylko
+jako plan awaryjny, gdyby z jakiegos powodu instalator nie zadzialal -
+wtedy wybierz baze -> zakladka *Importuj* -> wskaz plik `database/schema.sql`.
 
 ## 2. Gdzie wgrac pliki
 
@@ -38,10 +42,16 @@ powinno zwracac blad 403, nie tresc pliku.
 
 ## 3. Pliki srodowiskowe
 
+Plik `.env` zawiera **wylacznie dane bazy i kilka wartosci
+infrastrukturalnych** potrzebnych zanim aplikacja w ogole polaczy sie z
+baza (adres panelu, tryb debugowania, bezpieczenstwo sesji) - wszystko
+inne (nazwa firmy, logo, kolory, dane kontaktowe, Turnstile, Google
+Analytics, CookieYes, adres nadawcy poczty) konfigurujesz pozniej w
+panelu, w Ustawieniach.
+
 1. Skopiuj `.env.example` do `.env` (w tym samym katalogu co `index.php`).
-2. Uzupelnij dane bazy (`DB_*`), `APP_URL` (pelny adres, np.
-   `https://secureware.pl`), `MAIL_TO` (adres, na ktory maja przychodzic
-   powiadomienia o nowych zapytaniach z formularza kontaktowego).
+2. Uzupelnij dane bazy (`DB_*`) oraz `APP_URL` (pelny adres, np.
+   `https://secureware.pl` - uzywany m.in. do generowania `sitemap.xml`).
 3. `ADMIN_PATH` okresla adres panelu administracyjnego (domyslnie
    `cloudsecurepanel`, czyli `/cloudsecurepanel`). Mozesz go zmienic na
    dowolny, trudny do odgadniecia ciag.
@@ -57,40 +67,51 @@ mediow). Zwykle wystarczaja standardowe uprawnienia `755`/`775` nadawane
 przez DirectAdmin; jesli upload plikow zwraca blad zapisu, ustaw `775` na
 tym katalogu z poziomu File Managera.
 
-## 5. Dane poczatkowe (role, admin, tresci)
+## 5. Instalacja (schemat bazy + dane poczatkowe)
 
-Uruchom skrypt seedujacy **raz**, po imporcie schematu:
+Masz do wyboru dwie rownowazne metody - obie robia dokladnie to samo
+(import `database/schema.sql`, role, uprawnienia, pierwsze konto admina,
+domyslne ustawienia, przykladowa tresc). Wykonaj **jedna** z nich.
+
+### Opcja A - bez SSH, przez przegladarke (zalecane na typowym hostingu)
+
+1. Upewnij sie, ze `.env` ma juz poprawne dane bazy (krok 3).
+2. Wejdz na `https://secureware.pl/install.php` i kliknij *Zainstaluj*.
+3. Strona pokaze wygenerowany e-mail i haslo pierwszego konta
+   administratora - **zapisz je, sa widoczne tylko raz**.
+4. Kliknij przycisk **Usun install.php teraz** (albo skasuj plik recznie
+   przez File Manager w DirectAdmin). Dopoki `install.php` lezy na
+   serwerze, kazdy zna jego adres i moze pod niego wejsc - nawet jesli
+   ponowne uruchomienie nic nie nadpisze, to zbedne ryzyko.
+
+### Opcja B - przez SSH
 
 ```bash
 php database/seed.php
 ```
 
-- Jesli masz dostep SSH do serwera DirectAdmin - uruchom komende bezposrednio
-  na serwerze, w katalogu repozytorium.
-- Jesli nie masz SSH, poproś dzial hostingu o jednorazowe uruchomienie tego
-  polecenia (to zwykly skrypt PHP CLI, nie wymaga zadnych dodatkowych
-  uprawnien poza dostepem do bazy skonfigurowanej w `.env`).
+Uruchom w katalogu repozytorium na serwerze. Skrypt wypisze w konsoli te
+same dane logowania administratora co instalator webowy. Mozna go
+uruchomic wielokrotnie bez duplikowania danych - drugie konto
+administratora nie zostanie utworzone.
 
-Skrypt wypisze w konsoli wygenerowany adres e-mail i haslo pierwszego konta
-administratora panelu - **zmien to haslo od razu po pierwszym zalogowaniu**
-(Uzytkownicy -> edytuj wlasne konto). Skrypt jest bezpieczny do
-wielokrotnego uruchamiania - nie nadpisze istniejacych danych ani nie
-utworzy drugiego konta administratora.
-
-Domyslne dane logowania mozna tez wymusic recznie przed pierwszym
-uruchomieniem, ustawiajac zmienne srodowiskowe `SEED_ADMIN_EMAIL` i
-`SEED_ADMIN_PASSWORD` w powloce przed wywolaniem skryptu.
+Domyslne dane logowania mozna wymusic recznie przed pierwszym
+uruchomieniem (dowolna z metod), ustawiajac zmienne srodowiskowe
+`SEED_ADMIN_EMAIL` i `SEED_ADMIN_PASSWORD` w powloce przed wywolaniem
+`php database/seed.php`.
 
 ## 6. Pierwsze logowanie i konfiguracja
 
 1. Wejdz na `https://secureware.pl/<ADMIN_PATH>/login` i zaloguj sie danymi
-   z kroku 5.
+   z kroku 5. **Zmien haslo od razu** (Uzytkownicy -> edytuj wlasne konto).
 2. W **Ustawienia -> Branding** uzupelnij nazwe, logo, kolory, dane
    kontaktowe i menu.
 3. W **Ustawienia -> Integracje** wklej:
    - klucze **Cloudflare Turnstile** (formularz kontaktowy),
    - **Google Analytics 4** Measurement ID,
-   - caly tag `<script>` z **cookieyes.com** (baner zgod na cookies).
+   - caly tag `<script>` z **cookieyes.com** (baner zgod na cookies),
+   - adres nadawcy poczty (From) dla powiadomien o nowych zapytaniach -
+     odbiorca to e-mail kontaktowy ustawiony w kroku 2 (Branding).
 4. Utworz dodatkowych uzytkownikow panelu w **Uzytkownicy**, przypisujac im
    role z zakladki **Role i uprawnienia** (Administrator / Redaktor /
    Sprzedaz - lub wlasne, zdefiniowane recznie).

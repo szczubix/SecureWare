@@ -90,6 +90,7 @@ class SettingsController
             'turnstile_secret'   => (string) $request->input('turnstile_secret', ''),
             'ga_measurement_id'  => (string) $request->input('ga_measurement_id', ''),
             'cookieyes_script'   => (string) $request->input('cookieyes_script', ''),
+            'mail_from_address'  => (string) $request->input('mail_from_address', ''),
         ]);
 
         Logger::record('update', 'settings_integrations');

@@ -13,14 +13,15 @@ zaleznie jak hosting przypisuje domeny), bez potrzeby zmiany document root
 na podfolder.
 
 ```
-index.php   front controller (punkt wejscia)
-.htaccess   przekierowanie ruchu do index.php + blokada .env/.sql/.log
-assets/     CSS, JS, ikony (publicznie dostepne)
-uploads/    pliki wgrywane przez biblioteke mediow (publicznie dostepne)
-src/        kod aplikacji (Core, Controllers, Models)
-views/      widoki PHP (site/ - strona publiczna, admin/ - panel)
-config/     config.php (odczytuje .env)
-database/   schema.sql + seed.php + przykladowe dane
+index.php    front controller (punkt wejscia)
+install.php  instalator webowy (schemat + dane poczatkowe) - usun po uzyciu
+.htaccess    przekierowanie ruchu do index.php + blokada .env/.sql/.log
+assets/      CSS, JS, ikony (publicznie dostepne)
+uploads/     pliki wgrywane przez biblioteke mediow (publicznie dostepne)
+src/         kod aplikacji (Core, Controllers, Models)
+views/       widoki PHP (site/ - strona publiczna, admin/ - panel)
+config/      config.php (odczytuje .env)
+database/    schema.sql + seed.php (CLI) + przykladowe dane
 ```
 
 `src/`, `config/`, `database/` i `views/` maja wlasne pliki `.htaccess`
@@ -40,11 +41,13 @@ Wymagania: PHP 8.1+ z rozszerzeniami `pdo_mysql`, `curl`, `fileinfo`, oraz
 serwer MySQL/MariaDB.
 
 ```bash
-cp .env.example .env       # uzupelnij dane bazy danych
-mysql -u root -p secureware < database/schema.sql
-php database/seed.php      # utworzy role, konto admina i przykladowa tresc
+cp .env.example .env       # uzupelnij dane bazy danych (baza musi juz istniec, pusta)
+php database/seed.php      # zaimportuje schemat, utworzy role, konto admina i przykladowa tresc
 php -S localhost:8080
 ```
+
+Bez dostepu do konsoli (typowy hosting DirectAdmin bez SSH) to samo robi
+`install.php` otwarty w przegladarce - zobacz [DEPLOY.md](DEPLOY.md).
 
 Otworz `http://localhost:8080` (strona publiczna) oraz
 `http://localhost:8080/cloudsecurepanel/login` (panel administracyjny) -
@@ -64,5 +67,6 @@ Pelna instrukcja krok po kroku pod DirectAdmin: zobacz [DEPLOY.md](DEPLOY.md).
   role i uprawnienia (RBAC) definiowane w bazie, CMS artykulow/podstron/
   uslug z polami niestandardowymi (custom fields), biblioteka mediow,
   zarzadzanie uzytkownikami, ustawienia brandingu (logo, kolory, menu,
-  dane kontaktowe), integracje (Turnstile, Google Analytics, CookieYes),
-  log aktywnosci administratorow, skrzynka zapytan (leadow) z formularza.
+  dane kontaktowe), integracje (Turnstile, Google Analytics, CookieYes,
+  adres nadawcy poczty), log aktywnosci administratorow, skrzynka zapytan
+  (leadow) z formularza.

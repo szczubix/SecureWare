@@ -25,6 +25,13 @@ use SecureWare\Core\Csrf;
             </div>
         </div>
 
+        <h2>Poczta</h2>
+        <p class="hint">Adres, z ktorego wysylane sa powiadomienia o nowych zapytaniach z formularza kontaktowego (naglowek "From"). Odbiorca to e-mail kontaktowy z zakladki Branding.</p>
+        <div class="field">
+            <label>Adres nadawcy (From)</label>
+            <input type="email" name="mail_from_address" placeholder="no-reply@twojadomena.pl" value="<?= htmlspecialchars($settings['mail_from_address'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+        </div>
+
         <h2>Google Analytics</h2>
         <div class="field">
             <label>GA4 Measurement ID</label>
