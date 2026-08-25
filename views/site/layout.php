@@ -30,7 +30,11 @@ $cookieYes = $settings['cookieyes_script'] ?? '';
 <meta property="og:title" content="<?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?>">
 <meta property="og:description" content="<?= htmlspecialchars($pageDesc, ENT_QUOTES, 'UTF-8') ?>">
 <meta property="og:type" content="website">
-<?php if ($faviconPath): ?><link rel="icon" href="<?= htmlspecialchars($faviconPath, ENT_QUOTES, 'UTF-8') ?>"><?php endif; ?>
+<?php if ($faviconPath): ?>
+<link rel="icon" href="<?= htmlspecialchars($faviconPath, ENT_QUOTES, 'UTF-8') ?>">
+<?php else: ?>
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<?php endif; ?>
 <link rel="stylesheet" href="/assets/css/site.css">
 <style>:root{--sw-primary:<?= htmlspecialchars($settings['color_primary'] ?? '#0b5fff', ENT_QUOTES, 'UTF-8') ?>;--sw-dark:<?= htmlspecialchars($settings['color_dark'] ?? '#0a0f1e', ENT_QUOTES, 'UTF-8') ?>;}</style>
 <?php if ($cookieYes): ?>

@@ -14,6 +14,7 @@ $user     = Auth::user();
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Panel administracyjny · SecureWare</title>
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/assets/css/admin.css">
 </head>
 <body class="admin">

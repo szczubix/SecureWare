@@ -98,6 +98,33 @@ $teaser = array_slice($services, 0, 6);
     </div>
 </section>
 
+<section class="sw-section">
+    <div class="sw-wrap">
+        <div class="sw-section-head">
+            <h5>Jak to dziala</h5>
+            <h2>Wdrozenie krok po kroku</h2>
+            <p>Bez wielomiesiecznych projektow - od pierwszej rozmowy do dzialajacej ochrony danych.</p>
+        </div>
+        <div class="sw-steps">
+            <div class="sw-step">
+                <span class="sw-step__num">1</span>
+                <h4>Audyt i konsultacja</h4>
+                <p>Analizujemy obecne srodowisko, wymagania RTO/RPO i budzet, aby zaproponowac rozwiazanie dopasowane do skali firmy.</p>
+            </div>
+            <div class="sw-step">
+                <span class="sw-step__num">2</span>
+                <h4>Wdrozenie</h4>
+                <p>Konfigurujemy backup, repozytoria i polityki retencji - dla nowego srodowiska lub w oparciu o narzedzia, ktore juz posiadasz.</p>
+            </div>
+            <div class="sw-step">
+                <span class="sw-step__num">3</span>
+                <h4>Monitoring i testy</h4>
+                <p>Nadzorujemy srodowisko 24/7 i regularnie testujemy rzeczywiste odtwarzanie danych - z raportem po kazdym tescie.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
 <?php if ($latestArticles): ?>
 <section class="sw-section">
     <div class="sw-wrap">
@@ -120,6 +147,37 @@ $teaser = array_slice($services, 0, 6);
     </div>
 </section>
 <?php endif; ?>
+
+<section class="sw-section sw-section--muted">
+    <div class="sw-wrap">
+        <div class="sw-section-head">
+            <h5>Pytania</h5>
+            <h2>Najczesciej zadawane pytania</h2>
+        </div>
+        <div class="sw-faq">
+            <details open>
+                <summary>Czym rozni sie backup od disaster recovery?</summary>
+                <p>Backup pozwala odzyskac dane. Disaster recovery pozwala odzyskac dzialanie firmy - obejmuje procedury, infrastrukture zapasowa oraz zdefiniowane cele RTO/RPO, dzieki ktorym wiadomo, jak szybko i z jaka strata danych systemy wroca do pracy.</p>
+            </details>
+            <details>
+                <summary>Czy moge zachowac obecne oprogramowanie do backupu?</summary>
+                <p>Tak. W ramach Managed Backup przejmujemy nadzor nad srodowiskiem, ktore juz masz (np. Veeam, Proxmox Backup Server). Migracja na nowa platforme jest opcjonalna, nie warunkiem wspolpracy.</p>
+            </details>
+            <details>
+                <summary>Ile trwa wdrozenie?</summary>
+                <p>Zalezy od skali srodowiska - prosty Backup as a Service mozna uruchomic w ciagu kilku dni, pelne wdrozenie z disaster recovery i testami odtwarzania zwykle zajmuje kilka tygodni.</p>
+            </details>
+            <details>
+                <summary>Co dzieje sie w razie ataku ransomware?</summary>
+                <p>Kopie w repozytorium niezmiennym (immutable) pozostaja nienaruszone nawet po przejeciu konta administratora, co pozwala odtworzyc dane bez placenia okupu. Reagujemy w ramach procedury disaster recovery ustalonej wczesniej z Toba.</p>
+            </details>
+            <details>
+                <summary>Czy oferujecie bezplatna konsultacje?</summary>
+                <p>Tak - pierwsza rozmowa i wstepny przeglad obecnego srodowiska backupu sa bezplatne. Umow ja przez formularz kontaktowy.</p>
+            </details>
+        </div>
+    </div>
+</section>
 
 <section class="sw-section--tight">
     <div class="sw-wrap">

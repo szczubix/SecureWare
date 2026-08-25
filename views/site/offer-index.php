@@ -1,6 +1,8 @@
 <?php
-/** @var array $services */
+/** @var array $groups */
 use SecureWare\Core\Icons;
+
+$hasAny = (bool) array_filter($groups);
 ?>
 <section class="sw-hero" style="padding:64px 0;">
     <div class="sw-wrap">
@@ -10,8 +12,12 @@ use SecureWare\Core\Icons;
     </div>
 </section>
 
-<section class="sw-section">
+<?php foreach ($groups as $label => $services): if (!$services) continue; ?>
+<section class="sw-section <?= array_key_first($groups) === $label ? '' : 'sw-section--muted' ?>">
     <div class="sw-wrap">
+        <div class="sw-section-head" style="margin-bottom:30px;">
+            <h5><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></h5>
+        </div>
         <div class="sw-services-grid">
             <?php foreach ($services as $s): ?>
                 <div class="sw-service-card">
@@ -21,10 +27,14 @@ use SecureWare\Core\Icons;
                     <a class="more" href="/oferta/<?= htmlspecialchars($s['slug'], ENT_QUOTES, 'UTF-8') ?>">Dowiedz sie wiecej <?= Icons::svg('arrow-right', 14) ?></a>
                 </div>
             <?php endforeach; ?>
-            <?php if (!$services): ?><p>Oferta jest aktualnie aktualizowana.</p><?php endif; ?>
         </div>
     </div>
 </section>
+<?php endforeach; ?>
+
+<?php if (!$hasAny): ?>
+<section class="sw-section"><div class="sw-wrap"><p>Oferta jest aktualnie aktualizowana.</p></div></section>
+<?php endif; ?>
 
 <section class="sw-section--tight">
     <div class="sw-wrap">
