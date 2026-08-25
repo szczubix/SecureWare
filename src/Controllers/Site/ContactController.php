@@ -26,6 +26,7 @@ class ContactController
     {
         $old = [
             'name'    => (string) $request->input('name', ''),
+            'company' => (string) $request->input('company', ''),
             'email'   => (string) $request->input('email', ''),
             'phone'   => (string) $request->input('phone', ''),
             'message' => (string) $request->input('message', ''),
@@ -61,7 +62,7 @@ class ContactController
             }
         }
 
-        Lead::create($old['name'], $old['email'], $old['phone'] ?: null, $old['message'], '/kontakt');
+        Lead::create($old['name'], $old['email'], $old['phone'] ?: null, $old['company'] ?: null, $old['message'], '/kontakt');
         $this->notify($old);
 
         echo View::render('site/contact', [
@@ -106,7 +107,7 @@ class ContactController
         }
 
         $subject = 'Nowe zapytanie ze strony SecureWare';
-        $body    = "Imie: {$lead['name']}\nE-mail: {$lead['email']}\nTelefon: {$lead['phone']}\n\nWiadomosc:\n{$lead['message']}";
+        $body    = "Imie: {$lead['name']}\nFirma: {$lead['company']}\nE-mail: {$lead['email']}\nTelefon: {$lead['phone']}\n\nWiadomosc:\n{$lead['message']}";
         $headers = 'From: no-reply@secureware.pl' . "\r\n" . 'Reply-To: ' . $lead['email'];
 
         @mail($to, $subject, $body, $headers);

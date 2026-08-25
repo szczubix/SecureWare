@@ -11,16 +11,17 @@ class Lead
         return Database::connection()->query('SELECT * FROM leads ORDER BY created_at DESC')->fetchAll();
     }
 
-    public static function create(string $name, string $email, ?string $phone, string $message, string $sourcePage): int
+    public static function create(string $name, string $email, ?string $phone, ?string $company, string $message, string $sourcePage): int
     {
         $stmt = Database::connection()->prepare(
-            'INSERT INTO leads (name, email, phone, message, source_page, status, created_at)
-             VALUES (:name, :email, :phone, :message, :source_page, "new", NOW())'
+            'INSERT INTO leads (name, email, phone, company, message, source_page, status, created_at)
+             VALUES (:name, :email, :phone, :company, :message, :source_page, "new", NOW())'
         );
         $stmt->execute([
             'name'        => $name,
             'email'       => $email,
             'phone'       => $phone,
+            'company'     => $company,
             'message'     => $message,
             'source_page' => $sourcePage,
         ]);

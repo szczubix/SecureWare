@@ -154,6 +154,7 @@ CREATE TABLE IF NOT EXISTS leads (
     name VARCHAR(150) NOT NULL,
     email VARCHAR(190) NOT NULL,
     phone VARCHAR(50) NULL,
+    company VARCHAR(150) NULL,
     message TEXT NOT NULL,
     source_page VARCHAR(255) NULL,
     status ENUM('new','contacted','closed') NOT NULL DEFAULT 'new',

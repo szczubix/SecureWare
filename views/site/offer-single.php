@@ -28,7 +28,7 @@ use SecureWare\Core\Icons;
 
 <section class="sw-section--tight">
     <div class="sw-wrap">
-        <div class="sw-cta">
+        <div class="sw-cta reveal">
             <div>
                 <h2>Zainteresowany uslugą <?= htmlspecialchars($service['name'], ENT_QUOTES, 'UTF-8') ?>?</h2>
                 <p>Umow bezplatna konsultacje i dowiedz sie, jak wdrozyc to u siebie.</p>
@@ -41,8 +41,8 @@ use SecureWare\Core\Icons;
 <?php if ($otherServices): ?>
 <section class="sw-related">
     <div class="sw-wrap">
-        <h2 style="font-size:22px;margin-bottom:20px;">Pozostale uslugi</h2>
-        <div class="sw-services-grid">
+        <h2 class="reveal" style="font-size:22px;margin-bottom:20px;">Pozostale uslugi</h2>
+        <div class="sw-services-grid reveal-stagger">
             <?php foreach (array_slice($otherServices, 0, 3) as $s): ?>
                 <div class="sw-service-card">
                     <div class="sw-service-card__icon"><?= Icons::svg($s['icon'], 22) ?></div>

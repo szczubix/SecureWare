@@ -112,5 +112,6 @@ document.getElementById('sw-nav-toggle').addEventListener('click', function () {
     document.getElementById('sw-nav').classList.toggle('is-open');
 });
 </script>
+<script src="/assets/js/animations.js"></script>
 </body>
 </html>

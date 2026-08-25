@@ -9,20 +9,20 @@ $teaser = array_slice($services, 0, 6);
 <section class="sw-hero">
     <div class="sw-wrap sw-hero__grid">
         <div>
-            <span class="sw-hero__eyebrow">Backup &amp; Disaster Recovery</span>
-            <h1>Backup, ktory <span>dziala</span>, gdy najbardziej go potrzebujesz</h1>
-            <p class="lead">Zarzadzany backup, ochrona przed ransomware i disaster recovery dla firm, ktore nie moga sobie pozwolic na utrate danych. Monitorujemy, testujemy i raportujemy — 24/7.</p>
-            <div class="sw-hero__actions">
+            <span class="sw-hero__eyebrow sw-anim-in sw-delay-1">Backup &amp; Disaster Recovery</span>
+            <h1 class="sw-anim-in sw-delay-2">Backup, ktory <span>dziala</span>, gdy najbardziej go potrzebujesz</h1>
+            <p class="lead sw-anim-in sw-delay-3">Zarzadzany backup, ochrona przed ransomware i disaster recovery dla firm, ktore nie moga sobie pozwolic na utrate danych. Monitorujemy, testujemy i raportujemy — 24/7.</p>
+            <div class="sw-hero__actions sw-anim-in sw-delay-4">
                 <a href="/kontakt" class="sw-btn sw-btn--primary">Umow bezplatna konsultacje</a>
                 <a href="/oferta" class="sw-btn sw-btn--ghost">Zobacz oferte <?= Icons::svg('arrow-right', 16) ?></a>
             </div>
-            <div class="sw-hero__badges">
+            <div class="sw-hero__badges sw-anim-in sw-delay-5">
                 <span>✔ Zgodnosc z zasada 3-2-1</span>
                 <span>✔ Kopie niezmienne (immutable)</span>
                 <span>✔ Testy odtwarzania</span>
             </div>
         </div>
-        <div class="sw-hero__visual">
+        <div class="sw-hero__visual sw-anim-in sw-delay-3">
             <ul>
                 <li><?= Icons::svg('shield-check', 20) ?> Ochrona przed ransomware</li>
                 <li><?= Icons::svg('activity', 20) ?> Monitoring backupu 24/7</li>
@@ -35,12 +35,12 @@ $teaser = array_slice($services, 0, 6);
 
 <section class="sw-section">
     <div class="sw-wrap">
-        <div class="sw-section-head">
+        <div class="sw-section-head reveal">
             <h5>Nasza oferta</h5>
             <h2>Pelen zakres ochrony danych</h2>
             <p>Od zarzadzania istniejacym backupem po disaster recovery i cykliczne testy odtwarzania.</p>
         </div>
-        <div class="sw-services-grid">
+        <div class="sw-services-grid reveal-stagger">
             <?php foreach ($teaser as $s): ?>
                 <div class="sw-service-card">
                     <div class="sw-service-card__icon"><?= Icons::svg($s['icon'], 22) ?></div>
@@ -50,15 +50,15 @@ $teaser = array_slice($services, 0, 6);
                 </div>
             <?php endforeach; ?>
         </div>
-        <div style="text-align:center;margin-top:36px;">
+        <div class="reveal" style="text-align:center;margin-top:36px;">
             <a href="/oferta" class="sw-btn sw-btn--dark">Zobacz pelna oferte (13 uslug)</a>
         </div>
     </div>
 </section>
 
-<section class="sw-section sw-section--dark">
+<section class="sw-section sw-section--tight">
     <div class="sw-wrap">
-        <div class="sw-stats">
+        <div class="sw-stats reveal-stagger reveal-stagger--pop">
             <div><strong>24/7</strong><span>Monitoring srodowisk backupu</span></div>
             <div><strong>3-2-1</strong><span>Zasada ochrony danych, ktora dziala</span></div>
             <div><strong>&lt; 1h</strong><span>Docelowy czas reakcji na incydent</span></div>
@@ -69,11 +69,11 @@ $teaser = array_slice($services, 0, 6);
 
 <section class="sw-section sw-section--muted">
     <div class="sw-wrap">
-        <div class="sw-section-head">
+        <div class="sw-section-head reveal">
             <h5>Dlaczego SecureWare</h5>
             <h2>Backup, ktoremu mozna zaufac</h2>
         </div>
-        <div class="sw-why-grid">
+        <div class="sw-why-grid reveal-stagger">
             <div>
                 <div class="icon"><?= Icons::svg('shield-check', 24) ?></div>
                 <h4>Ochrona przed ransomware</h4>
@@ -100,12 +100,12 @@ $teaser = array_slice($services, 0, 6);
 
 <section class="sw-section">
     <div class="sw-wrap">
-        <div class="sw-section-head">
+        <div class="sw-section-head reveal">
             <h5>Jak to dziala</h5>
             <h2>Wdrozenie krok po kroku</h2>
             <p>Bez wielomiesiecznych projektow - od pierwszej rozmowy do dzialajacej ochrony danych.</p>
         </div>
-        <div class="sw-steps">
+        <div class="sw-steps reveal-stagger">
             <div class="sw-step">
                 <span class="sw-step__num">1</span>
                 <h4>Audyt i konsultacja</h4>
@@ -128,11 +128,11 @@ $teaser = array_slice($services, 0, 6);
 <?php if ($latestArticles): ?>
 <section class="sw-section">
     <div class="sw-wrap">
-        <div class="sw-section-head">
+        <div class="sw-section-head reveal">
             <h5>Z bloga</h5>
             <h2>Najnowsze artykuly</h2>
         </div>
-        <div class="sw-blog-grid">
+        <div class="sw-blog-grid reveal-stagger">
             <?php foreach ($latestArticles as $a): ?>
                 <a class="sw-blog-card" href="/blog/<?= htmlspecialchars($a['slug'], ENT_QUOTES, 'UTF-8') ?>">
                     <div class="sw-blog-card__img"><?php if ($a['featured_image_path']): ?><img src="<?= htmlspecialchars($a['featured_image_path'], ENT_QUOTES, 'UTF-8') ?>" alt=""><?php endif; ?></div>
@@ -150,11 +150,11 @@ $teaser = array_slice($services, 0, 6);
 
 <section class="sw-section sw-section--muted">
     <div class="sw-wrap">
-        <div class="sw-section-head">
+        <div class="sw-section-head reveal">
             <h5>Pytania</h5>
             <h2>Najczesciej zadawane pytania</h2>
         </div>
-        <div class="sw-faq">
+        <div class="sw-faq reveal">
             <details open>
                 <summary>Czym rozni sie backup od disaster recovery?</summary>
                 <p>Backup pozwala odzyskac dane. Disaster recovery pozwala odzyskac dzialanie firmy - obejmuje procedury, infrastrukture zapasowa oraz zdefiniowane cele RTO/RPO, dzieki ktorym wiadomo, jak szybko i z jaka strata danych systemy wroca do pracy.</p>
@@ -181,7 +181,7 @@ $teaser = array_slice($services, 0, 6);
 
 <section class="sw-section--tight">
     <div class="sw-wrap">
-        <div class="sw-cta">
+        <div class="sw-cta reveal">
             <div>
                 <h2>Nie wiesz, czy Twoj backup naprawde zadziala?</h2>
                 <p>Zamow bezplatny audyt obecnego srodowiska ochrony danych.</p>

@@ -12,12 +12,13 @@ $statusLabels = ['new' => 'Nowe', 'contacted' => 'Skontaktowano', 'closed' => 'Z
 <div class="admin-card">
     <div class="table-wrap">
     <table class="admin-table">
-        <thead><tr><th>Data</th><th>Imie</th><th>Kontakt</th><th>Wiadomosc</th><th>Zrodlo</th><th>Status</th></tr></thead>
+        <thead><tr><th>Data</th><th>Imie</th><th>Firma</th><th>Kontakt</th><th>Wiadomosc</th><th>Zrodlo</th><th>Status</th></tr></thead>
         <tbody>
         <?php foreach ($leads as $l): ?>
             <tr>
                 <td><?= htmlspecialchars($l['created_at'], ENT_QUOTES, 'UTF-8') ?></td>
                 <td><?= htmlspecialchars($l['name'], ENT_QUOTES, 'UTF-8') ?></td>
+                <td><?= htmlspecialchars($l['company'] ?? '', ENT_QUOTES, 'UTF-8') ?: '—' ?></td>
                 <td><?= htmlspecialchars($l['email'], ENT_QUOTES, 'UTF-8') ?><?= $l['phone'] ? '<br>' . htmlspecialchars($l['phone'], ENT_QUOTES, 'UTF-8') : '' ?></td>
                 <td style="max-width:280px;"><?= nl2br(htmlspecialchars(mb_strimwidth($l['message'], 0, 200, '…'), ENT_QUOTES, 'UTF-8')) ?></td>
                 <td><?= htmlspecialchars($l['source_page'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
@@ -37,7 +38,7 @@ $statusLabels = ['new' => 'Nowe', 'contacted' => 'Skontaktowano', 'closed' => 'Z
                 </td>
             </tr>
         <?php endforeach; ?>
-        <?php if (!$leads): ?><tr><td colspan="6">Brak zapytan.</td></tr><?php endif; ?>
+        <?php if (!$leads): ?><tr><td colspan="7">Brak zapytan.</td></tr><?php endif; ?>
         </tbody>
     </table>
     </div>

@@ -37,7 +37,7 @@ use SecureWare\Core\Str;
 <section class="sw-related">
     <div class="sw-wrap">
         <h2 style="font-size:22px;margin-bottom:20px;">Zobacz rowniez</h2>
-        <div class="sw-blog-grid">
+        <div class="sw-blog-grid reveal-stagger">
             <?php foreach ($related as $a): ?>
                 <a class="sw-blog-card" href="/blog/<?= htmlspecialchars($a['slug'], ENT_QUOTES, 'UTF-8') ?>">
                     <div class="sw-blog-card__img"><?php if ($a['featured_image_path']): ?><img src="<?= htmlspecialchars($a['featured_image_path'], ENT_QUOTES, 'UTF-8') ?>" alt=""><?php endif; ?></div>

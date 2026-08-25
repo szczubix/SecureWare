@@ -11,15 +11,15 @@ $settings = Setting::all();
 ?>
 <section class="sw-hero" style="padding:64px 0;">
     <div class="sw-wrap">
-        <span class="sw-hero__eyebrow">Kontakt</span>
-        <h1 style="font-size:36px;">Porozmawiajmy o <span>ochronie Twoich danych</span></h1>
-        <p class="lead">Wypelnij formularz - odpowiadamy zazwyczaj w ciagu jednego dnia roboczego.</p>
+        <span class="sw-hero__eyebrow sw-anim-in sw-delay-1">Kontakt</span>
+        <h1 class="sw-anim-in sw-delay-2" style="font-size:36px;">Porozmawiajmy o <span>ochronie Twoich danych</span></h1>
+        <p class="lead sw-anim-in sw-delay-3">Wypelnij formularz - odpowiadamy zazwyczaj w ciagu jednego dnia roboczego.</p>
     </div>
 </section>
 
 <section class="sw-section">
     <div class="sw-wrap sw-contact-grid">
-        <div class="sw-contact-info">
+        <div class="sw-contact-info reveal">
             <h2>Dane kontaktowe</h2>
             <p>Chetnie odpowiemy na pytania dotyczace backupu, disaster recovery lub audytu obecnego srodowiska.</p>
             <?php if (!empty($settings['contact_email'])): ?>
@@ -38,10 +38,13 @@ $settings = Setting::all();
                 <p class="sw-alert sw-alert--success">Dziekujemy! Twoja wiadomosc zostala wyslana - odpowiemy najszybciej jak to mozliwe.</p>
             <?php else: ?>
                 <?php if ($error): ?><p class="sw-alert sw-alert--error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
-                <form class="sw-form" method="post" action="/kontakt">
+                <form class="sw-form reveal" method="post" action="/kontakt">
                     <?= Csrf::field() ?>
                     <label>Imie i nazwisko
                         <input type="text" name="name" required value="<?= htmlspecialchars($old['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    </label>
+                    <label>Firma (opcjonalnie)
+                        <input type="text" name="company" value="<?= htmlspecialchars($old['company'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     </label>
                     <label>E-mail
                         <input type="email" name="email" required value="<?= htmlspecialchars($old['email'] ?? '', ENT_QUOTES, 'UTF-8') ?>">

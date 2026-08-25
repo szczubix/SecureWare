@@ -1,8 +1,8 @@
 :root {
-    --sw-primary: #0b5fff;
-    --sw-primary-dark: #0a4bcc;
-    --sw-dark: #0a0f1e;
-    --sw-ink: #101828;
+    --sw-primary: #0ba5ef;
+    --sw-primary-dark: #0b8ecb;
+    --sw-dark: #182a42;
+    --sw-ink: #182a42;
     --sw-muted: #667085;
     --sw-border: #e4e7ec;
     --sw-bg: #f7f8fb;
@@ -50,7 +50,7 @@ a:hover { text-decoration: underline; }
 /* ---- Stat cards ---- */
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
 .stat-card { background: var(--sw-white); border: 1px solid var(--sw-border); border-radius: var(--sw-radius); padding: 20px; display: flex; flex-direction: column; gap: 4px; }
-.stat-card--highlight { border-color: var(--sw-primary); background: #eef4ff; }
+.stat-card--highlight { border-color: var(--sw-primary); background: #e8f7fe; }
 .stat-card__value { font-size: 28px; font-weight: 800; }
 .stat-card__label { color: var(--sw-muted); font-size: 13px; }
 

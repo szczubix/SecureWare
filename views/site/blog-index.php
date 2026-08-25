@@ -11,9 +11,9 @@ $totalPages = max(1, (int) ceil($total / $perPage));
 ?>
 <section class="sw-hero" style="padding:64px 0;">
     <div class="sw-wrap">
-        <span class="sw-hero__eyebrow">Blog</span>
-        <h1 style="font-size:36px;">Backup, ransomware i <span>disaster recovery</span> po ludzku</h1>
-        <p class="lead">Praktyczna wiedza o ochronie danych - bez marketingowego zargonu.</p>
+        <span class="sw-hero__eyebrow sw-anim-in sw-delay-1">Blog</span>
+        <h1 class="sw-anim-in sw-delay-2" style="font-size:36px;">Backup, ransomware i <span>disaster recovery</span> po ludzku</h1>
+        <p class="lead sw-anim-in sw-delay-3">Praktyczna wiedza o ochronie danych - bez marketingowego zargonu.</p>
     </div>
 </section>
 
@@ -28,7 +28,7 @@ $totalPages = max(1, (int) ceil($total / $perPage));
         </div>
         <?php endif; ?>
 
-        <div class="sw-blog-grid">
+        <div class="sw-blog-grid reveal-stagger">
             <?php foreach ($articles as $a): ?>
                 <a class="sw-blog-card" href="/blog/<?= htmlspecialchars($a['slug'], ENT_QUOTES, 'UTF-8') ?>">
                     <div class="sw-blog-card__img"><?php if ($a['featured_image_path']): ?><img src="<?= htmlspecialchars($a['featured_image_path'], ENT_QUOTES, 'UTF-8') ?>" alt=""><?php endif; ?></div>
