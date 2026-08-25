@@ -22,13 +22,48 @@ $teaser = array_slice($services, 0, 6);
                 <span>✔ Testy odtwarzania</span>
             </div>
         </div>
-        <div class="sw-hero__visual sw-anim-in sw-delay-3">
-            <ul>
-                <li><?= Icons::svg('shield-check', 20) ?> Ochrona przed ransomware</li>
-                <li><?= Icons::svg('activity', 20) ?> Monitoring backupu 24/7</li>
-                <li><?= Icons::svg('refresh-ccw', 20) ?> Cykliczne testy odtwarzania</li>
-                <li><?= Icons::svg('life-buoy', 20) ?> Gotowy plan disaster recovery</li>
-            </ul>
+        <div class="sw-hero__mockwrap sw-anim-in sw-delay-3">
+            <div class="sw-mock__badge sw-mock__badge--tl">
+                <span class="icon"><?= Icons::svg('shield-check', 16) ?></span> Ransomware-safe
+            </div>
+            <div class="sw-mock">
+                <div class="sw-mock__bar">
+                    <span class="sw-mock__dot"></span><span class="sw-mock__dot"></span><span class="sw-mock__dot"></span>
+                    <span>Panel ochrony danych</span>
+                </div>
+                <div class="sw-mock__body">
+                    <div class="sw-mock__headline">
+                        <strong data-count="247" data-suffix=" TB">0 TB</strong>
+                        <span class="sw-mock__live">na żywo</span>
+                    </div>
+                    <div class="sw-mock__bars">
+                        <i style="animation-delay:-0.2s;height:38%"></i>
+                        <i style="animation-delay:-1.6s;height:62%"></i>
+                        <i style="animation-delay:-0.8s;height:48%"></i>
+                        <i style="animation-delay:-2.1s;height:82%"></i>
+                        <i style="animation-delay:-0.4s;height:58%"></i>
+                        <i style="animation-delay:-1.2s;height:70%"></i>
+                        <i style="animation-delay:-1.9s;height:44%"></i>
+                    </div>
+                    <div class="sw-mock__rows">
+                        <div class="sw-mock__row">
+                            <span class="ok"><?= Icons::svg('check', 12) ?></span>
+                            <span class="label">Backup nocny</span><span class="val">OK · 02:14</span>
+                        </div>
+                        <div class="sw-mock__row">
+                            <span class="ok"><?= Icons::svg('check', 12) ?></span>
+                            <span class="label">Test odtwarzania</span><span class="val">OK · wczoraj</span>
+                        </div>
+                        <div class="sw-mock__row">
+                            <span class="ok"><?= Icons::svg('check', 12) ?></span>
+                            <span class="label">Repozytorium immutable</span><span class="val">Aktywne</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="sw-mock__badge sw-mock__badge--br">
+                <span class="icon"><?= Icons::svg('activity', 16) ?></span> Monitoring 24/7
+            </div>
         </div>
     </div>
 </section>
@@ -58,11 +93,13 @@ $teaser = array_slice($services, 0, 6);
 
 <section class="sw-section sw-section--tight">
     <div class="sw-wrap">
-        <div class="sw-stats reveal-stagger reveal-stagger--pop">
-            <div><strong>24/7</strong><span>Monitoring srodowisk backupu</span></div>
-            <div><strong>3-2-1</strong><span>Zasada ochrony danych, ktora dziala</span></div>
-            <div><strong>&lt; 1h</strong><span>Docelowy czas reakcji na incydent</span></div>
-            <div><strong>100%</strong><span>Testowane, nie zakladane</span></div>
+        <div class="sw-stats-band reveal">
+            <div class="sw-stats reveal-stagger reveal-stagger--pop">
+                <div><strong>24/7</strong><span>Monitoring srodowisk backupu</span></div>
+                <div><strong>3-2-1</strong><span>Zasada ochrony danych, ktora dziala</span></div>
+                <div><strong>&lt; 1h</strong><span>Docelowy czas reakcji na incydent</span></div>
+                <div><strong>100%</strong><span>Testowane, nie zakladane</span></div>
+            </div>
         </div>
     </div>
 </section>

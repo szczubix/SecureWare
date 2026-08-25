@@ -41,4 +41,24 @@
         onScroll();
         window.addEventListener('scroll', onScroll, { passive: true });
     }
+
+    // Count-up animation for the hero "product mockup" headline number.
+    document.querySelectorAll('[data-count]').forEach(function (el) {
+        var target = parseInt(el.getAttribute('data-count'), 10);
+        var suffix = el.getAttribute('data-suffix') || '';
+        if (reduceMotion || isNaN(target)) {
+            el.textContent = target + suffix;
+            return;
+        }
+        var start = null;
+        var duration = 1400;
+        function step(ts) {
+            if (!start) start = ts;
+            var progress = Math.min((ts - start) / duration, 1);
+            var eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = Math.round(eased * target) + suffix;
+            if (progress < 1) requestAnimationFrame(step);
+        }
+        setTimeout(function () { requestAnimationFrame(step); }, 500);
+    });
 })();
