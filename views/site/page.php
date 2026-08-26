@@ -1,5 +1,6 @@
 <?php
 /** @var array $page */
+use SecureWare\Models\Diagram;
 $wide = $page['template'] === 'full-width';
 ?>
 <section class="sw-prose-header">
@@ -9,5 +10,5 @@ $wide = $page['template'] === 'full-width';
 </section>
 
 <article class="sw-prose" <?= $wide ? 'style="max-width:1000px;"' : '' ?>>
-    <?= $page['content'] ?>
+    <?= Diagram::embedInto($page['content']) ?>
 </article>

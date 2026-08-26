@@ -41,6 +41,7 @@ $isActive = function (string $href) use ($currentPath, $adminUrl): bool {
             <?php if (Auth::can('pages.view')): ?><a href="<?= $adminUrl ?>/pages" class="<?= $isActive("$adminUrl/pages") ? 'is-active' : '' ?>"><?= Icons::svg('layers', 17) ?> Podstrony</a><?php endif; ?>
             <?php if (Auth::can('services.view')): ?><a href="<?= $adminUrl ?>/services" class="<?= $isActive("$adminUrl/services") ? 'is-active' : '' ?>"><?= Icons::svg('server', 17) ?> Oferta (uslugi)</a><?php endif; ?>
             <?php if (Auth::can('media.view')): ?><a href="<?= $adminUrl ?>/media" class="<?= $isActive("$adminUrl/media") ? 'is-active' : '' ?>"><?= Icons::svg('image', 17) ?> Biblioteka mediow</a><?php endif; ?>
+            <?php if (Auth::can('diagrams.view')): ?><a href="<?= $adminUrl ?>/diagrams" class="<?= $isActive("$adminUrl/diagrams") ? 'is-active' : '' ?>"><?= Icons::svg('activity', 17) ?> Kreator diagramow</a><?php endif; ?>
             <?php if (Auth::can('leads.view')): ?><a href="<?= $adminUrl ?>/leads" class="<?= $isActive("$adminUrl/leads") ? 'is-active' : '' ?>"><?= Icons::svg('inbox', 17) ?> Zapytania</a><?php endif; ?>
             <?php if (Auth::can('users.view')): ?><a href="<?= $adminUrl ?>/users" class="<?= $isActive("$adminUrl/users") ? 'is-active' : '' ?>"><?= Icons::svg('users', 17) ?> Uzytkownicy</a><?php endif; ?>
             <?php if (Auth::can('roles.view')): ?><a href="<?= $adminUrl ?>/roles" class="<?= $isActive("$adminUrl/roles") ? 'is-active' : '' ?>"><?= Icons::svg('shield', 17) ?> Role i uprawnienia</a><?php endif; ?>

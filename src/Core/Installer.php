@@ -41,6 +41,9 @@ class Installer
             'logs.view'        => 'Podgląd logów aktywności',
             'leads.view'       => 'Przeglądanie zapytań (leadów)',
             'leads.edit'       => 'Zarządzanie statusem zapytań',
+            'diagrams.view'    => 'Przeglądanie diagramów',
+            'diagrams.edit'    => 'Edycja diagramów (kreator)',
+            'diagrams.delete'  => 'Usuwanie diagramów',
         ];
     }
 
@@ -79,6 +82,35 @@ class Installer
         }
 
         return ["Schemat bazy danych: OK ({$count} zapytań)"];
+    }
+
+    /**
+     * Dodaje nowe uprawnienia (dodane w kodzie po pierwszej instalacji) do
+     * istniejacej bazy i przyznaje je roli Administrator - bezpieczne do
+     * wielokrotnego uruchamiania, nie rusza istniejacych przypisan innych
+     * rol (np. reczne ograniczenia na roli Redaktor/Sprzedaz zostaja).
+     *
+     * @return string[] log
+     */
+    public static function syncPermissions(): array
+    {
+        $pdo = Database::connection();
+
+        $stmt = $pdo->prepare('INSERT IGNORE INTO permissions (`key`, label) VALUES (:key, :label)');
+        foreach (self::permissions() as $key => $label) {
+            $stmt->execute(['key' => $key, 'label' => $label]);
+        }
+
+        $adminRoleId = $pdo->query("SELECT id FROM roles WHERE slug = 'administrator'")->fetchColumn();
+        if ($adminRoleId) {
+            $grant = $pdo->prepare(
+                'INSERT IGNORE INTO role_permissions (role_id, permission_id)
+                 SELECT :role_id, id FROM permissions'
+            );
+            $grant->execute(['role_id' => $adminRoleId]);
+        }
+
+        return ['Uprawnienia: zsynchronizowano.'];
     }
 
     /**
@@ -127,6 +159,7 @@ class Installer
             'redaktor'      => ['name' => 'Redaktor', 'permissions' => [
                 'dashboard.view', 'articles.view', 'articles.edit', 'articles.delete',
                 'pages.view', 'pages.edit', 'media.view', 'media.upload', 'media.delete',
+                'diagrams.view', 'diagrams.edit',
             ]],
             'sprzedaz'      => ['name' => 'Sprzedaż', 'permissions' => [
                 'dashboard.view', 'leads.view', 'leads.edit',

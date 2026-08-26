@@ -7,6 +7,7 @@
 use SecureWare\Controllers\Admin\ArticleController;
 use SecureWare\Controllers\Admin\AuthController;
 use SecureWare\Controllers\Admin\DashboardController;
+use SecureWare\Controllers\Admin\DiagramController;
 use SecureWare\Controllers\Admin\HomeContentController;
 use SecureWare\Controllers\Admin\LeadController;
 use SecureWare\Controllers\Admin\SiteContentController;
@@ -62,6 +63,14 @@ $router->get($a . '/media/list.json', [MediaController::class, 'listJson']);
 $router->post($a . '/media/upload', [MediaController::class, 'upload']);
 $router->post($a . '/media/upload.json', [MediaController::class, 'uploadJson']);
 $router->post($a . '/media/{id}/delete', [MediaController::class, 'destroy']);
+
+$router->get($a . '/diagrams', [DiagramController::class, 'index']);
+$router->get($a . '/diagrams/list.json', [DiagramController::class, 'listJson']);
+$router->get($a . '/diagrams/new', [DiagramController::class, 'create']);
+$router->post($a . '/diagrams', [DiagramController::class, 'store']);
+$router->get($a . '/diagrams/{id}/edit', [DiagramController::class, 'edit']);
+$router->post($a . '/diagrams/{id}', [DiagramController::class, 'update']);
+$router->post($a . '/diagrams/{id}/delete', [DiagramController::class, 'destroy']);
 
 $router->get($a . '/users', [UserController::class, 'index']);
 $router->get($a . '/users/new', [UserController::class, 'create']);

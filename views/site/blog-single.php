@@ -2,6 +2,7 @@
 /** @var array $article */
 /** @var array $related */
 use SecureWare\Core\Str;
+use SecureWare\Models\Diagram;
 ?>
 <section class="sw-prose-header">
     <div class="sw-wrap" style="max-width:760px;">
@@ -22,7 +23,7 @@ use SecureWare\Core\Str;
 <?php endif; ?>
 
 <article class="sw-prose">
-    <?= $article['content'] ?>
+    <?= Diagram::embedInto($article['content']) ?>
 
     <?php if (!empty($article['tags'])): ?>
         <div style="margin-top:30px;display:flex;gap:8px;flex-wrap:wrap;">

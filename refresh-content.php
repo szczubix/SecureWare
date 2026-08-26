@@ -9,6 +9,11 @@
  * wierszy (żeby nie kasować ręcznych edycji), więc to narzędzie robi to
  * świadomie, na żądanie zalogowanego administratora.
  *
+ * Uruchamia też Installer::migrateSchema() (CREATE TABLE IF NOT EXISTS),
+ * więc importuje też nowe tabele dodane w kodzie po pierwszej instalacji
+ * (np. tabelę "diagrams" dla kreatora diagramów) bez ruszania istniejących
+ * danych.
+ *
  * Dopasowanie wyłącznie po istniejącym slug/key - nie tworzy nowych
  * wpisów i nie rusza leadów ani użytkowników. Nadpisuje tagline i tekst
  * stopki w Ustawieniach - jeśli już ręcznie zmieniłeś te dwa pola,
@@ -64,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Sesja wygasła. Odśwież stronę i spróbuj ponownie.';
     } else {
         try {
-            $log = Installer::refreshDefaultContent();
+            $log = array_merge(Installer::migrateSchema(), Installer::syncPermissions(), Installer::refreshDefaultContent());
         } catch (\Throwable $e) {
             $error = 'Odświeżenie treści nie powiodło się: ' . $e->getMessage();
         }

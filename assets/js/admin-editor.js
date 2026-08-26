@@ -105,6 +105,23 @@
         });
         toolbar.appendChild(colsBtn);
 
+        var diagBtn = document.createElement('button');
+        diagBtn.type = 'button';
+        diagBtn.className = 'button button--ghost button--small';
+        diagBtn.style.marginRight = '4px';
+        diagBtn.textContent = 'Diagram';
+        diagBtn.title = 'Wstaw diagram zbudowany w kreatorze';
+        diagBtn.addEventListener('click', function () {
+            saveRange();
+            openDiagramPicker(function (diagram) {
+                restoreRange();
+                var html = '<div class="sw-diagram-embed" data-diagram="' + escapeAttr(diagram.slug) + '"></div><p><br></p>';
+                document.execCommand('insertHTML', false, html);
+                sync();
+            });
+        });
+        toolbar.appendChild(diagBtn);
+
         function escapeAttr(s) {
             return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
@@ -218,6 +235,51 @@
                     status.textContent = 'Blad wgrywania.';
                 });
         });
+    }
+
+    function openDiagramPicker(onSelect) {
+        var overlay = document.createElement('div');
+        overlay.className = 'media-picker-overlay';
+
+        var modal = document.createElement('div');
+        modal.className = 'media-picker';
+        modal.innerHTML =
+            '<div class="media-picker__head">' +
+                '<strong>Wybierz diagram</strong>' +
+                '<button type="button" class="button button--ghost button--small" data-close>Zamknij</button>' +
+            '</div>' +
+            '<div class="media-picker__grid" data-grid style="grid-template-columns:1fr;"><p style="color:#8a93a3;">Wczytywanie…</p></div>';
+
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        function close() { overlay.remove(); }
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+        modal.querySelector('[data-close]').addEventListener('click', close);
+
+        fetch(adminBase + '/diagrams/list.json', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var items = (data && data.diagrams) || [];
+                var grid = modal.querySelector('[data-grid]');
+                if (!items.length) {
+                    grid.innerHTML = '<p style="color:#8a93a3;">Brak zapisanych diagramow - utworz jeden w Kreatorze diagramow.</p>';
+                    return;
+                }
+                grid.innerHTML = '';
+                items.forEach(function (diagram) {
+                    var row = document.createElement('button');
+                    row.type = 'button';
+                    row.className = 'button button--ghost';
+                    row.style.cssText = 'width:100%;justify-content:flex-start;margin-bottom:6px;';
+                    row.textContent = diagram.name + ' (' + diagram.slug + ')';
+                    row.addEventListener('click', function () { close(); onSelect(diagram); });
+                    grid.appendChild(row);
+                });
+            })
+            .catch(function () {
+                modal.querySelector('[data-grid]').innerHTML = '<p style="color:#c0392b;">Nie udalo sie wczytac listy diagramow.</p>';
+            });
     }
 
     window.SecureWareEditor = { init: initEditor };

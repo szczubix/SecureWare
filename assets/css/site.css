@@ -418,3 +418,8 @@ h1, h2, h3, h4 { font-family: var(--sw-font-display); line-height: 1.12; margin:
 .sw-prose .content-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin: 1.4em 0; }
 .sw-prose .content-columns p:last-child { margin-bottom: 0; }
 @media (max-width: 640px) { .sw-prose .content-columns { grid-template-columns: 1fr; gap: 0; } }
+
+/* Diagram embed w tresci artykulu/strony - karta jest zaprojektowana na
+   ciemne tlo (hero), wiec w jasnym .sw-prose potrzebuje wlasnego, samodzielnego
+   ciemnego tla zamiast dziedziczyc jasne tlo strony. */
+.sw-prose .sw-diagram-card { background: var(--sw-dark); margin: 2em auto; max-width: 560px; }

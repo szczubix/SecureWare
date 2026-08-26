@@ -2,6 +2,7 @@
 /** @var array $service */
 /** @var array $otherServices */
 use SecureWare\Core\Icons;
+use SecureWare\Models\Diagram;
 ?>
 <section class="sw-prose-header">
     <div class="sw-wrap">
@@ -15,7 +16,7 @@ use SecureWare\Core\Icons;
 
 <div class="sw-service-layout">
     <article class="sw-prose reveal">
-        <?= $service['content'] ?>
+        <?= Diagram::embedInto($service['content']) ?>
     </article>
 
     <aside class="sw-service-sidebar reveal">
