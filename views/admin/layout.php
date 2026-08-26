@@ -46,6 +46,7 @@ $isActive = function (string $href) use ($currentPath, $adminUrl): bool {
             <?php if (Auth::can('roles.view')): ?><a href="<?= $adminUrl ?>/roles" class="<?= $isActive("$adminUrl/roles") ? 'is-active' : '' ?>"><?= Icons::svg('shield', 17) ?> Role i uprawnienia</a><?php endif; ?>
             <?php if (Auth::can('settings.edit')): ?>
                 <a href="<?= $adminUrl ?>/settings/homepage" class="<?= $isActive("$adminUrl/settings/homepage") ? 'is-active' : '' ?>"><?= Icons::svg('layers', 17) ?> Treść strony głównej</a>
+                <a href="<?= $adminUrl ?>/settings/pages-content" class="<?= $isActive("$adminUrl/settings/pages-content") ? 'is-active' : '' ?>"><?= Icons::svg('layers', 17) ?> Treść podstron (oferta, blog, kontakt)</a>
                 <a href="<?= $adminUrl ?>/settings/branding" class="<?= $isActive("$adminUrl/settings/branding") ? 'is-active' : '' ?>"><?= Icons::svg('sliders', 17) ?> Branding</a>
                 <a href="<?= $adminUrl ?>/settings/integrations" class="<?= $isActive("$adminUrl/settings/integrations") ? 'is-active' : '' ?>"><?= Icons::svg('plug', 17) ?> Integracje</a>
             <?php endif; ?>

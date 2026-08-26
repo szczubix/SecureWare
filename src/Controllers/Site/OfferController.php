@@ -6,6 +6,7 @@ use SecureWare\Core\Request;
 use SecureWare\Core\Response;
 use SecureWare\Core\View;
 use SecureWare\Models\Service;
+use SecureWare\Models\SiteContent;
 
 class OfferController
 {
@@ -40,6 +41,7 @@ class OfferController
 
         echo View::render('site/offer-index', [
             'groups'          => array_filter($groups),
+            'content'         => SiteContent::current()['offer'],
             'metaTitle'       => 'Oferta — SecureWare',
             'metaDescription' => 'Managed Backup, Backup as a Service, Disaster Recovery i inne usługi ochrony danych dla firm.',
         ], 'site/layout');

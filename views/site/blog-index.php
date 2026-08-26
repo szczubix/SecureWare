@@ -5,15 +5,17 @@
 /** @var int $perPage */
 /** @var array $categories */
 /** @var string|null $activeCategory */
+/** @var array $content */
 use SecureWare\Core\Str;
 
 $totalPages = max(1, (int) ceil($total / $perPage));
+$h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 ?>
 <section class="sw-hero" style="padding:64px 0;">
     <div class="sw-wrap">
-        <span class="sw-hero__eyebrow sw-anim-in sw-delay-1">Blog</span>
-        <h1 class="sw-anim-in sw-delay-2" style="font-size:36px;">Backup, ransomware i <span>disaster recovery</span> po ludzku</h1>
-        <p class="lead sw-anim-in sw-delay-3">Praktyczna wiedza o ochronie danych - bez marketingowego żargonu.</p>
+        <span class="sw-hero__eyebrow sw-anim-in sw-delay-1"><?= $h($content['eyebrow']) ?></span>
+        <h1 class="sw-anim-in sw-delay-2" style="font-size:36px;"><?= $h($content['heading_pre']) ?><span><?= $h($content['heading_highlight']) ?></span><?= $h($content['heading_post']) ?></h1>
+        <p class="lead sw-anim-in sw-delay-3"><?= $h($content['lead']) ?></p>
     </div>
 </section>
 

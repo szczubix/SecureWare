@@ -9,6 +9,7 @@ use SecureWare\Controllers\Admin\AuthController;
 use SecureWare\Controllers\Admin\DashboardController;
 use SecureWare\Controllers\Admin\HomeContentController;
 use SecureWare\Controllers\Admin\LeadController;
+use SecureWare\Controllers\Admin\SiteContentController;
 use SecureWare\Controllers\Admin\LogController;
 use SecureWare\Controllers\Admin\MediaController;
 use SecureWare\Controllers\Admin\PageAdminController;
@@ -82,6 +83,8 @@ $router->get($a . '/settings/integrations', [SettingsController::class, 'integra
 $router->post($a . '/settings/integrations', [SettingsController::class, 'saveIntegrations']);
 $router->get($a . '/settings/homepage', [HomeContentController::class, 'edit']);
 $router->post($a . '/settings/homepage', [HomeContentController::class, 'save']);
+$router->get($a . '/settings/pages-content', [SiteContentController::class, 'edit']);
+$router->post($a . '/settings/pages-content', [SiteContentController::class, 'save']);
 
 $router->get($a . '/logs', [LogController::class, 'index']);
 

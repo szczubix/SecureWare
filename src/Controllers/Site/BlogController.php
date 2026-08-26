@@ -7,6 +7,7 @@ use SecureWare\Core\Request;
 use SecureWare\Core\Response;
 use SecureWare\Core\View;
 use SecureWare\Models\Article;
+use SecureWare\Models\SiteContent;
 
 class BlogController
 {
@@ -27,6 +28,7 @@ class BlogController
             'perPage'         => 9,
             'categories'      => $categories,
             'activeCategory'  => $category,
+            'content'         => SiteContent::current()['blog'],
             'metaTitle'       => 'Blog — SecureWare',
             'metaDescription' => 'Backup, disaster recovery i bezpieczeństwo danych - artykuły i poradniki.',
         ], 'site/layout');

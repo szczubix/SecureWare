@@ -1,19 +1,20 @@
 <?php
 /** @var array $groups */
+/** @var array $content */
 use SecureWare\Core\Icons;
 
 $hasAny = (bool) array_filter($groups);
+$h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 ?>
 <section class="sw-hero" style="padding:64px 0;">
     <div class="sw-wrap">
-        <span class="sw-hero__eyebrow sw-anim-in sw-delay-1">Oferta</span>
-        <h1 class="sw-anim-in sw-delay-2" style="font-size:36px;">Pełen zakres ochrony <span>danych</span> dla firm</h1>
-        <p class="lead sw-anim-in sw-delay-3">13 usług pokrywających cały cykl życia backupu — od wdrożenia, przez codzienne zarządzanie, po disaster recovery i testy odtwarzania.</p>
+        <span class="sw-hero__eyebrow sw-anim-in sw-delay-1"><?= $h($content['eyebrow']) ?></span>
+        <h1 class="sw-anim-in sw-delay-2" style="font-size:36px;"><?= $h($content['heading_pre']) ?><span><?= $h($content['heading_highlight']) ?></span><?= $h($content['heading_post']) ?></h1>
+        <p class="lead sw-anim-in sw-delay-3"><?= $h($content['lead']) ?></p>
         <div class="sw-highlights sw-anim-in sw-delay-4">
-            <span><?= Icons::svg('shield-check', 16) ?> Kopie niezmienne (immutable)</span>
-            <span><?= Icons::svg('refresh-ccw', 16) ?> Realne testy odtwarzania</span>
-            <span><?= Icons::svg('activity', 16) ?> Monitoring 24/7</span>
-            <span><?= Icons::svg('file-check', 16) ?> Jasne raporty SLA</span>
+            <?php foreach ($content['highlights'] as $item): ?>
+                <span><?= Icons::svg($item['icon'], 16) ?> <?= $h($item['text']) ?></span>
+            <?php endforeach; ?>
         </div>
     </div>
 </section>
@@ -39,17 +40,17 @@ $hasAny = (bool) array_filter($groups);
 <?php endforeach; ?>
 
 <?php if (!$hasAny): ?>
-<section class="sw-section"><div class="sw-wrap"><p>Oferta jest aktualnie aktualizowana.</p></div></section>
+<section class="sw-section"><div class="sw-wrap"><p><?= $h($content['empty_text']) ?></p></div></section>
 <?php endif; ?>
 
 <section class="sw-section--tight">
     <div class="sw-wrap">
         <div class="sw-cta reveal">
             <div>
-                <h2>Nie wiesz, która usługa jest dla Ciebie?</h2>
-                <p>Porozmawiajmy — dobierzemy rozwiązanie do skali i budżetu Twojej firmy.</p>
+                <h2><?= $h($content['cta_heading']) ?></h2>
+                <p><?= $h($content['cta_text']) ?></p>
             </div>
-            <a href="/kontakt" class="sw-btn sw-btn--dark">Skontaktuj się</a>
+            <a href="/kontakt" class="sw-btn sw-btn--dark"><?= $h($content['cta_button_label']) ?></a>
         </div>
     </div>
 </section>

@@ -2,6 +2,8 @@
 
 namespace SecureWare\Core;
 
+use SecureWare\Models\SiteContent;
+
 class Response
 {
     public static function redirect(string $to): never
@@ -14,6 +16,7 @@ class Response
     {
         http_response_code(404);
         echo View::render('site/404', [
+            'content'         => SiteContent::current()['not_found'],
             'metaTitle'       => 'Strona nie znaleziona — SecureWare',
             'metaDescription' => '',
         ], 'site/layout');

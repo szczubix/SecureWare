@@ -7,6 +7,7 @@ use SecureWare\Core\Request;
 use SecureWare\Core\View;
 use SecureWare\Models\Lead;
 use SecureWare\Models\Setting;
+use SecureWare\Models\SiteContent;
 
 class ContactController
 {
@@ -17,6 +18,7 @@ class ContactController
             'error'           => null,
             'old'             => [],
             'turnstileSiteKey'=> Setting::get('turnstile_site_key', ''),
+            'content'         => SiteContent::current()['contact'],
             'metaTitle'       => 'Kontakt — SecureWare',
             'metaDescription' => 'Skontaktuj sie z nami - wycena backupu, disaster recovery i ochrony danych dla Twojej firmy.',
         ], 'site/layout');
@@ -38,6 +40,7 @@ class ContactController
                 'error'   => $error,
                 'old'     => $old,
                 'turnstileSiteKey' => Setting::get('turnstile_site_key', ''),
+                'content'          => SiteContent::current()['contact'],
                 'metaTitle'        => 'Kontakt — SecureWare',
                 'metaDescription'  => '',
             ], 'site/layout');
@@ -70,6 +73,7 @@ class ContactController
             'error'   => null,
             'old'     => [],
             'turnstileSiteKey' => Setting::get('turnstile_site_key', ''),
+            'content'          => SiteContent::current()['contact'],
             'metaTitle'        => 'Kontakt — SecureWare',
             'metaDescription'  => '',
         ], 'site/layout');
