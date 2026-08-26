@@ -16,53 +16,51 @@ $teaser = array_slice($services, 0, 6);
                 <a href="/kontakt" class="sw-btn sw-btn--primary">Umow bezplatna konsultacje</a>
                 <a href="/oferta" class="sw-btn sw-btn--ghost">Zobacz oferte <?= Icons::svg('arrow-right', 16) ?></a>
             </div>
-            <div class="sw-hero__badges sw-anim-in sw-delay-5">
-                <span>✔ Zgodnosc z zasada 3-2-1</span>
-                <span>✔ Kopie niezmienne (immutable)</span>
-                <span>✔ Testy odtwarzania</span>
+            <div class="sw-hero__specs sw-anim-in sw-delay-5">
+                <div><strong>3-2-1</strong><span>Zasada ochrony danych</span></div>
+                <div><strong>Immutable</strong><span>Kopie odporne na ransomware</span></div>
+                <div><strong>24/7</strong><span>Monitoring i reakcja</span></div>
             </div>
         </div>
-        <div class="sw-hero__mockwrap sw-anim-in sw-delay-3">
-            <div class="sw-mock__badge sw-mock__badge--tl">
-                <span class="icon"><?= Icons::svg('shield-check', 16) ?></span> Ransomware-safe
-            </div>
-            <div class="sw-mock">
-                <div class="sw-mock__bar">
-                    <span class="sw-mock__dot"></span><span class="sw-mock__dot"></span><span class="sw-mock__dot"></span>
-                    <span>Panel ochrony danych</span>
+        <div class="sw-anim-in sw-delay-3">
+            <div class="sw-diagram-card">
+                <div class="sw-diagram-card__head">
+                    <h3>Zasada 3-2-1 w praktyce</h3>
+                    <span class="sw-diagram-card__live">Monitorowane 24/7</span>
                 </div>
-                <div class="sw-mock__body">
-                    <div class="sw-mock__headline">
-                        <strong data-count="247" data-suffix=" TB">0 TB</strong>
-                        <span class="sw-mock__live">na żywo</span>
-                    </div>
-                    <div class="sw-mock__bars">
-                        <i style="animation-delay:-0.2s;height:38%"></i>
-                        <i style="animation-delay:-1.6s;height:62%"></i>
-                        <i style="animation-delay:-0.8s;height:48%"></i>
-                        <i style="animation-delay:-2.1s;height:82%"></i>
-                        <i style="animation-delay:-0.4s;height:58%"></i>
-                        <i style="animation-delay:-1.2s;height:70%"></i>
-                        <i style="animation-delay:-1.9s;height:44%"></i>
-                    </div>
-                    <div class="sw-mock__rows">
-                        <div class="sw-mock__row">
-                            <span class="ok"><?= Icons::svg('check', 12) ?></span>
-                            <span class="label">Backup nocny</span><span class="val">OK · 02:14</span>
-                        </div>
-                        <div class="sw-mock__row">
-                            <span class="ok"><?= Icons::svg('check', 12) ?></span>
-                            <span class="label">Test odtwarzania</span><span class="val">OK · wczoraj</span>
-                        </div>
-                        <div class="sw-mock__row">
-                            <span class="ok"><?= Icons::svg('check', 12) ?></span>
-                            <span class="label">Repozytorium immutable</span><span class="val">Aktywne</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="sw-mock__badge sw-mock__badge--br">
-                <span class="icon"><?= Icons::svg('activity', 16) ?></span> Monitoring 24/7
+                <svg class="sw-diagram" viewBox="0 0 480 380" xmlns="http://www.w3.org/2000/svg">
+                    <path class="flow" d="M240,76 C240,170 88,170 88,280"/>
+                    <path class="flow" d="M240,76 L240,280"/>
+                    <path class="flow" d="M240,76 C240,170 392,170 392,280"/>
+
+                    <g class="node primary">
+                        <rect x="160" y="16" width="160" height="60" rx="10"/>
+                        <svg class="icon" x="176" y="32" width="22" height="22"><?= Icons::svg('server', 22) ?></svg>
+                        <text x="210" y="42">Dane</text>
+                        <text x="210" y="58" class="sub">produkcyjne</text>
+                    </g>
+
+                    <g class="node">
+                        <rect x="20" y="280" width="136" height="70" rx="10"/>
+                        <svg class="icon" x="34" y="296" width="20" height="20"><?= Icons::svg('layers', 20) ?></svg>
+                        <text x="64" y="309">Kopia lokalna</text>
+                        <text x="64" y="325" class="sub">inny nosnik</text>
+                    </g>
+
+                    <g class="node">
+                        <rect x="172" y="280" width="136" height="70" rx="10"/>
+                        <svg class="icon" x="186" y="296" width="20" height="20"><?= Icons::svg('cloud-upload', 20) ?></svg>
+                        <text x="216" y="309">Kopia offsite</text>
+                        <text x="216" y="325" class="sub">poza siedziba</text>
+                    </g>
+
+                    <g class="node">
+                        <rect x="324" y="280" width="136" height="70" rx="10"/>
+                        <svg class="icon" x="338" y="296" width="20" height="20"><?= Icons::svg('lock', 20) ?></svg>
+                        <text x="368" y="309">Repozytorium</text>
+                        <text x="368" y="325" class="sub">immutable</text>
+                    </g>
+                </svg>
             </div>
         </div>
     </div>
