@@ -112,6 +112,61 @@ $teaser = array_slice($services, 0, 6);
     </div>
 </section>
 
+<section class="sw-section">
+    <div class="sw-wrap">
+        <div class="sw-section-head reveal">
+            <h5>Platforma</h5>
+            <h2>Jedna platforma, pelna ochrona danych</h2>
+            <p>Trzy filary, na ktorych opieramy kazde wdrozenie — od pierwszej kopii po pelne disaster recovery.</p>
+        </div>
+        <div class="sw-platform reveal">
+            <div class="sw-platform__tabs" role="tablist">
+                <button type="button" class="sw-platform__tab is-active" data-tab="backup" role="tab" aria-selected="true">
+                    <span class="icon"><?= Icons::svg('cloud-upload', 20) ?></span>
+                    <span><strong>Backup i ochrona</strong><small>Kopie niezmienne, zgodne z 3-2-1</small></span>
+                </button>
+                <button type="button" class="sw-platform__tab" data-tab="dr" role="tab" aria-selected="false">
+                    <span class="icon"><?= Icons::svg('life-buoy', 20) ?></span>
+                    <span><strong>Disaster Recovery</strong><small>Procedury i cele RTO/RPO</small></span>
+                </button>
+                <button type="button" class="sw-platform__tab" data-tab="monitoring" role="tab" aria-selected="false">
+                    <span class="icon"><?= Icons::svg('activity', 20) ?></span>
+                    <span><strong>Monitoring i zgodnosc</strong><small>Nadzor 24/7 i raporty</small></span>
+                </button>
+            </div>
+            <div class="sw-platform__panels">
+                <div class="sw-platform__panel is-active" data-panel="backup">
+                    <h3>Backup, ktory przetrwa atak</h3>
+                    <p>Kopie w repozytorium niezmiennym (immutable), zgodne z zasada 3-2-1 - dane pozostaja odzyskiwalne nawet po przejeciu konta administratora.</p>
+                    <ul>
+                        <li><?= Icons::svg('check', 14) ?> Codzienne, automatyczne kopie bez ingerencji Twojego zespolu IT</li>
+                        <li><?= Icons::svg('check', 14) ?> Wsparcie dla narzedzi, ktore juz masz (np. Veeam, Proxmox Backup Server)</li>
+                        <li><?= Icons::svg('check', 14) ?> Repozytoria immutable odporne na ransomware</li>
+                    </ul>
+                </div>
+                <div class="sw-platform__panel" data-panel="dr">
+                    <h3>Disaster Recovery zaplanowany, nie improwizowany</h3>
+                    <p>Ustalamy z Toba realne cele RTO/RPO i budujemy procedury, dzieki ktorym w razie awarii wiadomo dokladnie, co robic - krok po kroku.</p>
+                    <ul>
+                        <li><?= Icons::svg('check', 14) ?> Zdefiniowane cele czasu i punktu przywrocenia (RTO/RPO)</li>
+                        <li><?= Icons::svg('check', 14) ?> Infrastruktura zapasowa gotowa do szybkiego przelaczenia</li>
+                        <li><?= Icons::svg('check', 14) ?> Spisana procedura awaryjna zamiast dzialania na pamiec</li>
+                    </ul>
+                </div>
+                <div class="sw-platform__panel" data-panel="monitoring">
+                    <h3>Nadzor, ktory nie spi</h3>
+                    <p>Srodowisko backupu jest monitorowane calodobowo - reagujemy zanim niepowodzenie kopii stanie sie utrata danych.</p>
+                    <ul>
+                        <li><?= Icons::svg('check', 14) ?> Monitoring zadan backupu i repozytoriow 24/7</li>
+                        <li><?= Icons::svg('check', 14) ?> Regularne, realne testy odtwarzania z raportem</li>
+                        <li><?= Icons::svg('check', 14) ?> Polityki retencji zgodne z wymaganiami compliance</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <section class="sw-section sw-section--muted">
     <div class="sw-wrap">
         <div class="sw-section-head reveal">

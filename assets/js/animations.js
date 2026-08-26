@@ -61,4 +61,20 @@
         }
         setTimeout(function () { requestAnimationFrame(step); }, 500);
     });
+
+    // Platform tabs on the homepage ("Backup" / "Disaster Recovery" / "Monitoring").
+    document.querySelectorAll('.sw-platform').forEach(function (wrap) {
+        var tabs = wrap.querySelectorAll('.sw-platform__tab');
+        var panels = wrap.querySelectorAll('.sw-platform__panel');
+        tabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                tabs.forEach(function (t) { t.classList.remove('is-active'); t.setAttribute('aria-selected', 'false'); });
+                panels.forEach(function (p) { p.classList.remove('is-active'); });
+                tab.classList.add('is-active');
+                tab.setAttribute('aria-selected', 'true');
+                var target = wrap.querySelector('.sw-platform__panel[data-panel="' + tab.getAttribute('data-tab') + '"]');
+                if (target) target.classList.add('is-active');
+            });
+        });
+    });
 })();

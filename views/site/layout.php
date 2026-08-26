@@ -5,9 +5,11 @@
 use SecureWare\Core\Config;
 use SecureWare\Core\Icons;
 use SecureWare\Models\Media;
+use SecureWare\Models\Service;
 use SecureWare\Models\Setting;
 
-$settings   = Setting::all();
+$settings     = Setting::all();
+$navServices  = Service::published();
 $siteName   = $settings['site_name'] ?? 'SecureWare';
 $tagline    = $settings['site_tagline'] ?? '';
 $navMenu    = json_decode($settings['nav_menu'] ?? '[]', true) ?: [];
@@ -65,7 +67,24 @@ $cookieYes = $settings['cookieyes_script'] ?? '';
         </a>
         <nav class="sw-nav" id="sw-nav">
             <?php foreach ($navMenu as $item): ?>
-                <a href="<?= htmlspecialchars($item['url'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') ?></a>
+                <?php if ($item['url'] === '/oferta' && $navServices): ?>
+                    <div class="sw-nav__item">
+                        <a href="/oferta"><?= htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') ?> <?= Icons::svg('chevron-down', 14) ?></a>
+                        <div class="sw-mega">
+                            <div class="sw-mega__grid">
+                                <?php foreach ($navServices as $s): ?>
+                                    <a class="sw-mega__item" href="/oferta/<?= htmlspecialchars($s['slug'], ENT_QUOTES, 'UTF-8') ?>">
+                                        <span class="icon"><?= Icons::svg($s['icon'], 16) ?></span>
+                                        <span><?= htmlspecialchars($s['name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                    </a>
+                                <?php endforeach; ?>
+                            </div>
+                            <a class="sw-mega__all" href="/oferta">Zobacz pelna oferte <?= Icons::svg('arrow-right', 14) ?></a>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <a href="<?= htmlspecialchars($item['url'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') ?></a>
+                <?php endif; ?>
             <?php endforeach; ?>
         </nav>
         <div class="sw-header__actions">
