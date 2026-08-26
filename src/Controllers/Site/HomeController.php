@@ -5,6 +5,7 @@ namespace SecureWare\Controllers\Site;
 use SecureWare\Core\Request;
 use SecureWare\Core\View;
 use SecureWare\Models\Article;
+use SecureWare\Models\HomeContent;
 use SecureWare\Models\Service;
 use SecureWare\Models\Setting;
 
@@ -17,6 +18,7 @@ class HomeController
         echo View::render('site/home', [
             'services'        => Service::published(),
             'latestArticles'  => Article::latest(3),
+            'content'         => HomeContent::current(),
             'metaTitle'       => ($settings['site_name'] ?? 'SecureWare') . ' — ' . ($settings['site_tagline'] ?? 'Backup i Disaster Recovery dla firm'),
             'metaDescription' => $settings['site_tagline'] ?? '',
         ], 'site/layout');

@@ -7,6 +7,7 @@
 use SecureWare\Controllers\Admin\ArticleController;
 use SecureWare\Controllers\Admin\AuthController;
 use SecureWare\Controllers\Admin\DashboardController;
+use SecureWare\Controllers\Admin\HomeContentController;
 use SecureWare\Controllers\Admin\LeadController;
 use SecureWare\Controllers\Admin\LogController;
 use SecureWare\Controllers\Admin\MediaController;
@@ -77,6 +78,8 @@ $router->get($a . '/settings/branding', [SettingsController::class, 'branding'])
 $router->post($a . '/settings/branding', [SettingsController::class, 'saveBranding']);
 $router->get($a . '/settings/integrations', [SettingsController::class, 'integrations']);
 $router->post($a . '/settings/integrations', [SettingsController::class, 'saveIntegrations']);
+$router->get($a . '/settings/homepage', [HomeContentController::class, 'edit']);
+$router->post($a . '/settings/homepage', [HomeContentController::class, 'save']);
 
 $router->get($a . '/logs', [LogController::class, 'index']);
 
