@@ -190,8 +190,8 @@ h1, h2, h3, h4 { font-family: var(--sw-font-display); line-height: 1.12; margin:
 .sw-service-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--sw-primary), #7fd6fb); transform: scaleX(0); transform-origin: left; transition: transform .35s cubic-bezier(.16,.8,.24,1); }
 .sw-service-card:hover { box-shadow: 0 22px 44px -10px rgba(16,24,40,.16); transform: translateY(-6px); border-color: transparent; }
 .sw-service-card:hover::before { transform: scaleX(1); }
-.sw-service-card__icon { width: 50px; height: 50px; border-radius: 14px; background: linear-gradient(135deg, var(--sw-primary-tint), #d6f0fc); color: var(--sw-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 18px; transition: transform .35s cubic-bezier(.34,1.56,.64,1), background .25s ease, color .25s ease; }
-.sw-service-card:hover .sw-service-card__icon { transform: scale(1.12) rotate(-4deg); background: var(--sw-primary); color: #fff; }
+.sw-service-card__icon { width: 28px; height: 28px; color: var(--sw-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 22px; transition: transform .3s cubic-bezier(.34,1.56,.64,1); }
+.sw-service-card:hover .sw-service-card__icon { transform: scale(1.15) rotate(-6deg); }
 .sw-service-card h3 { font-size: 18px; margin-bottom: 9px; letter-spacing: -.01em; }
 .sw-service-card p { color: var(--sw-muted); font-size: 14.5px; margin: 0 0 16px; }
 .sw-service-card a.more { font-weight: 700; font-size: 13.5px; color: var(--sw-primary); display: inline-flex; align-items: center; gap: 4px; }
@@ -277,14 +277,16 @@ h1, h2, h3, h4 { font-family: var(--sw-font-display); line-height: 1.12; margin:
 @media (max-width: 860px) { .sw-why { grid-template-columns: 1fr; gap: 30px; } }
 
 /* ---- Process steps ---- */
-.sw-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
-.sw-step { position: relative; padding: 34px 26px 28px; background: #fff; border: 1px solid var(--sw-border); border-radius: var(--sw-radius); transition: transform .25s cubic-bezier(.16,.8,.24,1), box-shadow .25s ease, border-color .25s ease; }
-.sw-step:hover { transform: translateY(-4px); box-shadow: 0 20px 40px -10px rgba(16,24,40,.12); border-color: transparent; }
-.sw-step__num { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, var(--sw-primary), var(--sw-primary-dark)); color: #fff; font-weight: 800; margin-bottom: 16px; box-shadow: 0 8px 18px rgba(11,165,239,.3); transition: transform .3s cubic-bezier(.34,1.56,.64,1); }
-.sw-step:hover .sw-step__num { transform: scale(1.15) rotate(-4deg); }
-.sw-step h4 { font-size: 18px; margin-bottom: 9px; letter-spacing: -.01em; }
-.sw-step p { color: var(--sw-muted); font-size: 14.5px; margin: 0; }
-@media (max-width: 860px) { .sw-steps { grid-template-columns: 1fr; } }
+/* Deliberately a connected horizontal timeline, not another bordered card
+   grid - the page already has enough of those (services, platform tabs). */
+.sw-steps { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; text-align: center; }
+.sw-steps::before { content: ''; position: absolute; top: 22px; left: calc(100% / 6); right: calc(100% / 6); height: 2px; background: var(--sw-border); z-index: 0; }
+.sw-step { position: relative; z-index: 1; }
+.sw-step__num { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: #fff; border: 2px solid var(--sw-primary); color: var(--sw-primary); font-family: var(--sw-font-display); font-weight: 700; font-size: 17px; margin: 0 auto 22px; transition: background .25s ease, color .25s ease, transform .25s ease; }
+.sw-step:hover .sw-step__num { background: var(--sw-primary); color: #fff; transform: scale(1.1); }
+.sw-step h4 { font-size: 18px; margin-bottom: 8px; letter-spacing: -.01em; }
+.sw-step p { color: var(--sw-muted); font-size: 14.5px; margin: 0 auto; max-width: 260px; }
+@media (max-width: 860px) { .sw-steps { grid-template-columns: 1fr; gap: 34px; } .sw-steps::before { display: none; } }
 
 /* ---- FAQ ---- */
 .sw-faq { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
