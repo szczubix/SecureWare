@@ -22,6 +22,7 @@ $isActive = function (string $href) use ($currentPath, $adminUrl): bool {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<meta name="admin-base" content="<?= $adminUrl ?>">
 <title>Panel administracyjny · SecureWare</title>
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">

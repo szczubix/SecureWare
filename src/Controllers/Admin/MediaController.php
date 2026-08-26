@@ -43,33 +43,77 @@ class MediaController
             Response::redirect($this->url());
         }
 
+        [$media, $error] = $this->storeUpload($request);
+        if ($error) {
+            Session::flash('error', $error);
+        }
+
+        Response::redirect($this->url());
+    }
+
+    /**
+     * Wariant AJAX uzywany przez edytor tresci (wstawianie obrazkow w
+     * artykulach/stronach bez opuszczania formularza) - zwraca JSON zamiast
+     * przekierowania.
+     */
+    public function uploadJson(Request $request): void
+    {
+        Auth::requirePermission('media.upload');
+        header('Content-Type: application/json; charset=UTF-8');
+
+        if (!Csrf::verify($request->input('_csrf'))) {
+            http_response_code(419);
+            echo json_encode(['ok' => false, 'error' => 'Sesja wygasła, odśwież stronę.']);
+            return;
+        }
+
+        [$media, $error] = $this->storeUpload($request);
+        if ($error) {
+            http_response_code(422);
+            echo json_encode(['ok' => false, 'error' => $error]);
+            return;
+        }
+
+        echo json_encode(['ok' => true, 'media' => $media]);
+    }
+
+    public function listJson(Request $request): void
+    {
+        Auth::requirePermission('media.view');
+        header('Content-Type: application/json; charset=UTF-8');
+
+        $images = array_values(array_filter(Media::all(200), static fn ($m) => str_starts_with($m['mime'], 'image/')));
+        echo json_encode(['ok' => true, 'media' => $images]);
+    }
+
+    /**
+     * @return array{0: array|null, 1: string|null} [media, error]
+     */
+    private function storeUpload(Request $request): array
+    {
         $file = $request->file('file');
         if (!$file) {
-            Session::flash('error', 'Nie wybrano pliku.');
-            Response::redirect($this->url());
+            return [null, 'Nie wybrano pliku.'];
         }
 
         if ($file['error'] !== UPLOAD_ERR_OK) {
-            Session::flash('error', 'Błąd podczas wgrywania pliku.');
-            Response::redirect($this->url());
+            return [null, 'Błąd podczas wgrywania pliku.'];
         }
 
         if ($file['size'] > self::MAX_SIZE) {
-            Session::flash('error', 'Plik jest za duży (limit 8 MB).');
-            Response::redirect($this->url());
+            return [null, 'Plik jest za duży (limit 8 MB).'];
         }
 
         $mime = mime_content_type($file['tmp_name']) ?: '';
         if (!isset(self::ALLOWED_MIME[$mime])) {
-            Session::flash('error', 'Niedozwolony typ pliku. Dozwolone: JPG, PNG, WEBP, GIF, PDF.');
-            Response::redirect($this->url());
+            return [null, 'Niedozwolony typ pliku. Dozwolone: JPG, PNG, WEBP, GIF, PDF.'];
         }
 
         $ext        = self::ALLOWED_MIME[$mime];
         $baseName   = Str::slug(pathinfo($file['name'], PATHINFO_FILENAME)) ?: 'plik';
         $uniqueName = $baseName . '-' . bin2hex(random_bytes(4)) . '.' . $ext;
 
-        $subDir   = date('Y/m');
+        $subDir    = date('Y/m');
         $uploadDir = ROOT_PATH . '/uploads/' . $subDir;
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
@@ -77,15 +121,14 @@ class MediaController
 
         $destination = $uploadDir . '/' . $uniqueName;
         if (!move_uploaded_file($file['tmp_name'], $destination)) {
-            Session::flash('error', 'Nie udało się zapisać pliku na serwerze.');
-            Response::redirect($this->url());
+            return [null, 'Nie udało się zapisać pliku na serwerze.'];
         }
 
         $publicPath = '/uploads/' . $subDir . '/' . $uniqueName;
         $id = Media::create($uniqueName, $publicPath, $mime, (int) $file['size'], (int) Auth::id());
         Logger::record('upload', 'media', $id);
 
-        Response::redirect($this->url());
+        return [Media::find($id), null];
     }
 
     public function destroy(Request $request, string $id): void

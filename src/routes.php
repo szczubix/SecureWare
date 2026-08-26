@@ -57,7 +57,9 @@ $router->post($a . '/services/{id}', [ServiceAdminController::class, 'update']);
 $router->post($a . '/services/{id}/delete', [ServiceAdminController::class, 'destroy']);
 
 $router->get($a . '/media', [MediaController::class, 'index']);
+$router->get($a . '/media/list.json', [MediaController::class, 'listJson']);
 $router->post($a . '/media/upload', [MediaController::class, 'upload']);
+$router->post($a . '/media/upload.json', [MediaController::class, 'uploadJson']);
 $router->post($a . '/media/{id}/delete', [MediaController::class, 'destroy']);
 
 $router->get($a . '/users', [UserController::class, 'index']);

@@ -2,11 +2,14 @@
 /** @var string $content */
 /** @var string|null $metaTitle */
 /** @var string|null $metaDescription */
+/** @var string|null $ogImage */
 use SecureWare\Core\Config;
 use SecureWare\Core\Icons;
 use SecureWare\Models\Media;
 use SecureWare\Models\Service;
 use SecureWare\Models\Setting;
+
+$ogImage = $ogImage ?? null;
 
 $settings     = Setting::all();
 $navServices  = Service::published();
@@ -14,7 +17,11 @@ $siteName   = $settings['site_name'] ?? 'SecureWare';
 $tagline    = $settings['site_tagline'] ?? '';
 $navMenu    = json_decode($settings['nav_menu'] ?? '[]', true) ?: [];
 $logoId     = $settings['logo_media_id'] ?? '';
-$logoPath   = $logoId ? (Media::find((int) $logoId)['path'] ?? null) : null;
+$logoMedia  = $logoId ? Media::find((int) $logoId) : null;
+$logoPath   = $logoMedia['path'] ?? null;
+// og:image/twitter:image must be a raster image - most crawlers (LinkedIn,
+// Facebook) don't render SVG, so an SVG logo isn't usable as a fallback here.
+$logoRasterPath = ($logoMedia && $logoMedia['mime'] !== 'image/svg+xml') ? $logoPath : null;
 $faviconId  = $settings['favicon_media_id'] ?? '';
 $faviconPath = $faviconId ? (Media::find((int) $faviconId)['path'] ?? null) : null;
 
@@ -22,6 +29,14 @@ $pageTitle = $metaTitle ?? $siteName;
 $pageDesc  = $metaDescription ?? $tagline;
 $gaId      = $settings['ga_measurement_id'] ?? '';
 $cookieYes = $settings['cookieyes_script'] ?? '';
+
+$baseUrl     = rtrim((string) (Config::get('app')['url'] ?? 'http://localhost'), '/');
+$currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$canonicalUrl = $baseUrl . $currentPath;
+$ogImageUrl  = $ogImage ?? $logoRasterPath;
+if ($ogImageUrl && !preg_match('#^https?://#', $ogImageUrl)) {
+    $ogImageUrl = $baseUrl . $ogImageUrl;
+}
 ?><!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -29,9 +44,17 @@ $cookieYes = $settings['cookieyes_script'] ?? '';
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
 <meta name="description" content="<?= htmlspecialchars($pageDesc, ENT_QUOTES, 'UTF-8') ?>">
+<link rel="canonical" href="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES, 'UTF-8') ?>">
 <meta property="og:title" content="<?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?>">
 <meta property="og:description" content="<?= htmlspecialchars($pageDesc, ENT_QUOTES, 'UTF-8') ?>">
-<meta property="og:type" content="website">
+<meta property="og:type" content="<?= $ogImage ? 'article' : 'website' ?>">
+<meta property="og:url" content="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES, 'UTF-8') ?>">
+<?php if ($ogImageUrl): ?><meta property="og:image" content="<?= htmlspecialchars($ogImageUrl, ENT_QUOTES, 'UTF-8') ?>"><?php endif; ?>
+<meta property="og:site_name" content="<?= htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8') ?>">
+<meta name="twitter:card" content="<?= $ogImageUrl ? 'summary_large_image' : 'summary' ?>">
+<meta name="twitter:title" content="<?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?>">
+<meta name="twitter:description" content="<?= htmlspecialchars($pageDesc, ENT_QUOTES, 'UTF-8') ?>">
+<?php if ($ogImageUrl): ?><meta name="twitter:image" content="<?= htmlspecialchars($ogImageUrl, ENT_QUOTES, 'UTF-8') ?>"><?php endif; ?>
 <?php if ($faviconPath): ?>
 <link rel="icon" href="<?= htmlspecialchars($faviconPath, ENT_QUOTES, 'UTF-8') ?>">
 <?php else: ?>

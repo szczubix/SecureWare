@@ -414,3 +414,7 @@ h1, h2, h3, h4 { font-family: var(--sw-font-display); line-height: 1.12; margin:
     .sw-anim-in { opacity: 1 !important; animation: none !important; }
     .sw-hero::before, .sw-hero::after, .sw-diagram-card__live::before { animation: none !important; }
 }
+
+.sw-prose .content-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin: 1.4em 0; }
+.sw-prose .content-columns p:last-child { margin-bottom: 0; }
+@media (max-width: 640px) { .sw-prose .content-columns { grid-template-columns: 1fr; gap: 0; } }

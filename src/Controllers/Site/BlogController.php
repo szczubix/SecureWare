@@ -44,6 +44,7 @@ class BlogController
             'related'         => Article::related((int) $article['id'], $article['category_id'] ? (int) $article['category_id'] : null),
             'metaTitle'       => $article['meta_title'] ?: $article['title'],
             'metaDescription' => $article['meta_description'] ?: $article['excerpt'],
+            'ogImage'         => $article['featured_image_path'] ?: null,
         ], 'site/layout');
     }
 }
