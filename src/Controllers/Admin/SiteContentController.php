@@ -18,9 +18,12 @@ class SiteContentController
     {
         Auth::requirePermission('settings.edit');
 
+        $lang = $request->input('lang') === 'en' ? 'en' : 'pl';
+
         echo View::render('admin/settings/pages-content', [
-            'content' => SiteContent::current(),
+            'content' => SiteContent::current($lang),
             'saved'   => Session::flash('saved'),
+            'lang'    => $lang,
         ], 'admin/layout');
     }
 
@@ -75,11 +78,12 @@ class SiteContentController
             ],
         ];
 
-        SiteContent::save($content);
+        $lang = $request->input('lang') === 'en' ? 'en' : 'pl';
+        SiteContent::save($content, $lang);
 
-        Logger::record('update', 'site_page_content');
+        Logger::record('update', 'site_page_content' . ($lang === 'en' ? '_en' : ''));
         Session::flash('saved', '1');
-        Response::redirect($this->url());
+        Response::redirect($this->url() . ($lang === 'en' ? '?lang=en' : ''));
     }
 
     private function rows(array $in, string $prefix, array $fields): array

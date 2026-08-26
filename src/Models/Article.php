@@ -14,6 +14,8 @@ class Article
                              LEFT JOIN users u ON u.id = a.author_id
                              LEFT JOIN media m ON m.id = a.featured_image_id';
 
+    private const TRANSLATABLE = ['title', 'excerpt', 'content', 'meta_title', 'meta_description'];
+
     public static function find(int $id): ?array
     {
         $stmt = Database::connection()->prepare(self::SELECT . ' WHERE a.id = :id');
@@ -25,13 +27,24 @@ class Article
         return $article;
     }
 
-    public static function findBySlug(string $slug): ?array
+    public static function findBySlug(string $slug, string $locale = 'pl'): ?array
     {
         $stmt = Database::connection()->prepare(self::SELECT . " WHERE a.slug = :slug AND a.status = 'published'");
         $stmt->execute(['slug' => $slug]);
         $article = $stmt->fetch() ?: null;
         if ($article) {
             $article['tags'] = Tag::forArticle((int) $article['id']);
+            $article = Translation::applyTo($article, 'article', $locale, self::TRANSLATABLE);
+            $article = self::translateCategoryName($article, $locale);
+        }
+        return $article;
+    }
+
+    /** Tlumaczy "category_name" doloczone przez JOIN (nalezy do kategorii, nie do artykulu). */
+    private static function translateCategoryName(array $article, string $locale): array
+    {
+        if ($locale !== 'pl' && !empty($article['category_id']) && !empty($article['category_name'])) {
+            $article['category_name'] = Translation::get('category', (int) $article['category_id'], $locale, 'name', $article['category_name']);
         }
         return $article;
     }
@@ -46,7 +59,7 @@ class Article
     /**
      * @return array{items: array, total: int}
      */
-    public static function published(int $page = 1, int $perPage = 9, ?string $categorySlug = null, ?string $tagSlug = null): array
+    public static function published(int $page = 1, int $perPage = 9, ?string $categorySlug = null, ?string $tagSlug = null, string $locale = 'pl'): array
     {
         $where  = ["a.status = 'published'", 'a.published_at <= NOW()'];
         $params = [];
@@ -86,10 +99,11 @@ class Article
         $stmt->bindValue('offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
 
-        return ['items' => $stmt->fetchAll(), 'total' => $total];
+        $items = array_map(fn (array $a) => self::translateCategoryName($a, $locale), $stmt->fetchAll());
+        return ['items' => Translation::applyToMany($items, 'article', $locale, self::TRANSLATABLE), 'total' => $total];
     }
 
-    public static function latest(int $limit = 3): array
+    public static function latest(int $limit = 3, string $locale = 'pl'): array
     {
         $stmt = Database::connection()->prepare(
             self::SELECT . " WHERE a.status = 'published' AND a.published_at <= NOW()
@@ -97,10 +111,11 @@ class Article
         );
         $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetchAll();
+        $items = array_map(fn (array $a) => self::translateCategoryName($a, $locale), $stmt->fetchAll());
+        return Translation::applyToMany($items, 'article', $locale, self::TRANSLATABLE);
     }
 
-    public static function related(int $articleId, ?int $categoryId, int $limit = 3): array
+    public static function related(int $articleId, ?int $categoryId, string $locale = 'pl', int $limit = 3): array
     {
         $stmt = Database::connection()->prepare(
             self::SELECT . " WHERE a.status = 'published' AND a.id != :id
@@ -112,7 +127,8 @@ class Article
         $stmt->bindValue('category_id2', $categoryId, $categoryId === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
         $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetchAll();
+        $items = array_map(fn (array $a) => self::translateCategoryName($a, $locale), $stmt->fetchAll());
+        return Translation::applyToMany($items, 'article', $locale, self::TRANSLATABLE);
     }
 
     public static function create(array $data): int

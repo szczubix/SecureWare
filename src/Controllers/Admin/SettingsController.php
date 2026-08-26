@@ -34,32 +34,26 @@ class SettingsController
             Response::redirect($this->url('branding'));
         }
 
-        $navLabels = (array) ($request->all()['nav_label'] ?? []);
-        $navUrls   = (array) ($request->all()['nav_url'] ?? []);
-        $navMenu   = [];
-        foreach ($navLabels as $i => $label) {
-            $label = trim((string) $label);
-            $url   = trim((string) ($navUrls[$i] ?? ''));
-            if ($label === '' || $url === '') {
-                continue;
-            }
-            $navMenu[] = ['label' => $label, 'url' => $url];
-        }
+        $navMenu   = $this->navMenuFromRequest($request, 'nav_label', 'nav_url');
+        $navMenuEn = $this->navMenuFromRequest($request, 'nav_label_en', 'nav_url_en');
 
         Setting::setMany([
             'site_name'       => (string) $request->input('site_name', 'SecureWare'),
             'site_tagline'    => (string) $request->input('site_tagline', ''),
+            'site_tagline_en' => (string) $request->input('site_tagline_en', ''),
             'contact_email'   => (string) $request->input('contact_email', ''),
             'contact_phone'   => (string) $request->input('contact_phone', ''),
             'contact_address' => (string) $request->input('contact_address', ''),
             'color_primary'   => (string) $request->input('color_primary', '#0b5fff'),
             'color_dark'      => (string) $request->input('color_dark', '#0a0f1e'),
             'footer_text'     => (string) $request->input('footer_text', ''),
+            'footer_text_en'  => (string) $request->input('footer_text_en', ''),
             'social_linkedin' => (string) $request->input('social_linkedin', ''),
             'social_twitter'  => (string) $request->input('social_twitter', ''),
             'logo_media_id'   => (string) $request->input('logo_media_id', ''),
             'favicon_media_id'=> (string) $request->input('favicon_media_id', ''),
             'nav_menu'        => json_encode($navMenu, JSON_UNESCAPED_UNICODE),
+            'nav_menu_en'     => json_encode($navMenuEn, JSON_UNESCAPED_UNICODE),
         ]);
 
         Logger::record('update', 'settings_branding');
@@ -96,6 +90,23 @@ class SettingsController
         Logger::record('update', 'settings_integrations');
         Session::flash('saved', '1');
         Response::redirect($this->url('integrations'));
+    }
+
+    private function navMenuFromRequest(Request $request, string $labelField, string $urlField): array
+    {
+        $labels = (array) ($request->all()[$labelField] ?? []);
+        $urls   = (array) ($request->all()[$urlField] ?? []);
+        $menu   = [];
+        foreach ($labels as $i => $label) {
+            $label = trim((string) $label);
+            $url   = trim((string) ($urls[$i] ?? ''));
+            if ($label === '' || $url === '') {
+                continue;
+            }
+            $menu[] = ['label' => $label, 'url' => $url];
+        }
+
+        return $menu;
     }
 
     private function url(string $tab): string

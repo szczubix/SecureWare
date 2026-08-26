@@ -5,6 +5,8 @@
 /** @var string|null $ogImage */
 use SecureWare\Core\Config;
 use SecureWare\Core\Icons;
+use SecureWare\Core\Lang;
+use SecureWare\Core\Locale;
 use SecureWare\Models\Media;
 use SecureWare\Models\Service;
 use SecureWare\Models\Setting;
@@ -12,10 +14,25 @@ use SecureWare\Models\Setting;
 $ogImage = $ogImage ?? null;
 
 $settings     = Setting::all();
-$navServices  = Service::published();
+$navServices  = Service::published(Locale::current());
 $siteName   = $settings['site_name'] ?? 'SecureWare';
-$tagline    = $settings['site_tagline'] ?? '';
-$navMenu    = json_decode($settings['nav_menu'] ?? '[]', true) ?: [];
+$tagline    = Locale::isDefault() ? ($settings['site_tagline'] ?? '') : ($settings['site_tagline_en'] ?? $settings['site_tagline'] ?? '');
+
+// Fallback tlumaczenie etykiet menu, gdy administrator nie skonfigurowal
+// jeszcze osobnego menu EN (nav_menu_en) - tlumaczy znane adresy, resztę
+// zostawia w oryginalnym jezyku zamiast pokazac puste menu.
+$navLabelFallback = [
+    '/oferta' => 'Offer', '/blog' => 'Blog', '/o-nas' => 'About us', '/kontakt' => 'Contact',
+    '/polityka-prywatnosci' => 'Privacy policy', '/regulamin' => 'Terms of service',
+];
+$navMenu = json_decode($settings['nav_menu'] ?? '[]', true) ?: [];
+if (!Locale::isDefault()) {
+    $navMenuEn = json_decode($settings['nav_menu_en'] ?? '[]', true) ?: [];
+    $navMenu = $navMenuEn ?: array_map(
+        static fn (array $item) => ['label' => $navLabelFallback[$item['url']] ?? $item['label'], 'url' => $item['url']],
+        $navMenu
+    );
+}
 $logoId     = $settings['logo_media_id'] ?? '';
 $logoMedia  = $logoId ? Media::find((int) $logoId) : null;
 $logoPath   = $logoMedia['path'] ?? null;
@@ -33,18 +50,26 @@ $cookieYes = $settings['cookieyes_script'] ?? '';
 $baseUrl     = rtrim((string) (Config::get('app')['url'] ?? 'http://localhost'), '/');
 $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $canonicalUrl = $baseUrl . $currentPath;
+
+// Sciezka bez prefiksu jezyka (do budowania alternate/hreflang i przelacznika PL/EN).
+$unprefixedPath = ($currentPath === '/en' || str_starts_with($currentPath, '/en/'))
+    ? ('/' . ltrim(substr($currentPath, 3), '/'))
+    : $currentPath;
 $ogImageUrl  = $ogImage ?? $logoRasterPath;
 if ($ogImageUrl && !preg_match('#^https?://#', $ogImageUrl)) {
     $ogImageUrl = $baseUrl . $ogImageUrl;
 }
 ?><!DOCTYPE html>
-<html lang="pl">
+<html lang="<?= Locale::current() ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
 <meta name="description" content="<?= htmlspecialchars($pageDesc, ENT_QUOTES, 'UTF-8') ?>">
 <link rel="canonical" href="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES, 'UTF-8') ?>">
+<link rel="alternate" hreflang="pl" href="<?= htmlspecialchars($baseUrl . $unprefixedPath, ENT_QUOTES, 'UTF-8') ?>">
+<link rel="alternate" hreflang="en" href="<?= htmlspecialchars($baseUrl . Locale::urlIn('en', $unprefixedPath), ENT_QUOTES, 'UTF-8') ?>">
+<link rel="alternate" hreflang="x-default" href="<?= htmlspecialchars($baseUrl . $unprefixedPath, ENT_QUOTES, 'UTF-8') ?>">
 <meta property="og:title" content="<?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?>">
 <meta property="og:description" content="<?= htmlspecialchars($pageDesc, ENT_QUOTES, 'UTF-8') ?>">
 <meta property="og:type" content="<?= $ogImage ? 'article' : 'website' ?>">
@@ -81,7 +106,7 @@ if ($ogImageUrl && !preg_match('#^https?://#', $ogImageUrl)) {
 <body>
 <header class="sw-header">
     <div class="sw-wrap sw-header__inner">
-        <a href="/" class="sw-logo">
+        <a href="<?= Locale::url('/') ?>" class="sw-logo">
             <?php if ($logoPath): ?>
                 <img src="<?= htmlspecialchars($logoPath, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8') ?>">
             <?php else: ?>
@@ -92,27 +117,28 @@ if ($ogImageUrl && !preg_match('#^https?://#', $ogImageUrl)) {
             <?php foreach ($navMenu as $item): ?>
                 <?php if ($item['url'] === '/oferta' && $navServices): ?>
                     <div class="sw-nav__item">
-                        <a href="/oferta"><?= htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') ?> <?= Icons::svg('chevron-down', 14) ?></a>
+                        <a href="<?= Locale::url('/oferta') ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') ?> <?= Icons::svg('chevron-down', 14) ?></a>
                         <div class="sw-mega">
                             <div class="sw-mega__grid">
                                 <?php foreach ($navServices as $s): ?>
-                                    <a class="sw-mega__item" href="/oferta/<?= htmlspecialchars($s['slug'], ENT_QUOTES, 'UTF-8') ?>">
+                                    <a class="sw-mega__item" href="<?= Locale::url('/oferta/' . $s['slug']) ?>">
                                         <span class="icon"><?= Icons::svg($s['icon'], 16) ?></span>
                                         <span><?= htmlspecialchars($s['name'], ENT_QUOTES, 'UTF-8') ?></span>
                                     </a>
                                 <?php endforeach; ?>
                             </div>
-                            <a class="sw-mega__all" href="/oferta">Zobacz pełną ofertę <?= Icons::svg('arrow-right', 14) ?></a>
+                            <a class="sw-mega__all" href="<?= Locale::url('/oferta') ?>"><?= Lang::t('nav.see_full_offer') ?> <?= Icons::svg('arrow-right', 14) ?></a>
                         </div>
                     </div>
                 <?php else: ?>
-                    <a href="<?= htmlspecialchars($item['url'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') ?></a>
+                    <a href="<?= Locale::url($item['url']) ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') ?></a>
                 <?php endif; ?>
             <?php endforeach; ?>
         </nav>
         <div class="sw-header__actions">
-            <a href="/kontakt" class="sw-btn sw-btn--primary">Umów rozmowę</a>
-            <button class="sw-nav-toggle" id="sw-nav-toggle" aria-label="Menu"><?= Icons::svg('menu', 22) ?></button>
+            <a href="<?= htmlspecialchars($baseUrl . Locale::urlIn(Locale::isDefault() ? 'en' : 'pl', $unprefixedPath), ENT_QUOTES, 'UTF-8') ?>" class="sw-lang-switch" hreflang="<?= Locale::isDefault() ? 'en' : 'pl' ?>"><?= Lang::t('lang.switch_to') ?></a>
+            <a href="<?= Locale::url('/kontakt') ?>" class="sw-btn sw-btn--primary"><?= Lang::t('nav.book_call') ?></a>
+            <button class="sw-nav-toggle" id="sw-nav-toggle" aria-label="<?= Lang::t('nav.menu_aria') ?>"><?= Icons::svg('menu', 22) ?></button>
         </div>
     </div>
 </header>
@@ -130,18 +156,18 @@ if ($ogImageUrl && !preg_match('#^https?://#', $ogImageUrl)) {
             </div>
         </div>
         <div>
-            <h4>Nawigacja</h4>
+            <h4><?= Lang::t('footer.nav_heading') ?></h4>
             <?php foreach ($navMenu as $item): ?>
-                <a href="<?= htmlspecialchars($item['url'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') ?></a>
+                <a href="<?= Locale::url($item['url']) ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') ?></a>
             <?php endforeach; ?>
         </div>
         <div>
-            <h4>Prawne</h4>
-            <a href="/polityka-prywatnosci">Polityka prywatności</a>
-            <a href="/regulamin">Regulamin</a>
+            <h4><?= Lang::t('footer.legal_heading') ?></h4>
+            <a href="<?= Locale::url('/polityka-prywatnosci') ?>"><?= Lang::t('footer.privacy') ?></a>
+            <a href="<?= Locale::url('/regulamin') ?>"><?= Lang::t('footer.terms') ?></a>
         </div>
         <div>
-            <h4>Kontakt</h4>
+            <h4><?= Lang::t('footer.contact_heading') ?></h4>
             <?php if (!empty($settings['contact_email'])): ?><a href="mailto:<?= htmlspecialchars($settings['contact_email'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($settings['contact_email'], ENT_QUOTES, 'UTF-8') ?></a><?php endif; ?>
             <?php if (!empty($settings['contact_phone'])): ?><a href="tel:<?= htmlspecialchars(preg_replace('/\s+/', '', $settings['contact_phone']), ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($settings['contact_phone'], ENT_QUOTES, 'UTF-8') ?></a><?php endif; ?>
             <?php if (!empty($settings['contact_address'])): ?><span><?= htmlspecialchars($settings['contact_address'], ENT_QUOTES, 'UTF-8') ?></span><?php endif; ?>

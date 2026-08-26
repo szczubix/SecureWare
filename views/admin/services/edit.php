@@ -1,26 +1,64 @@
 <?php
 /** @var array|null $service */
 /** @var string|null $error */
+/** @var string $lang */
+/** @var array $translation */
 use SecureWare\Core\Config;
 use SecureWare\Core\Csrf;
 
 $adminUrl = '/' . Config::get('admin_path');
 $isEdit   = $service !== null;
-$action   = $isEdit ? $adminUrl . '/services/' . $service['id'] : $adminUrl . '/services';
+$action   = $isEdit ? $adminUrl . '/services/' . $service['id'] . ($lang === 'en' ? '?lang=en' : '') : $adminUrl . '/services';
 $meta     = $service['meta'] ?? [];
 $icons    = ['shield-check','cloud-upload','map-pin','lock','mail','server','layers','life-buoy','refresh-ccw','clipboard-check','tool','activity','file-check','shield'];
+$isEn     = $lang === 'en';
+$t        = static fn (string $field) => $translation[$field] ?? ($isEn ? '' : ($service[$field] ?? ''));
+$h        = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 ?>
 <div class="toolbar">
     <h1><?= $isEdit ? 'Edytuj usługę' : 'Nowa usługa' ?></h1>
     <a href="<?= $adminUrl ?>/services" class="button button--ghost">← Wróć do listy</a>
 </div>
 
-<?php if ($error): ?><p class="alert alert--error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
+<?php if ($isEdit): ?>
+<div class="admin-lang-tabs">
+    <a href="<?= $adminUrl ?>/services/<?= (int) $service['id'] ?>/edit" class="<?= !$isEn ? 'is-active' : '' ?>">Polski</a>
+    <a href="<?= $adminUrl ?>/services/<?= (int) $service['id'] ?>/edit?lang=en" class="<?= $isEn ? 'is-active' : '' ?>">English (EN)</a>
+</div>
+<?php endif; ?>
+
+<?php if ($error): ?><p class="alert alert--error"><?= $h($error) ?></p><?php endif; ?>
 
 <div class="admin-card">
     <form method="post" action="<?= $action ?>" class="form-grid form-grid--wide">
         <?= Csrf::field() ?>
+        <?php if ($isEn): ?><input type="hidden" name="lang" value="en"><?php endif; ?>
 
+        <?php if ($isEn): ?>
+            <p class="admin-hint" style="margin:0 0 4px;color:#6b7686;">Tłumaczenie tej usługi na angielski - slug, ikona, kolejność i status są wspólne dla obu języków.</p>
+            <div class="field">
+                <label>Name</label>
+                <input type="text" name="name" value="<?= $h($t('name')) ?>" placeholder="<?= $h($service['name']) ?>">
+            </div>
+            <div class="field">
+                <label>Short description</label>
+                <textarea name="short_description" rows="2"><?= $h($t('short_description')) ?></textarea>
+            </div>
+            <div class="field">
+                <label>Full content</label>
+                <textarea name="content" id="content-editor"><?= $t('content') ?></textarea>
+            </div>
+            <div class="form-row">
+                <div class="field">
+                    <label>SEO - meta title</label>
+                    <input type="text" name="meta_title" value="<?= $h($t('meta_title')) ?>">
+                </div>
+                <div class="field">
+                    <label>SEO - meta description</label>
+                    <input type="text" name="meta_description" value="<?= $h($t('meta_description')) ?>">
+                </div>
+            </div>
+        <?php else: ?>
         <div class="form-row">
             <div class="field">
                 <label>Nazwa</label>
@@ -89,6 +127,7 @@ $icons    = ['shield-check','cloud-upload','map-pin','lock','mail','server','lay
                 <input type="text" name="meta_description" value="<?= htmlspecialchars($service['meta_description'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             </div>
         </div>
+        <?php endif; ?>
 
         <div class="form-actions">
             <button type="submit" class="button">Zapisz</button>
@@ -101,5 +140,5 @@ $icons    = ['shield-check','cloud-upload','map-pin','lock','mail','server','lay
 <script src="/assets/js/admin.js?v=<?= @filemtime(ROOT_PATH . '/assets/js/admin.js') ?: '1' ?>"></script>
 <script>
 SecureWareEditor.init('content-editor');
-SecureWareAdmin.initRepeatable('meta-rows');
+<?php if (!$isEn): ?>SecureWareAdmin.initRepeatable('meta-rows');<?php endif; ?>
 </script>

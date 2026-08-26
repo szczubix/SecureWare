@@ -15,9 +15,12 @@ use SecureWare\Models\Article;
 use SecureWare\Models\Category;
 use SecureWare\Models\Media;
 use SecureWare\Models\Tag;
+use SecureWare\Models\Translation;
 
 class ArticleController
 {
+    private const TRANSLATABLE = ['title', 'excerpt', 'content', 'meta_title', 'meta_description'];
+
     public function index(Request $request): void
     {
         Auth::requirePermission('articles.view');
@@ -37,6 +40,8 @@ class ArticleController
             'media'      => Media::all(),
             'tagsValue'  => '',
             'error'      => null,
+            'lang'       => 'pl',
+            'translation'=> [],
         ], 'admin/layout');
     }
 
@@ -49,12 +54,17 @@ class ArticleController
             Response::notFound();
         }
 
+        $lang = $request->input('lang') === 'en' ? 'en' : 'pl';
+        $translation = $lang === 'en' ? Translation::getAll('article', (int) $id, 'en') : [];
+
         echo View::render('admin/articles/edit', [
             'article'    => $article,
             'categories' => Category::all(),
             'media'      => Media::all(),
             'tagsValue'  => implode(', ', array_column($article['tags'], 'name')),
             'error'      => null,
+            'lang'       => $lang,
+            'translation'=> $translation,
         ], 'admin/layout');
     }
 
@@ -74,6 +84,19 @@ class ArticleController
     {
         if (!Csrf::verify($request->input('_csrf'))) {
             Response::redirect($this->url());
+        }
+
+        $lang = $request->input('lang') === 'en' ? 'en' : 'pl';
+
+        if ($lang === 'en' && $id !== null) {
+            $fields = [];
+            foreach (self::TRANSLATABLE as $field) {
+                $fields[$field] = (string) $request->input($field, '');
+            }
+            Translation::setMany('article', $id, 'en', $fields);
+            Logger::record('update', 'article_translation_en', $id);
+            Response::redirect($this->url() . '/' . $id . '/edit?lang=en');
+            return;
         }
 
         $title = trim((string) $request->input('title', ''));
@@ -152,6 +175,8 @@ class ArticleController
             'media'      => Media::all(),
             'tagsValue'  => (string) $request->input('tags', ''),
             'error'      => $message,
+            'lang'       => 'pl',
+            'translation'=> [],
         ], 'admin/layout');
     }
 

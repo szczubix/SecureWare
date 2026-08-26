@@ -5,6 +5,7 @@
 use SecureWare\Core\Csrf;
 
 $navMenu = json_decode($settings['nav_menu'] ?? '[]', true) ?: [];
+$navMenuEn = json_decode($settings['nav_menu_en'] ?? '[]', true) ?: [];
 ?>
 <div class="toolbar">
     <h1>Ustawienia - Branding</h1>
@@ -25,6 +26,11 @@ $navMenu = json_decode($settings['nav_menu'] ?? '[]', true) ?: [];
                 <label>Hasło / tagline</label>
                 <input type="text" name="site_tagline" value="<?= htmlspecialchars($settings['site_tagline'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             </div>
+        </div>
+
+        <div class="field">
+            <label>Hasło / tagline (EN)</label>
+            <input type="text" name="site_tagline_en" value="<?= htmlspecialchars($settings['site_tagline_en'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
         </div>
 
         <div class="form-row">
@@ -96,6 +102,11 @@ $navMenu = json_decode($settings['nav_menu'] ?? '[]', true) ?: [];
         </div>
 
         <div class="field">
+            <label>Stopka - tekst (EN)</label>
+            <input type="text" name="footer_text_en" value="<?= htmlspecialchars($settings['footer_text_en'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+        </div>
+
+        <div class="field">
             <label>Menu główne</label>
             <div class="repeatable-rows" id="nav-rows">
                 <?php foreach ($navMenu as $item): ?>
@@ -109,6 +120,21 @@ $navMenu = json_decode($settings['nav_menu'] ?? '[]', true) ?: [];
             <button type="button" class="button button--ghost button--small" data-add-row="nav-rows" style="align-self:flex-start;margin-top:6px;">+ Dodaj pozycję menu</button>
         </div>
 
+        <div class="field">
+            <label>Menu główne (EN)</label>
+            <div class="repeatable-rows" id="nav-rows-en">
+                <?php foreach ($navMenuEn as $item): ?>
+                    <div class="row">
+                        <input type="text" name="nav_label_en[]" value="<?= htmlspecialchars($item['label'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Label">
+                        <input type="text" name="nav_url_en[]" value="<?= htmlspecialchars($item['url'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="/oferta">
+                        <button type="button" class="button button--ghost button--small" data-remove-row>Usuń</button>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <button type="button" class="button button--ghost button--small" data-add-row="nav-rows-en" style="align-self:flex-start;margin-top:6px;">+ Dodaj pozycję menu (EN)</button>
+            <span class="hint">Adresy podaj bez prefiksu /en — jest dodawany automatycznie.</span>
+        </div>
+
         <div class="form-actions">
             <button type="submit" class="button">Zapisz</button>
         </div>
@@ -117,18 +143,22 @@ $navMenu = json_decode($settings['nav_menu'] ?? '[]', true) ?: [];
 
 <script>
 (function(){
-    var container = document.getElementById('nav-rows');
-    var addBtn = document.querySelector('[data-add-row="nav-rows"]');
-    if (!container || !addBtn) return;
-    container.addEventListener('click', function(e){
-        if (e.target.matches('[data-remove-row]')) { e.preventDefault(); e.target.closest('.row').remove(); }
-    });
-    addBtn.addEventListener('click', function(e){
-        e.preventDefault();
-        var row = document.createElement('div');
-        row.className = 'row';
-        row.innerHTML = '<input type="text" name="nav_label[]" placeholder="Etykieta"><input type="text" name="nav_url[]" placeholder="/adres"><button type="button" class="button button--ghost button--small" data-remove-row>Usuń</button>';
-        container.appendChild(row);
-    });
+    function wireRepeatable(containerId, addBtnSelector, rowHtml) {
+        var container = document.getElementById(containerId);
+        var addBtn = document.querySelector(addBtnSelector);
+        if (!container || !addBtn) return;
+        container.addEventListener('click', function(e){
+            if (e.target.matches('[data-remove-row]')) { e.preventDefault(); e.target.closest('.row').remove(); }
+        });
+        addBtn.addEventListener('click', function(e){
+            e.preventDefault();
+            var row = document.createElement('div');
+            row.className = 'row';
+            row.innerHTML = rowHtml;
+            container.appendChild(row);
+        });
+    }
+    wireRepeatable('nav-rows', '[data-add-row="nav-rows"]', '<input type="text" name="nav_label[]" placeholder="Etykieta"><input type="text" name="nav_url[]" placeholder="/adres"><button type="button" class="button button--ghost button--small" data-remove-row>Usuń</button>');
+    wireRepeatable('nav-rows-en', '[data-add-row="nav-rows-en"]', '<input type="text" name="nav_label_en[]" placeholder="Label"><input type="text" name="nav_url_en[]" placeholder="/oferta"><button type="button" class="button button--ghost button--small" data-remove-row>Usuń</button>');
 })();
 </script>

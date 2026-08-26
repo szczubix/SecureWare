@@ -12,7 +12,8 @@
  * Uruchamia też Installer::migrateSchema() (CREATE TABLE IF NOT EXISTS),
  * więc importuje też nowe tabele dodane w kodzie po pierwszej instalacji
  * (np. tabelę "diagrams" dla kreatora diagramów) bez ruszania istniejących
- * danych.
+ * danych, oraz Installer::seedTranslations() (angielskie tłumaczenia
+ * domyślnej treści z database/seed-data/translations-en.php).
  *
  * Dopasowanie wyłącznie po istniejącym slug/key - nie tworzy nowych
  * wpisów i nie rusza leadów ani użytkowników. Nadpisuje tagline i tekst
@@ -69,7 +70,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Sesja wygasła. Odśwież stronę i spróbuj ponownie.';
     } else {
         try {
-            $log = array_merge(Installer::migrateSchema(), Installer::syncPermissions(), Installer::refreshDefaultContent());
+            $log = array_merge(
+                Installer::migrateSchema(),
+                Installer::syncPermissions(),
+                Installer::refreshDefaultContent(),
+                Installer::seedTranslations()
+            );
         } catch (\Throwable $e) {
             $error = 'Odświeżenie treści nie powiodło się: ' . $e->getMessage();
         }

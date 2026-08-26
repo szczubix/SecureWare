@@ -1,0 +1,51 @@
+<?php
+
+return [
+    'nav.see_full_offer' => 'See full offer',
+    'nav.book_call'      => 'Book a call',
+    'nav.menu_aria'      => 'Menu',
+    'footer.nav_heading'    => 'Navigation',
+    'footer.legal_heading'  => 'Legal',
+    'footer.privacy'        => 'Privacy policy',
+    'footer.terms'          => 'Terms of service',
+    'footer.contact_heading'=> 'Contact',
+
+    'offer.read_more'        => 'Learn more',
+    'offer.breadcrumb'       => 'Offer',
+    'offer.book_consult'     => 'Book a consultation',
+    'offer.details_heading'  => 'Service details',
+    'offer.interested_in'    => 'Interested in %s?',
+    'offer.consult_cta_text' => 'Book a free consultation and find out how to roll this out at your company.',
+    'offer.contact_cta'      => 'Get in touch',
+    'offer.other_services'   => 'Other services',
+    'offer.meta_title'       => 'Services — SecureWare',
+    'offer.meta_description' => 'Managed Backup, Backup as a Service, Disaster Recovery and other data protection services for businesses.',
+    'offer.group.deployment' => 'Deployment & management',
+    'offer.group.resilience' => 'Ransomware & outage resilience',
+    'offer.group.scope'      => 'Coverage',
+    'offer.group.governance' => 'Oversight & compliance',
+    'offer.group.other'      => 'Other services',
+
+    'blog.breadcrumb'      => 'Blog',
+    'blog.all_categories'  => 'All',
+    'blog.no_posts'        => 'No posts in this category.',
+    'blog.see_also'        => 'You might also like',
+    'blog.meta_title'       => 'Blog — SecureWare',
+    'blog.meta_description' => 'Backup, disaster recovery and data security - articles and guides.',
+
+    'contact.label_name'    => 'Full name',
+    'contact.label_company' => 'Company (optional)',
+    'contact.label_email'   => 'Email',
+    'contact.label_phone'   => 'Phone (optional)',
+    'contact.label_message' => 'Message',
+    'contact.error_session' => 'Your session expired. Refresh the page and try again.',
+    'contact.error_invalid' => 'Please fill in your name, a valid email address, and a message.',
+    'contact.error_captcha' => 'Anti-spam verification failed. Please try again.',
+    'contact.meta_title'       => 'Contact — SecureWare',
+    'contact.meta_description' => 'Get in touch - a backup, disaster recovery, and data protection quote for your business.',
+
+    '404.see_offer' => 'See offer',
+    '404.contact'   => 'Contact',
+
+    'lang.switch_to' => 'Polski',
+];

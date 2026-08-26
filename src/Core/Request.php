@@ -23,7 +23,22 @@ class Request
             $path = substr($path, strlen($base));
         }
 
-        $this->path = '/' . trim($path, '/');
+        $path = '/' . trim($path, '/');
+
+        // Jezyk publicznej strony przez prefiks /en - panel admina (sciezka
+        // z ADMIN_PATH) zawsze zostaje po polsku, wiec sprawdzamy to jako
+        // pierwsze i nie ruszamy sciezki, jesli to panel.
+        $adminPath = '/' . trim((string) Config::get('admin_path'), '/');
+        if ($path !== $adminPath && !str_starts_with($path, $adminPath . '/')) {
+            if ($path === '/en' || str_starts_with($path, '/en/')) {
+                Locale::set('en');
+                $path = '/' . ltrim(substr($path, 3), '/');
+            } else {
+                Locale::set('pl');
+            }
+        }
+
+        $this->path = $path;
     }
 
     public function input(string $key, mixed $default = null): mixed

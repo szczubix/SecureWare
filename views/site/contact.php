@@ -6,6 +6,8 @@
 /** @var array $content */
 use SecureWare\Core\Csrf;
 use SecureWare\Core\Icons;
+use SecureWare\Core\Lang;
+use SecureWare\Core\Locale;
 use SecureWare\Models\Setting;
 
 $settings = Setting::all();
@@ -40,21 +42,21 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
                 <p class="sw-alert sw-alert--success"><?= $h($content['success_message']) ?></p>
             <?php else: ?>
                 <?php if ($error): ?><p class="sw-alert sw-alert--error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
-                <form class="sw-form reveal" method="post" action="/kontakt">
+                <form class="sw-form reveal" method="post" action="<?= Locale::url('/kontakt') ?>">
                     <?= Csrf::field() ?>
-                    <label>Imię i nazwisko
+                    <label><?= Lang::t('contact.label_name') ?>
                         <input type="text" name="name" required value="<?= htmlspecialchars($old['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     </label>
-                    <label>Firma (opcjonalnie)
+                    <label><?= Lang::t('contact.label_company') ?>
                         <input type="text" name="company" value="<?= htmlspecialchars($old['company'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     </label>
-                    <label>E-mail
+                    <label><?= Lang::t('contact.label_email') ?>
                         <input type="email" name="email" required value="<?= htmlspecialchars($old['email'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     </label>
-                    <label>Telefon (opcjonalnie)
+                    <label><?= Lang::t('contact.label_phone') ?>
                         <input type="tel" name="phone" value="<?= htmlspecialchars($old['phone'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     </label>
-                    <label>Wiadomość
+                    <label><?= Lang::t('contact.label_message') ?>
                         <textarea name="message" required><?= htmlspecialchars($old['message'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
                     </label>
                     <?php if ($turnstileSiteKey): ?>

@@ -6,6 +6,8 @@ use SecureWare\Core\Database;
 
 class Page
 {
+    private const TRANSLATABLE = ['title', 'content', 'meta_title', 'meta_description'];
+
     public static function all(): array
     {
         return Database::connection()->query('SELECT * FROM pages ORDER BY title')->fetchAll();
@@ -18,11 +20,13 @@ class Page
         return self::decode($stmt->fetch() ?: null);
     }
 
-    public static function findBySlug(string $slug): ?array
+    public static function findBySlug(string $slug, string $locale = 'pl'): ?array
     {
         $stmt = Database::connection()->prepare("SELECT * FROM pages WHERE slug = :slug AND status = 'published'");
         $stmt->execute(['slug' => $slug]);
-        return self::decode($stmt->fetch() ?: null);
+        $page = self::decode($stmt->fetch() ?: null);
+
+        return $page ? Translation::applyTo($page, 'page', $locale, self::TRANSLATABLE) : null;
     }
 
     public static function publishedSlugs(): array

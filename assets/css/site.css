@@ -532,3 +532,7 @@ h1, h2, h3, h4 { font-family: var(--sw-font-display); line-height: 1.12; margin:
     .sw-scenario { grid-template-columns: 1fr; }
     .sw-scenario__vs { justify-self: center; }
 }
+
+.sw-lang-switch { font-size: 13px; font-weight: 700; color: var(--sw-muted); padding: 8px 6px; transition: color .2s ease; }
+.sw-lang-switch:hover { color: var(--sw-primary); }
+@media (max-width: 640px) { .sw-lang-switch { display: none; } }

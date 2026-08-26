@@ -1,7 +1,10 @@
 <?php
 /** @var array $content */
 /** @var string|null $saved */
+/** @var string $lang */
 use SecureWare\Core\Csrf;
+
+$isEn = $lang === 'en';
 
 $icons = ['shield-check','cloud-upload','map-pin','lock','mail','server','layers','life-buoy','refresh-ccw','clipboard-check','tool','activity','file-check','shield'];
 $iconSelect = function (string $name, string $selected) use ($icons) {
@@ -16,14 +19,20 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 ?>
 <div class="toolbar">
     <h1>Treść strony głównej</h1>
-    <a href="/" target="_blank" class="button button--ghost">Zobacz stronę ↗</a>
+    <a href="<?= $isEn ? '/en' : '/' ?>" target="_blank" class="button button--ghost">Zobacz stronę ↗</a>
 </div>
 
-<?php if ($saved): ?><p class="alert alert--success">Zapisano treść strony głównej.</p><?php endif; ?>
+<div class="admin-lang-tabs">
+    <a href="homepage" class="<?= !$isEn ? 'is-active' : '' ?>">Polski</a>
+    <a href="homepage?lang=en" class="<?= $isEn ? 'is-active' : '' ?>">English (EN)</a>
+</div>
+
+<?php if ($saved): ?><p class="alert alert--success">Zapisano treść strony głównej<?= $isEn ? ' (EN)' : '' ?>.</p><?php endif; ?>
 <p class="admin-hint" style="margin:-8px 0 20px;color:#6b7686;">Tu edytujesz każdy tekst widoczny na stronie głównej — bez zmian w kodzie. Puste pole = zostaje pominięte przy wyświetlaniu.</p>
 
-<form method="post" action="homepage">
+<form method="post" action="homepage<?= $isEn ? '?lang=en' : '' ?>">
     <?= Csrf::field() ?>
+    <?php if ($isEn): ?><input type="hidden" name="lang" value="en"><?php endif; ?>
 
     <div class="admin-card">
         <h2 style="margin-top:0;">Hero (nagłówek strony)</h2>

@@ -11,9 +11,12 @@ use SecureWare\Core\Response;
 use SecureWare\Core\Str;
 use SecureWare\Core\View;
 use SecureWare\Models\Service;
+use SecureWare\Models\Translation;
 
 class ServiceAdminController
 {
+    private const TRANSLATABLE = ['name', 'short_description', 'content', 'meta_title', 'meta_description'];
+
     public function index(Request $request): void
     {
         Auth::requirePermission('services.view');
@@ -25,7 +28,7 @@ class ServiceAdminController
     {
         Auth::requirePermission('services.edit');
 
-        echo View::render('admin/services/edit', ['service' => null, 'error' => null], 'admin/layout');
+        echo View::render('admin/services/edit', ['service' => null, 'error' => null, 'lang' => 'pl', 'translation' => []], 'admin/layout');
     }
 
     public function edit(Request $request, string $id): void
@@ -37,7 +40,15 @@ class ServiceAdminController
             Response::notFound();
         }
 
-        echo View::render('admin/services/edit', ['service' => $service, 'error' => null], 'admin/layout');
+        $lang = $request->input('lang') === 'en' ? 'en' : 'pl';
+        $translation = $lang === 'en' ? Translation::getAll('service', (int) $id, 'en') : [];
+
+        echo View::render('admin/services/edit', [
+            'service'     => $service,
+            'error'       => null,
+            'lang'        => $lang,
+            'translation' => $translation,
+        ], 'admin/layout');
     }
 
     public function store(Request $request): void
@@ -58,6 +69,19 @@ class ServiceAdminController
             Response::redirect($this->url());
         }
 
+        $lang = $request->input('lang') === 'en' ? 'en' : 'pl';
+
+        if ($lang === 'en' && $id !== null) {
+            $fields = [];
+            foreach (self::TRANSLATABLE as $field) {
+                $fields[$field] = (string) $request->input($field, '');
+            }
+            Translation::setMany('service', $id, 'en', $fields);
+            Logger::record('update', 'service_translation_en', $id);
+            Response::redirect($this->url() . '/' . $id . '/edit?lang=en');
+            return;
+        }
+
         $name = trim((string) $request->input('name', ''));
         $slug = Str::slug((string) $request->input('slug', '') ?: $name);
 
@@ -65,6 +89,8 @@ class ServiceAdminController
             echo View::render('admin/services/edit', [
                 'service' => $id ? Service::find($id) : null,
                 'error'   => 'Nazwa i slug są wymagane.',
+                'lang'    => 'pl',
+                'translation' => [],
             ], 'admin/layout');
             return;
         }

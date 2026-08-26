@@ -2,6 +2,8 @@
 /** @var array $groups */
 /** @var array $content */
 use SecureWare\Core\Icons;
+use SecureWare\Core\Lang;
+use SecureWare\Core\Locale;
 
 $hasAny = (bool) array_filter($groups);
 $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
@@ -31,7 +33,7 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
                     <div class="sw-service-card__icon"><?= Icons::svg($s['icon'], 22) ?></div>
                     <h3><?= htmlspecialchars($s['name'], ENT_QUOTES, 'UTF-8') ?></h3>
                     <p><?= htmlspecialchars($s['short_description'], ENT_QUOTES, 'UTF-8') ?></p>
-                    <a class="more" href="/oferta/<?= htmlspecialchars($s['slug'], ENT_QUOTES, 'UTF-8') ?>">Dowiedz się więcej <?= Icons::svg('arrow-right', 14) ?></a>
+                    <a class="more" href="<?= Locale::url('/oferta/' . $s['slug']) ?>"><?= Lang::t('offer.read_more') ?> <?= Icons::svg('arrow-right', 14) ?></a>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -50,7 +52,7 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
                 <h2><?= $h($content['cta_heading']) ?></h2>
                 <p><?= $h($content['cta_text']) ?></p>
             </div>
-            <a href="/kontakt" class="sw-btn sw-btn--dark"><?= $h($content['cta_button_label']) ?></a>
+            <a href="<?= Locale::url('/kontakt') ?>" class="sw-btn sw-btn--dark"><?= $h($content['cta_button_label']) ?></a>
         </div>
     </div>
 </section>

@@ -3,6 +3,8 @@
 /** @var array $latestArticles */
 /** @var array $content */
 use SecureWare\Core\Icons;
+use SecureWare\Core\Lang;
+use SecureWare\Core\Locale;
 use SecureWare\Core\Str;
 
 $teaser = array_slice($services, 0, 6);
@@ -37,8 +39,8 @@ $cta = $content['cta'];
             <h1 class="sw-anim-in sw-delay-2"><?= $h($hero['headline_pre']) ?><span><?= $h($hero['headline_highlight']) ?></span><?= $h($hero['headline_post']) ?></h1>
             <p class="lead sw-anim-in sw-delay-3"><?= $h($hero['lead']) ?></p>
             <div class="sw-hero__actions sw-anim-in sw-delay-4">
-                <a href="<?= $h($hero['cta_primary_url']) ?>" class="sw-btn sw-btn--primary"><?= $h($hero['cta_primary_label']) ?></a>
-                <a href="<?= $h($hero['cta_secondary_url']) ?>" class="sw-btn sw-btn--ghost"><?= $h($hero['cta_secondary_label']) ?> <?= Icons::svg('arrow-right', 16) ?></a>
+                <a href="<?= $h(Locale::url($hero['cta_primary_url'])) ?>" class="sw-btn sw-btn--primary"><?= $h($hero['cta_primary_label']) ?></a>
+                <a href="<?= $h(Locale::url($hero['cta_secondary_url'])) ?>" class="sw-btn sw-btn--ghost"><?= $h($hero['cta_secondary_label']) ?> <?= Icons::svg('arrow-right', 16) ?></a>
             </div>
             <div class="sw-hero__specs sw-anim-in sw-delay-5">
                 <?php foreach ($hero['specs'] as $spec): ?>
@@ -120,12 +122,12 @@ $cta = $content['cta'];
                     <div class="sw-service-card__icon"><?= Icons::svg($s['icon'], 22) ?></div>
                     <h3><?= htmlspecialchars($s['name'], ENT_QUOTES, 'UTF-8') ?></h3>
                     <p><?= htmlspecialchars($s['short_description'], ENT_QUOTES, 'UTF-8') ?></p>
-                    <a class="more" href="/oferta/<?= htmlspecialchars($s['slug'], ENT_QUOTES, 'UTF-8') ?>">Dowiedz się więcej <?= Icons::svg('arrow-right', 14) ?></a>
+                    <a class="more" href="<?= Locale::url('/oferta/' . $s['slug']) ?>"><?= Lang::t('offer.read_more') ?> <?= Icons::svg('arrow-right', 14) ?></a>
                 </div>
             <?php endforeach; ?>
         </div>
         <div class="reveal" style="text-align:center;margin-top:36px;">
-            <a href="/oferta" class="sw-btn sw-btn--dark"><?= $h($offer['cta_label']) ?></a>
+            <a href="<?= Locale::url('/oferta') ?>" class="sw-btn sw-btn--dark"><?= $h($offer['cta_label']) ?></a>
         </div>
     </div>
 </section>
@@ -285,7 +287,7 @@ $cta = $content['cta'];
             <h5><?= $h($why['eyebrow']) ?></h5>
             <h2><?= $h($why['heading']) ?></h2>
             <p><?= $h($why['intro']) ?></p>
-            <a href="/kontakt" class="sw-why__link"><?= $h($why['link_label']) ?> <?= Icons::svg('arrow-right', 14) ?></a>
+            <a href="<?= Locale::url('/kontakt') ?>" class="sw-why__link"><?= $h($why['link_label']) ?> <?= Icons::svg('arrow-right', 14) ?></a>
         </div>
         <div class="sw-why__list reveal-stagger">
             <?php foreach ($why['items'] as $i => $item): ?>
@@ -329,7 +331,7 @@ $cta = $content['cta'];
         </div>
         <div class="sw-blog-grid reveal-stagger">
             <?php foreach ($latestArticles as $a): ?>
-                <a class="sw-blog-card" href="/blog/<?= htmlspecialchars($a['slug'], ENT_QUOTES, 'UTF-8') ?>">
+                <a class="sw-blog-card" href="<?= Locale::url('/blog/' . $a['slug']) ?>">
                     <div class="sw-blog-card__img"><?php if ($a['featured_image_path']): ?><img src="<?= htmlspecialchars($a['featured_image_path'], ENT_QUOTES, 'UTF-8') ?>" alt=""><?php endif; ?></div>
                     <div class="sw-blog-card__body">
                         <span class="meta"><?= htmlspecialchars($a['category_name'] ?? 'Blog', ENT_QUOTES, 'UTF-8') ?></span>
@@ -367,7 +369,7 @@ $cta = $content['cta'];
                 <h2><?= $h($cta['heading']) ?></h2>
                 <p><?= $h($cta['text']) ?></p>
             </div>
-            <a href="<?= $h($cta['button_url']) ?>" class="sw-btn sw-btn--dark"><?= $h($cta['button_label']) ?></a>
+            <a href="<?= $h(Locale::url($cta['button_url'])) ?>" class="sw-btn sw-btn--dark"><?= $h($cta['button_label']) ?></a>
         </div>
     </div>
 </section>

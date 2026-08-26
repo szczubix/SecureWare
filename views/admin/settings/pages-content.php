@@ -1,7 +1,10 @@
 <?php
 /** @var array $content */
 /** @var string|null $saved */
+/** @var string $lang */
 use SecureWare\Core\Csrf;
+
+$isEn = $lang === 'en';
 
 $icons = ['shield-check','cloud-upload','map-pin','lock','mail','server','layers','life-buoy','refresh-ccw','clipboard-check','tool','activity','file-check','shield'];
 $iconSelect = function (string $name, string $selected) use ($icons) {
@@ -18,11 +21,17 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
     <h1>Treść podstron (oferta, blog, kontakt, 404)</h1>
 </div>
 
-<?php if ($saved): ?><p class="alert alert--success">Zapisano treść podstron.</p><?php endif; ?>
+<div class="admin-lang-tabs">
+    <a href="pages-content" class="<?= !$isEn ? 'is-active' : '' ?>">Polski</a>
+    <a href="pages-content?lang=en" class="<?= $isEn ? 'is-active' : '' ?>">English (EN)</a>
+</div>
+
+<?php if ($saved): ?><p class="alert alert--success">Zapisano treść podstron<?= $isEn ? ' (EN)' : '' ?>.</p><?php endif; ?>
 <p class="admin-hint" style="margin:-8px 0 20px;color:#6b7686;">Nagłówki i wstępy tych podstron — bez zmian w kodzie. Same usługi/artykuły edytujesz w swoich zakładkach.</p>
 
-<form method="post" action="pages-content">
+<form method="post" action="pages-content<?= $isEn ? '?lang=en' : '' ?>">
     <?= Csrf::field() ?>
+    <?php if ($isEn): ?><input type="hidden" name="lang" value="en"><?php endif; ?>
 
     <div class="admin-card">
         <h2 style="margin-top:0;">Strona /oferta</h2>

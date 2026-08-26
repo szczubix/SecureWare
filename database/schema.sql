@@ -137,6 +137,18 @@ CREATE TABLE IF NOT EXISTS settings (
     `value` TEXT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS translations (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id INT UNSIGNED NOT NULL,
+    locale VARCHAR(10) NOT NULL,
+    field VARCHAR(100) NOT NULL,
+    value LONGTEXT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY entity_field_locale (entity_type, entity_id, locale, field),
+    INDEX (entity_type, entity_id, locale)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS diagrams (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,

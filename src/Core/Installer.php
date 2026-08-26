@@ -303,7 +303,118 @@ class Installer
         }
         $log[] = 'Wpisy na blogu: OK (' . count($articles) . ')';
 
+        foreach (self::seedTranslations() as $line) {
+            $log[] = $line;
+        }
+
         return ['log' => $log, 'admin' => $admin];
+    }
+
+    /**
+     * Wgrywa angielskie tlumaczenia domyslnej tresci (uslugi/strony CMS/
+     * artykuly/kategoria + kilka ustawien) z seed-data/translations-en.php.
+     * Dopasowanie po slug/kluczu do JUZ ISTNIEJACYCH wierszy - nie tworzy
+     * nowych encji. Bezpieczne do wielokrotnego uruchamiania (upsert po
+     * unikalnym kluczu entity_type+entity_id+locale+field), wiec dziala
+     * zarowno przy pierwszej instalacji jak i przez refresh-content.php.
+     *
+     * @return string[] log
+     */
+    public static function seedTranslations(): array
+    {
+        $pdo = Database::connection();
+        $log = [];
+        $data = require ROOT_PATH . '/database/seed-data/translations-en.php';
+
+        $upsert = $pdo->prepare(
+            'INSERT INTO translations (entity_type, entity_id, locale, field, value)
+             VALUES (:type, :id, "en", :field, :value)
+             ON DUPLICATE KEY UPDATE value = VALUES(value)'
+        );
+        $translateFields = function (string $type, int $id, array $fields) use ($upsert): void {
+            foreach ($fields as $field => $value) {
+                $upsert->execute(['type' => $type, 'id' => $id, 'field' => $field, 'value' => $value]);
+            }
+        };
+
+        $count = 0;
+        foreach ($data['services'] ?? [] as $slug => $fields) {
+            $stmt = $pdo->prepare('SELECT id, name, short_description FROM services WHERE slug = :slug');
+            $stmt->execute(['slug' => $slug]);
+            $row = $stmt->fetch();
+            if (!$row) {
+                continue;
+            }
+            $fields += [
+                'meta_title'       => $fields['name'] . ' | SecureWare',
+                'meta_description' => $fields['short_description'] ?? '',
+            ];
+            $translateFields('service', (int) $row['id'], $fields);
+            $count++;
+        }
+        $log[] = 'Tłumaczenia usług (EN): OK (' . $count . ')';
+
+        $count = 0;
+        foreach ($data['pages'] ?? [] as $slug => $fields) {
+            $stmt = $pdo->prepare('SELECT id FROM pages WHERE slug = :slug');
+            $stmt->execute(['slug' => $slug]);
+            $id = $stmt->fetchColumn();
+            if (!$id) {
+                continue;
+            }
+            $fields += ['meta_title' => $fields['title'] . ' | SecureWare'];
+            $translateFields('page', (int) $id, $fields);
+            $count++;
+        }
+        $log[] = 'Tłumaczenia podstron CMS (EN): OK (' . $count . ')';
+
+        $count = 0;
+        foreach ($data['articles'] ?? [] as $slug => $fields) {
+            $stmt = $pdo->prepare('SELECT id FROM articles WHERE slug = :slug');
+            $stmt->execute(['slug' => $slug]);
+            $id = $stmt->fetchColumn();
+            if (!$id) {
+                continue;
+            }
+            $fields += [
+                'meta_title'       => $fields['title'] . ' | SecureWare',
+                'meta_description' => $fields['excerpt'] ?? '',
+            ];
+            $translateFields('article', (int) $id, $fields);
+            $count++;
+        }
+        $log[] = 'Tłumaczenia artykułów (EN): OK (' . $count . ')';
+
+        $count = 0;
+        foreach ($data['categories'] ?? [] as $slug => $fields) {
+            $stmt = $pdo->prepare('SELECT id FROM categories WHERE slug = :slug');
+            $stmt->execute(['slug' => $slug]);
+            $id = $stmt->fetchColumn();
+            if (!$id) {
+                continue;
+            }
+            $translateFields('category', (int) $id, $fields);
+            $count++;
+        }
+        $log[] = 'Tłumaczenia kategorii (EN): OK (' . $count . ')';
+
+        $settings = $data['settings'] ?? [];
+        $setSetting = $pdo->prepare(
+            'INSERT INTO settings (`key`, `value`) VALUES (:key, :value)
+             ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)'
+        );
+        if (isset($settings['site_tagline_en'])) {
+            $setSetting->execute(['key' => 'site_tagline_en', 'value' => $settings['site_tagline_en']]);
+        }
+        if (isset($settings['footer_text_en'])) {
+            $setSetting->execute(['key' => 'footer_text_en', 'value' => str_replace('%YEAR%', date('Y'), $settings['footer_text_en'])]);
+        }
+        if (isset($settings['nav_menu_en'])) {
+            $setSetting->execute(['key' => 'nav_menu_en', 'value' => json_encode($settings['nav_menu_en'], JSON_UNESCAPED_UNICODE)]);
+        }
+        $log[] = 'Ustawienia EN (tagline/stopka/menu): OK';
+
+        return $log;
     }
 
     /**

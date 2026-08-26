@@ -11,9 +11,12 @@ use SecureWare\Core\Response;
 use SecureWare\Core\Str;
 use SecureWare\Core\View;
 use SecureWare\Models\Page;
+use SecureWare\Models\Translation;
 
 class PageAdminController
 {
+    private const TRANSLATABLE = ['title', 'content', 'meta_title', 'meta_description'];
+
     public function index(Request $request): void
     {
         Auth::requirePermission('pages.view');
@@ -26,7 +29,7 @@ class PageAdminController
         Auth::requirePermission('pages.edit');
 
         echo View::render('admin/pages/edit', [
-            'page' => null, 'allPages' => Page::all(), 'error' => null,
+            'page' => null, 'allPages' => Page::all(), 'error' => null, 'lang' => 'pl', 'translation' => [],
         ], 'admin/layout');
     }
 
@@ -39,8 +42,12 @@ class PageAdminController
             Response::notFound();
         }
 
+        $lang = $request->input('lang') === 'en' ? 'en' : 'pl';
+        $translation = $lang === 'en' ? Translation::getAll('page', (int) $id, 'en') : [];
+
         echo View::render('admin/pages/edit', [
             'page' => $page, 'allPages' => Page::all(), 'error' => null,
+            'lang' => $lang, 'translation' => $translation,
         ], 'admin/layout');
     }
 
@@ -62,13 +69,26 @@ class PageAdminController
             Response::redirect($this->url());
         }
 
+        $lang = $request->input('lang') === 'en' ? 'en' : 'pl';
+
+        if ($lang === 'en' && $id !== null) {
+            $fields = [];
+            foreach (self::TRANSLATABLE as $field) {
+                $fields[$field] = (string) $request->input($field, '');
+            }
+            Translation::setMany('page', $id, 'en', $fields);
+            Logger::record('update', 'page_translation_en', $id);
+            Response::redirect($this->url() . '/' . $id . '/edit?lang=en');
+            return;
+        }
+
         $title = trim((string) $request->input('title', ''));
         $slug  = Str::slug((string) $request->input('slug', '') ?: $title);
 
         if ($title === '' || $slug === '') {
             echo View::render('admin/pages/edit', [
                 'page' => $id ? Page::find($id) : null, 'allPages' => Page::all(),
-                'error' => 'Tytuł i slug są wymagane.',
+                'error' => 'Tytuł i slug są wymagane.', 'lang' => 'pl', 'translation' => [],
             ], 'admin/layout');
             return;
         }

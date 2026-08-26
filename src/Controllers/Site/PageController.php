@@ -2,6 +2,7 @@
 
 namespace SecureWare\Controllers\Site;
 
+use SecureWare\Core\Locale;
 use SecureWare\Core\Request;
 use SecureWare\Core\Response;
 use SecureWare\Core\View;
@@ -11,7 +12,7 @@ class PageController
 {
     public function show(Request $request, string $slug): void
     {
-        $page = Page::findBySlug($slug);
+        $page = Page::findBySlug($slug, Locale::current());
         if (!$page) {
             Response::notFound();
         }

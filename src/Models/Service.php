@@ -6,16 +6,20 @@ use SecureWare\Core\Database;
 
 class Service
 {
+    private const TRANSLATABLE = ['name', 'short_description', 'content', 'meta_title', 'meta_description'];
+
     public static function all(): array
     {
         return Database::connection()->query('SELECT * FROM services ORDER BY position, name')->fetchAll();
     }
 
-    public static function published(): array
+    public static function published(string $locale = 'pl'): array
     {
-        return Database::connection()
+        $rows = Database::connection()
             ->query("SELECT * FROM services WHERE status = 'published' ORDER BY position, name")
             ->fetchAll();
+
+        return Translation::applyToMany($rows, 'service', $locale, self::TRANSLATABLE);
     }
 
     public static function find(int $id): ?array
@@ -25,11 +29,13 @@ class Service
         return self::decode($stmt->fetch() ?: null);
     }
 
-    public static function findBySlug(string $slug): ?array
+    public static function findBySlug(string $slug, string $locale = 'pl'): ?array
     {
         $stmt = Database::connection()->prepare("SELECT * FROM services WHERE slug = :slug AND status = 'published'");
         $stmt->execute(['slug' => $slug]);
-        return self::decode($stmt->fetch() ?: null);
+        $service = self::decode($stmt->fetch() ?: null);
+
+        return $service ? Translation::applyTo($service, 'service', $locale, self::TRANSLATABLE) : null;
     }
 
     private static function decode(?array $service): ?array

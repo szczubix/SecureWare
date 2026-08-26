@@ -4,25 +4,63 @@
 /** @var array $media */
 /** @var string $tagsValue */
 /** @var string|null $error */
+/** @var string $lang */
+/** @var array $translation */
 use SecureWare\Core\Config;
 use SecureWare\Core\Csrf;
 
 $adminUrl = '/' . Config::get('admin_path');
 $isEdit   = $article !== null;
-$action   = $isEdit ? $adminUrl . '/articles/' . $article['id'] : $adminUrl . '/articles';
+$action   = $isEdit ? $adminUrl . '/articles/' . $article['id'] . ($lang === 'en' ? '?lang=en' : '') : $adminUrl . '/articles';
 $publishedAtValue = $isEdit && $article['published_at'] ? str_replace(' ', 'T', substr($article['published_at'], 0, 16)) : '';
+$isEn = $lang === 'en';
+$t    = static fn (string $field) => $translation[$field] ?? ($isEn ? '' : ($article[$field] ?? ''));
+$h    = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 ?>
 <div class="toolbar">
     <h1><?= $isEdit ? 'Edytuj artykuł' : 'Nowy artykuł' ?></h1>
     <a href="<?= $adminUrl ?>/articles" class="button button--ghost">← Wróć do listy</a>
 </div>
 
-<?php if ($error): ?><p class="alert alert--error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
+<?php if ($isEdit): ?>
+<div class="admin-lang-tabs">
+    <a href="<?= $adminUrl ?>/articles/<?= (int) $article['id'] ?>/edit" class="<?= !$isEn ? 'is-active' : '' ?>">Polski</a>
+    <a href="<?= $adminUrl ?>/articles/<?= (int) $article['id'] ?>/edit?lang=en" class="<?= $isEn ? 'is-active' : '' ?>">English (EN)</a>
+</div>
+<?php endif; ?>
+
+<?php if ($error): ?><p class="alert alert--error"><?= $h($error) ?></p><?php endif; ?>
 
 <div class="admin-card">
     <form method="post" action="<?= $action ?>" class="form-grid form-grid--wide">
         <?= Csrf::field() ?>
+        <?php if ($isEn): ?><input type="hidden" name="lang" value="en"><?php endif; ?>
 
+        <?php if ($isEn): ?>
+            <p class="admin-hint" style="margin:0 0 4px;color:#6b7686;">Tłumaczenie tego artykułu na angielski - slug, kategoria, tagi, zdjęcie, status i data publikacji są wspólne dla obu języków.</p>
+            <div class="field">
+                <label>Title</label>
+                <input type="text" name="title" value="<?= $h($t('title')) ?>" placeholder="<?= $h($article['title']) ?>">
+            </div>
+            <div class="field">
+                <label>Excerpt</label>
+                <textarea name="excerpt" rows="2"><?= $h($t('excerpt')) ?></textarea>
+            </div>
+            <div class="field">
+                <label>Content</label>
+                <textarea name="content" id="content-editor"><?= $t('content') ?></textarea>
+            </div>
+            <div class="form-row">
+                <div class="field">
+                    <label>SEO - meta title</label>
+                    <input type="text" name="meta_title" value="<?= $h($t('meta_title')) ?>">
+                </div>
+                <div class="field">
+                    <label>SEO - meta description</label>
+                    <input type="text" name="meta_description" value="<?= $h($t('meta_description')) ?>">
+                </div>
+            </div>
+        <?php else: ?>
         <div class="form-row">
             <div class="field">
                 <label>Tytuł</label>
@@ -106,6 +144,7 @@ $publishedAtValue = $isEdit && $article['published_at'] ? str_replace(' ', 'T', 
                 <input type="text" name="meta_description" value="<?= htmlspecialchars($article['meta_description'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             </div>
         </div>
+        <?php endif; ?>
 
         <div class="form-actions">
             <button type="submit" class="button">Zapisz</button>

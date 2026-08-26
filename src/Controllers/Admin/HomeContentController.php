@@ -18,9 +18,12 @@ class HomeContentController
     {
         Auth::requirePermission('settings.edit');
 
+        $lang = $request->input('lang') === 'en' ? 'en' : 'pl';
+
         echo View::render('admin/settings/homepage', [
-            'content' => HomeContent::current(),
+            'content' => HomeContent::current($lang),
             'saved'   => Session::flash('saved'),
+            'lang'    => $lang,
         ], 'admin/layout');
     }
 
@@ -136,11 +139,12 @@ class HomeContentController
             ],
         ];
 
-        HomeContent::save($content);
+        $lang = $request->input('lang') === 'en' ? 'en' : 'pl';
+        HomeContent::save($content, $lang);
 
-        Logger::record('update', 'home_content');
+        Logger::record('update', 'home_content' . ($lang === 'en' ? '_en' : ''));
         Session::flash('saved', '1');
-        Response::redirect($this->url());
+        Response::redirect($this->url() . ($lang === 'en' ? '?lang=en' : ''));
     }
 
     /**

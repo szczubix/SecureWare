@@ -16,8 +16,8 @@ class Response
     {
         http_response_code(404);
         echo View::render('site/404', [
-            'content'         => SiteContent::current()['not_found'],
-            'metaTitle'       => 'Strona nie znaleziona — SecureWare',
+            'content'         => SiteContent::current(Locale::current())['not_found'],
+            'metaTitle'       => Locale::isDefault() ? 'Strona nie znaleziona — SecureWare' : 'Page not found — SecureWare',
             'metaDescription' => '',
         ], 'site/layout');
         exit;
