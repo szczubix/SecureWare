@@ -86,6 +86,12 @@ class HomeContentController
                 'intro'   => $text('rule_intro'),
                 'items'   => $ruleItems,
             ],
+            'ransomware' => [
+                'eyebrow'         => $text('ransomware_eyebrow'),
+                'heading'         => $text('ransomware_heading'),
+                'intro'           => $text('ransomware_intro'),
+                'protected_label' => $text('ransomware_protected_label'),
+            ],
             'why' => [
                 'eyebrow'    => $text('why_eyebrow'),
                 'heading'    => $text('why_heading'),

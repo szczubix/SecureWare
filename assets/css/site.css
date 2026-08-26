@@ -423,3 +423,77 @@ h1, h2, h3, h4 { font-family: var(--sw-font-display); line-height: 1.12; margin:
    ciemne tlo (hero), wiec w jasnym .sw-prose potrzebuje wlasnego, samodzielnego
    ciemnego tla zamiast dziedziczyc jasne tlo strony. */
 .sw-prose .sw-diagram-card { background: var(--sw-dark); margin: 2em auto; max-width: 560px; }
+
+/* "Ransomware kontra 3-2-1-1-0" - schematyczna animacja: szkodnik idzie
+   wzdluz wezlow, "zjada" dane produkcyjne i kopie lokalna, ale odbija sie
+   od kopii immutable. Czysto CSS (keyframes), bez JS/zaleznosci - global
+   prefers-reduced-motion override juz neutralizuje animation-duration. */
+.sw-ransomware { padding-top: 8px; }
+.sw-ransomware__track { position: relative; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-top: 40px; }
+.sw-ransomware__track::before { content: ''; position: absolute; left: 4%; right: 4%; top: 24px; height: 2px; background-image: repeating-linear-gradient(90deg, var(--sw-border) 0 8px, transparent 8px 16px); }
+.sw-ransomware__node { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 9px; z-index: 1; }
+.sw-ransomware__node .icon-badge { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--sw-primary-tint); color: var(--sw-primary); border: 1px solid transparent; }
+.sw-ransomware__node .label { font-size: 12.5px; font-weight: 700; color: var(--sw-dark); }
+.sw-ransomware__mark { position: absolute; top: -6px; right: 20%; width: 20px; height: 20px; border-radius: 50%; background: #e5484d; color: #fff; font-size: 12px; font-weight: 800; line-height: 1; display: flex; align-items: center; justify-content: center; opacity: 0; transform: scale(.4); }
+.sw-ransomware__node--safe .icon-badge { background: rgba(22,179,100,.12); color: #16b364; border-color: rgba(22,179,100,.3); }
+.sw-ransomware__shield { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; color: #16b364; background: rgba(22,179,100,.1); padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+
+.sw-ransomware__actor { position: absolute; top: 8px; left: 2%; width: 32px; height: 32px; margin-left: -16px; border-radius: 50%; background: #e5484d; color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 16px rgba(229,72,77,.4); animation: swRansomwareWalk 11s ease-in-out infinite; z-index: 2; }
+
+@keyframes swRansomwareWalk {
+    0%   { left: 2%; opacity: 0; }
+    3%   { opacity: 1; }
+    12%  { left: 10%; }
+    20%  { left: 10%; transform: scale(1.25) rotate(-8deg); }
+    26%  { left: 10%; transform: scale(1) rotate(0deg); }
+    40%  { left: 48%; }
+    48%  { left: 48%; transform: scale(1.25) rotate(8deg); }
+    54%  { left: 48%; transform: scale(1) rotate(0deg); }
+    66%  { left: 82%; }
+    70%  { left: 86%; transform: scale(1.1) rotate(0deg); }
+    74%  { left: 78%; transform: scale(.9) rotate(-16deg); }
+    80%  { left: 80%; transform: scale(1) rotate(8deg); }
+    94%  { left: 80%; opacity: 1; }
+    100% { left: 2%; opacity: 0; }
+}
+
+.sw-ransomware__node[data-node="1"] .icon-badge { animation: swNodeHit1 11s ease-in-out infinite; }
+.sw-ransomware__node[data-node="1"] .sw-ransomware__mark { animation: swMarkPop1 11s ease-in-out infinite; }
+.sw-ransomware__node[data-node="2"] .icon-badge { animation: swNodeHit2 11s ease-in-out infinite; }
+.sw-ransomware__node[data-node="2"] .sw-ransomware__mark { animation: swMarkPop2 11s ease-in-out infinite; }
+.sw-ransomware__node--safe .icon-badge { animation: swNodeSafePulse 11s ease-in-out infinite; }
+
+@keyframes swNodeHit1 {
+    0%, 18%   { background: var(--sw-primary-tint); color: var(--sw-primary); border-color: transparent; }
+    20%, 92%  { background: rgba(229,72,77,.14); color: #e5484d; border-color: rgba(229,72,77,.35); }
+    95%, 100% { background: var(--sw-primary-tint); color: var(--sw-primary); border-color: transparent; }
+}
+@keyframes swMarkPop1 {
+    0%, 18%   { opacity: 0; transform: scale(.4); }
+    21%       { opacity: 1; transform: scale(1.15); }
+    25%, 92%  { opacity: 1; transform: scale(1); }
+    95%, 100% { opacity: 0; transform: scale(.4); }
+}
+@keyframes swNodeHit2 {
+    0%, 46%   { background: var(--sw-primary-tint); color: var(--sw-primary); border-color: transparent; }
+    48%, 92%  { background: rgba(229,72,77,.14); color: #e5484d; border-color: rgba(229,72,77,.35); }
+    95%, 100% { background: var(--sw-primary-tint); color: var(--sw-primary); border-color: transparent; }
+}
+@keyframes swMarkPop2 {
+    0%, 46%   { opacity: 0; transform: scale(.4); }
+    49%       { opacity: 1; transform: scale(1.15); }
+    53%, 92%  { opacity: 1; transform: scale(1); }
+    95%, 100% { opacity: 0; transform: scale(.4); }
+}
+@keyframes swNodeSafePulse {
+    0%, 64%   { transform: scale(1); box-shadow: none; }
+    70%       { transform: scale(1.18); box-shadow: 0 0 0 8px rgba(22,179,100,.18); }
+    78%, 100% { transform: scale(1); box-shadow: none; }
+}
+
+@media (max-width: 640px) {
+    .sw-ransomware__node .icon-badge { width: 38px; height: 38px; }
+    .sw-ransomware__node .label { font-size: 11px; }
+    .sw-ransomware__shield { font-size: 9px; padding: 2px 6px; }
+    .sw-ransomware__actor { width: 26px; height: 26px; margin-left: -13px; }
+}

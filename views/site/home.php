@@ -22,6 +22,7 @@ $offer = $content['offer'];
 $stats = $content['stats'];
 $platform = $content['platform'];
 $rule = $content['rule'];
+$ransomware = $content['ransomware'];
 $why = $content['why'];
 $steps = $content['steps'];
 $blog = $content['blog'];
@@ -200,6 +201,36 @@ $cta = $content['cta'];
                         </div>
                     </div>
                 <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="sw-section sw-section--tight">
+    <div class="sw-wrap">
+        <div class="sw-section-head reveal">
+            <h5><?= $h($ransomware['eyebrow']) ?></h5>
+            <h2><?= $h($ransomware['heading']) ?></h2>
+            <p><?= $h($ransomware['intro']) ?></p>
+        </div>
+        <div class="sw-ransomware reveal">
+            <div class="sw-ransomware__track">
+                <div class="sw-ransomware__node" data-node="1">
+                    <span class="icon-badge"><?= Icons::svg('server', 18) ?></span>
+                    <span class="label">Dane produkcyjne</span>
+                    <span class="sw-ransomware__mark">✕</span>
+                </div>
+                <div class="sw-ransomware__node" data-node="2">
+                    <span class="icon-badge"><?= Icons::svg('layers', 18) ?></span>
+                    <span class="label">Kopia lokalna</span>
+                    <span class="sw-ransomware__mark">✕</span>
+                </div>
+                <div class="sw-ransomware__node sw-ransomware__node--safe" data-node="3">
+                    <span class="icon-badge"><?= Icons::svg('lock', 18) ?></span>
+                    <span class="label">Kopia immutable</span>
+                    <span class="sw-ransomware__shield"><?= Icons::svg('shield-check', 13) ?> <?= $h($ransomware['protected_label']) ?></span>
+                </div>
+                <div class="sw-ransomware__actor" aria-hidden="true"><?= Icons::svg('bug', 20) ?></div>
             </div>
         </div>
     </div>

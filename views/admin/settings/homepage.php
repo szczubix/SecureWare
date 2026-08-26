@@ -136,6 +136,18 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
     </div>
 
     <div class="admin-card">
+        <h2 style="margin-top:0;">Sekcja "Ransomware kontra 3-2-1-1-0" (animacja)</h2>
+        <div class="form-grid form-grid--wide">
+            <div class="form-row">
+                <div class="field"><label>Eyebrow</label><input type="text" name="ransomware_eyebrow" value="<?= $h($content['ransomware']['eyebrow']) ?>"></div>
+                <div class="field"><label>Nagłówek</label><input type="text" name="ransomware_heading" value="<?= $h($content['ransomware']['heading']) ?>"></div>
+            </div>
+            <div class="field"><label>Wstęp</label><textarea name="ransomware_intro" rows="2"><?= $h($content['ransomware']['intro']) ?></textarea></div>
+            <div class="field"><label>Etykieta przy kopii immutable</label><input type="text" name="ransomware_protected_label" value="<?= $h($content['ransomware']['protected_label']) ?>"></div>
+        </div>
+    </div>
+
+    <div class="admin-card">
         <h2 style="margin-top:0;">Sekcja "Dlaczego SecureWare"</h2>
         <div class="form-grid form-grid--wide">
             <div class="form-row">

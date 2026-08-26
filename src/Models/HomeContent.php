@@ -85,6 +85,12 @@ class HomeContent
                     ['icon' => 'shield-check', 'num' => '0', 'label' => 'Błędów w kopiach', 'text' => 'Kopie regularnie testowane i weryfikowane przez realne odtwarzanie danych - zero niespodzianek w momencie, w którym backup trzeba faktycznie użyć.'],
                 ],
             ],
+            'ransomware' => [
+                'eyebrow'         => 'Dlaczego 3-2-1-1-0 działa',
+                'heading'         => 'Ransomware zjada, co może — ale nie kopię immutable',
+                'intro'           => 'Zaszyfrowanie danych produkcyjnych i zwykłej kopii zapasowej to standardowy scenariusz ataku. Kopia niezmienna (immutable) zostaje nietknięta, bo z definicji nie da się jej zmodyfikować ani usunąć — nawet z przejętym kontem administratora.',
+                'protected_label' => 'Chronione — nie do zmodyfikowania',
+            ],
             'why' => [
                 'eyebrow'    => 'Dlaczego SecureWare',
                 'heading'    => 'Backup, któremu można zaufać',
