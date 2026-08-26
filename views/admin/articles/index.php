@@ -4,14 +4,14 @@ use SecureWare\Core\Auth;
 use SecureWare\Core\Csrf;
 ?>
 <div class="toolbar">
-    <h1>Artykuly (blog)</h1>
-    <?php if (Auth::can('articles.edit')): ?><a href="new" class="button">+ Nowy artykul</a><?php endif; ?>
+    <h1>Artykuły (blog)</h1>
+    <?php if (Auth::can('articles.edit')): ?><a href="new" class="button">+ Nowy artykuł</a><?php endif; ?>
 </div>
 
 <div class="admin-card">
     <div class="table-wrap">
     <table class="admin-table">
-        <thead><tr><th>Tytul</th><th>Kategoria</th><th>Status</th><th>Data publikacji</th><th></th></tr></thead>
+        <thead><tr><th>Tytuł</th><th>Kategoria</th><th>Status</th><th>Data publikacji</th><th></th></tr></thead>
         <tbody>
         <?php foreach ($articles as $a): ?>
             <tr>
@@ -22,15 +22,15 @@ use SecureWare\Core\Csrf;
                 <td class="actions">
                     <?php if (Auth::can('articles.edit')): ?><a href="<?= (int) $a['id'] ?>/edit">Edytuj</a><?php endif; ?>
                     <?php if (Auth::can('articles.delete')): ?>
-                    <form method="post" action="<?= (int) $a['id'] ?>/delete" onsubmit="return confirm('Usunac artykul?');">
+                    <form method="post" action="<?= (int) $a['id'] ?>/delete" onsubmit="return confirm('Usunąć artykuł?');">
                         <?= Csrf::field() ?>
-                        <button type="submit" class="link-button" style="color:#d92d20;">Usun</button>
+                        <button type="submit" class="link-button" style="color:#d92d20;">Usuń</button>
                     </form>
                     <?php endif; ?>
                 </td>
             </tr>
         <?php endforeach; ?>
-        <?php if (!$articles): ?><tr><td colspan="5">Brak artykulow.</td></tr><?php endif; ?>
+        <?php if (!$articles): ?><tr><td colspan="5">Brak artykułów.</td></tr><?php endif; ?>
         </tbody>
     </table>
     </div>

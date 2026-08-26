@@ -10,8 +10,8 @@ $isEdit   = $editUser !== null;
 $action   = $isEdit ? $adminUrl . '/users/' . $editUser['id'] : $adminUrl . '/users';
 ?>
 <div class="toolbar">
-    <h1><?= $isEdit ? 'Edytuj uzytkownika' : 'Nowy uzytkownik' ?></h1>
-    <a href="<?= $adminUrl ?>/users" class="button button--ghost">← Wroc do listy</a>
+    <h1><?= $isEdit ? 'Edytuj użytkownika' : 'Nowy użytkownik' ?></h1>
+    <a href="<?= $adminUrl ?>/users" class="button button--ghost">← Wróć do listy</a>
 </div>
 
 <?php if ($error): ?><p class="alert alert--error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
@@ -21,7 +21,7 @@ $action   = $isEdit ? $adminUrl . '/users/' . $editUser['id'] : $adminUrl . '/us
         <?= Csrf::field() ?>
 
         <div class="field">
-            <label>Imie i nazwisko</label>
+            <label>Imię i nazwisko</label>
             <input type="text" name="name" required value="<?= htmlspecialchars($editUser['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
         </div>
 
@@ -31,7 +31,7 @@ $action   = $isEdit ? $adminUrl . '/users/' . $editUser['id'] : $adminUrl . '/us
         </div>
 
         <div class="field">
-            <label>Haslo <?= $isEdit ? '(zostaw puste, aby nie zmieniac)' : '' ?></label>
+            <label>Hasło <?= $isEdit ? '(zostaw puste, aby nie zmieniać)' : '' ?></label>
             <input type="password" name="password" <?= $isEdit ? '' : 'required' ?>>
         </div>
 

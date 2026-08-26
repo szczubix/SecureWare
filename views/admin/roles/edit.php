@@ -11,8 +11,8 @@ $isEdit   = $role !== null;
 $action   = $isEdit ? $adminUrl . '/roles/' . $role['id'] : $adminUrl . '/roles';
 ?>
 <div class="toolbar">
-    <h1><?= $isEdit ? 'Edytuj role' : 'Nowa rola' ?></h1>
-    <a href="<?= $adminUrl ?>/roles" class="button button--ghost">← Wroc do listy</a>
+    <h1><?= $isEdit ? 'Edytuj rolę' : 'Nowa rola' ?></h1>
+    <a href="<?= $adminUrl ?>/roles" class="button button--ghost">← Wróć do listy</a>
 </div>
 
 <?php if ($error): ?><p class="alert alert--error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>

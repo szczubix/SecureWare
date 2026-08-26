@@ -2,12 +2,12 @@
 
 /**
  * Instalator webowy - alternatywa dla "php database/seed.php" na hostingu
- * bez dostepu SSH. Importuje schemat bazy i seeduje dane poczatkowe.
+ * bez dostępu SSH. Importuje schemat bazy i seeduje dane początkowe.
  *
- * Po zakonczonej instalacji USUN TEN PLIK (przycisk na dole strony robi to
- * automatycznie) - dopoki tu lezy, kazdy zna jego adres i moze go otworzyc,
- * a strona z haslem administratora nie powinna zostac dostepna dla nikogo
- * poza Toba.
+ * Po zakończonej instalacji USUŃ TEN PLIK (przycisk na dole strony robi to
+ * automatycznie) - dopóki tu leży, każdy zna jego adres i może go otworzyć,
+ * a strona z hasłem administratora nie powinna zostać dostępna dla nikogo
+ * poza Tobą.
  */
 
 declare(strict_types=1);
@@ -47,17 +47,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'install') {
     if (!Csrf::verify($_POST['_csrf'] ?? null)) {
-        $error = 'Sesja wygasla. Odswiez strone i sprobuj ponownie.';
+        $error = 'Sesja wygasła. Odśwież stronę i spróbuj ponownie.';
     } elseif (Installer::isInstalled()) {
-        $error = 'Aplikacja jest juz zainstalowana.';
+        $error = 'Aplikacja jest już zainstalowana.';
     } else {
         try {
             $log = Installer::migrateSchema();
             $seedResult = Installer::seed();
             $result = ['log' => array_merge($log, $seedResult['log']), 'admin' => $seedResult['admin']];
         } catch (\Throwable $e) {
-            $error = 'Instalacja nie powiodla sie: ' . $e->getMessage()
-                . ' Sprawdz dane polaczenia z baza w pliku .env.';
+            $error = 'Instalacja nie powiodła się: ' . $e->getMessage()
+                . ' Sprawdź dane połączenia z bazą w pliku .env.';
         }
     }
 }
@@ -80,18 +80,18 @@ $alreadyInstalled = !$deleted && !$deleteFailed && !$result && Installer::isInst
 
         <?php if ($deleteFailed): ?>
             <p class="alert alert--error">
-                Nie udalo sie automatycznie usunac install.php (serwer PHP nie ma prawa zapisu
-                do tego katalogu). Skasuj plik <strong>recznie</strong> przez File Manager w
-                DirectAdmin - to wazne ze wzgledow bezpieczenstwa.
+                Nie udało się automatycznie usunąć install.php (serwer PHP nie ma prawa zapisu
+                do tego katalogu). Skasuj plik <strong>ręcznie</strong> przez File Manager w
+                DirectAdmin - to ważne ze względów bezpieczeństwa.
             </p>
         <?php endif; ?>
 
         <?php if ($deleted): ?>
-            <p class="alert alert--success">Plik install.php zostal usuniety z serwera. Instalacja zakonczona.</p>
-            <a href="<?= htmlspecialchars($adminUrl, ENT_QUOTES, 'UTF-8') ?>/login" class="button">Przejdz do logowania</a>
+            <p class="alert alert--success">Plik install.php został usunięty z serwera. Instalacja zakończona.</p>
+            <a href="<?= htmlspecialchars($adminUrl, ENT_QUOTES, 'UTF-8') ?>/login" class="button">Przejdź do logowania</a>
 
         <?php elseif ($result): ?>
-            <p class="alert alert--success">Instalacja zakonczona powodzeniem.</p>
+            <p class="alert alert--success">Instalacja zakończona powodzeniem.</p>
             <ul style="margin:0 0 16px;padding-left:18px;font-size:13.5px;color:var(--sw-muted);">
                 <?php foreach ($result['log'] as $line): ?>
                     <li><?= htmlspecialchars($line, ENT_QUOTES, 'UTF-8') ?></li>
@@ -103,30 +103,30 @@ $alreadyInstalled = !$deleted && !$deleteFailed && !$result && Installer::isInst
                     <strong>Zapisz te dane - pokazywane tylko raz:</strong><br>
                     Adres: <?= htmlspecialchars($adminUrl, ENT_QUOTES, 'UTF-8') ?>/login<br>
                     E-mail: <strong><?= htmlspecialchars($result['admin']['email'], ENT_QUOTES, 'UTF-8') ?></strong><br>
-                    Haslo: <strong><?= htmlspecialchars($result['admin']['password'], ENT_QUOTES, 'UTF-8') ?></strong><br>
-                    Zmien haslo od razu po pierwszym zalogowaniu.
+                    Hasło: <strong><?= htmlspecialchars($result['admin']['password'], ENT_QUOTES, 'UTF-8') ?></strong><br>
+                    Zmień hasło od razu po pierwszym zalogowaniu.
                 </div>
             <?php endif; ?>
 
             <p class="alert alert--error">
-                Ze wzgledow bezpieczenstwa usun teraz ten plik (install.php) z serwera -
-                dopoki tu lezy, kazdy moze pod niego wejsc.
+                Ze względów bezpieczeństwa usuń teraz ten plik (install.php) z serwera -
+                dopóki tu leży, każdy może pod niego wejść.
             </p>
-            <form method="post" action="" onsubmit="return confirm('Usunac install.php? Tej operacji nie mozna cofnac.');">
+            <form method="post" action="" onsubmit="return confirm('Usunąć install.php? Tej operacji nie można cofnąć.');">
                 <?= Csrf::field() ?>
                 <input type="hidden" name="action" value="delete_self">
-                <button type="submit" class="button button--danger" style="width:100%;">Usun install.php teraz</button>
+                <button type="submit" class="button button--danger" style="width:100%;">Usuń install.php teraz</button>
             </form>
-            <p class="hint" style="margin-top:10px;">Nie da sie usunac automatycznie? Skasuj plik recznie przez File Manager w DirectAdmin.</p>
+            <p class="hint" style="margin-top:10px;">Nie da się usunąć automatycznie? Skasuj plik ręcznie przez File Manager w DirectAdmin.</p>
 
         <?php elseif ($alreadyInstalled): ?>
-            <p class="alert alert--success">Aplikacja jest juz zainstalowana.</p>
-            <p>Jesli to nie Ty ostatnio instalowales - zmien haslo administratora i sprawdz uzytkownikow w panelu.</p>
-            <a href="<?= htmlspecialchars($adminUrl, ENT_QUOTES, 'UTF-8') ?>/login" class="button">Przejdz do logowania</a>
-            <form method="post" action="" style="margin-top:14px;" onsubmit="return confirm('Usunac install.php? Tej operacji nie mozna cofnac.');">
+            <p class="alert alert--success">Aplikacja jest już zainstalowana.</p>
+            <p>Jeśli to nie Ty ostatnio instalowałeś - zmień hasło administratora i sprawdź użytkowników w panelu.</p>
+            <a href="<?= htmlspecialchars($adminUrl, ENT_QUOTES, 'UTF-8') ?>/login" class="button">Przejdź do logowania</a>
+            <form method="post" action="" style="margin-top:14px;" onsubmit="return confirm('Usunąć install.php? Tej operacji nie można cofnąć.');">
                 <?= Csrf::field() ?>
                 <input type="hidden" name="action" value="delete_self">
-                <button type="submit" class="button button--ghost" style="width:100%;">Usun install.php</button>
+                <button type="submit" class="button button--ghost" style="width:100%;">Usuń install.php</button>
             </form>
 
         <?php else: ?>
@@ -135,9 +135,9 @@ $alreadyInstalled = !$deleted && !$deleteFailed && !$result && Installer::isInst
             <ul style="margin:0 0 16px;padding-left:18px;font-size:14px;">
                 <li>zaimportuje schemat bazy danych z <code>database/schema.sql</code>,</li>
                 <li>utworzy role, uprawnienia i pierwsze konto administratora panelu,</li>
-                <li>doda domyslne ustawienia oraz przykladowa tresc (13 uslug, strony, wpisy na blogu).</li>
+                <li>doda domyślne ustawienia oraz przykładową treść (13 usług, strony, wpisy na blogu).</li>
             </ul>
-            <p class="hint">Upewnij sie, ze plik <code>.env</code> ma juz poprawne dane polaczenia z baza danych.</p>
+            <p class="hint">Upewnij się, że plik <code>.env</code> ma już poprawne dane połączenia z bazą danych.</p>
             <form method="post" action="">
                 <?= Csrf::field() ?>
                 <input type="hidden" name="action" value="install">

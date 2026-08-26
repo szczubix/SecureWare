@@ -28,7 +28,7 @@ class BlogController
             'categories'      => $categories,
             'activeCategory'  => $category,
             'metaTitle'       => 'Blog — SecureWare',
-            'metaDescription' => 'Backup, disaster recovery i bezpieczenstwo danych - artykuly i poradniki.',
+            'metaDescription' => 'Backup, disaster recovery i bezpieczeństwo danych - artykuły i poradniki.',
         ], 'site/layout');
     }
 

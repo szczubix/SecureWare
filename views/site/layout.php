@@ -79,7 +79,7 @@ $cookieYes = $settings['cookieyes_script'] ?? '';
                                     </a>
                                 <?php endforeach; ?>
                             </div>
-                            <a class="sw-mega__all" href="/oferta">Zobacz pelna oferte <?= Icons::svg('arrow-right', 14) ?></a>
+                            <a class="sw-mega__all" href="/oferta">Zobacz pełną ofertę <?= Icons::svg('arrow-right', 14) ?></a>
                         </div>
                     </div>
                 <?php else: ?>
@@ -88,7 +88,7 @@ $cookieYes = $settings['cookieyes_script'] ?? '';
             <?php endforeach; ?>
         </nav>
         <div class="sw-header__actions">
-            <a href="/kontakt" class="sw-btn sw-btn--primary">Umow rozmowe</a>
+            <a href="/kontakt" class="sw-btn sw-btn--primary">Umów rozmowę</a>
             <button class="sw-nav-toggle" id="sw-nav-toggle" aria-label="Menu"><?= Icons::svg('menu', 22) ?></button>
         </div>
     </div>
@@ -114,7 +114,7 @@ $cookieYes = $settings['cookieyes_script'] ?? '';
         </div>
         <div>
             <h4>Prawne</h4>
-            <a href="/polityka-prywatnosci">Polityka prywatnosci</a>
+            <a href="/polityka-prywatnosci">Polityka prywatności</a>
             <a href="/regulamin">Regulamin</a>
         </div>
         <div>

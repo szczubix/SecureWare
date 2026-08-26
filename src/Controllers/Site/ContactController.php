@@ -44,12 +44,12 @@ class ContactController
         };
 
         if (!Csrf::verify($request->input('_csrf'))) {
-            $render('Sesja wygasla. Odswiez strone i sprobuj ponownie.');
+            $render('Sesja wygasła. Odśwież stronę i spróbuj ponownie.');
             return;
         }
 
         if ($old['name'] === '' || !filter_var($old['email'], FILTER_VALIDATE_EMAIL) || $old['message'] === '') {
-            $render('Wypelnij imie, poprawny adres e-mail oraz wiadomosc.');
+            $render('Wypełnij imię, poprawny adres e-mail oraz wiadomość.');
             return;
         }
 
@@ -57,7 +57,7 @@ class ContactController
         if ($secret) {
             $token = (string) $request->input('cf-turnstile-response', '');
             if (!$this->verifyTurnstile($secret, $token, $request->ip())) {
-                $render('Weryfikacja antyspamowa nie powiodla sie. Sprobuj ponownie.');
+                $render('Weryfikacja antyspamowa nie powiodła się. Spróbuj ponownie.');
                 return;
             }
         }
@@ -109,9 +109,9 @@ class ContactController
         $siteName = Setting::get('site_name', 'SecureWare');
         $from     = Setting::get('mail_from_address', '') ?: $to;
 
-        $subject = 'Nowe zapytanie ze strony ' . $siteName;
-        $body    = "Imie: {$lead['name']}\nFirma: {$lead['company']}\nE-mail: {$lead['email']}\nTelefon: {$lead['phone']}\n\nWiadomosc:\n{$lead['message']}";
-        $headers = 'From: ' . $from . "\r\n" . 'Reply-To: ' . $lead['email'];
+        $subject = mb_encode_mimeheader('Nowe zapytanie ze strony ' . $siteName, 'UTF-8');
+        $body    = "Imię: {$lead['name']}\nFirma: {$lead['company']}\nE-mail: {$lead['email']}\nTelefon: {$lead['phone']}\n\nWiadomość:\n{$lead['message']}";
+        $headers = 'From: ' . $from . "\r\n" . 'Reply-To: ' . $lead['email'] . "\r\n" . 'Content-Type: text/plain; charset=UTF-8';
 
         @mail($to, $subject, $body, $headers);
     }

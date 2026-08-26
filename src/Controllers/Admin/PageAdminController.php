@@ -68,7 +68,7 @@ class PageAdminController
         if ($title === '' || $slug === '') {
             echo View::render('admin/pages/edit', [
                 'page' => $id ? Page::find($id) : null, 'allPages' => Page::all(),
-                'error' => 'Tytul i slug sa wymagane.',
+                'error' => 'Tytuł i slug są wymagane.',
             ], 'admin/layout');
             return;
         }

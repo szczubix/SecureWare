@@ -1,28 +1,28 @@
 <?php
 
 /**
- * Domyslne podstrony CMS. Edytowalne pozniej w panelu /cloudsecurepanel/pages.
- * Uwaga: slug "kontakt" jest obslugiwany przez dedykowany formularz
- * (ContactController), wiec nie jest tu seedowany jako zwykla strona.
+ * Domyślne podstrony CMS. Edytowalne później w panelu /cloudsecurepanel/pages.
+ * Uwaga: slug "kontakt" jest obsługiwany przez dedykowany formularz
+ * (ContactController), więc nie jest tu seedowany jako zwykła strona.
  */
 
 return [
     [
         'title'            => 'O nas',
         'slug'             => 'o-nas',
-        'meta_description' => 'SecureWare - zespol specjalistow od backupu, disaster recovery i ochrony danych dla firm.',
-        'content'          => '<h2>Kim jestesmy</h2><p>SecureWare to zespol specjalistow skupiony wylacznie na jednym obszarze: ochronie danych. Zarzadzany backup, backup jako usluga, disaster recovery i cykliczne testy odtwarzania - to wszystko, czym sie zajmujemy, i robimy to dobrze.</p><h2>Jak pracujemy</h2><p>Nie sprzedajemy jednorazowego wdrozenia i znikamy. Kazde srodowisko, ktorym sie opiekujemy, jest monitorowane 24/7, regularnie testowane i raportowane w sposob zrozumialy - rowniez dla osob spoza IT.</p><h2>Dla kogo</h2><p>Pracujemy z firmami, dla ktorych utrata danych oznacza realne straty finansowe i wizerunkowe - i ktore chca miec pewnosc, ze w razie awarii dane wroca, a nie tylko "prawdopodobnie wroca".</p>',
+        'meta_description' => 'SecureWare - zespół specjalistów od backupu, disaster recovery i ochrony danych dla firm.',
+        'content'          => '<h2>Kim jesteśmy</h2><p>SecureWare to zespół specjalistów skupiony wyłącznie na jednym obszarze: ochronie danych. Zarządzany backup, backup jako usługa, disaster recovery i cykliczne testy odtwarzania - to wszystko, czym się zajmujemy, i robimy to dobrze.</p><h2>Jak pracujemy</h2><p>Nie sprzedajemy jednorazowego wdrożenia i znikamy. Każde środowisko, którym się opiekujemy, jest monitorowane 24/7, regularnie testowane i raportowane w sposób zrozumiały - również dla osób spoza IT.</p><h2>Dla kogo</h2><p>Pracujemy z firmami, dla których utrata danych oznacza realne straty finansowe i wizerunkowe - i które chcą mieć pewność, że w razie awarii dane wrócą, a nie tylko "prawdopodobnie wrócą".</p>',
     ],
     [
-        'title'            => 'Polityka prywatnosci',
+        'title'            => 'Polityka prywatności',
         'slug'             => 'polityka-prywatnosci',
         'meta_description' => 'Informacje o przetwarzaniu danych osobowych przez SecureWare.',
-        'content'          => '<h2>Administrator danych</h2><p>Administratorem danych osobowych przetwarzanych w zwiazku z korzystaniem z serwisu secureware.pl jest SecureWare. Dane kontaktowe administratora znajduja sie w stopce strony oraz na podstronie Kontakt.</p><h2>Jakie dane przetwarzamy</h2><p>Przetwarzamy dane podane dobrowolnie w formularzu kontaktowym (imie, adres e-mail, numer telefonu, tresc wiadomosci) w celu udzielenia odpowiedzi na zapytanie oraz przygotowania oferty.</p><h2>Pliki cookies</h2><p>Serwis wykorzystuje pliki cookies w celach statystycznych (Google Analytics) oraz do zarzadzania zgodami na przetwarzanie danych (CookieYes). Szczegolowe ustawienia zgod mozna zmienic w kazdej chwili z poziomu banera cookies.</p><h2>Twoje prawa</h2><p>Przysluguje Ci prawo dostepu do danych, ich sprostowania, usuniecia oraz ograniczenia przetwarzania. W celu realizacji swoich praw skontaktuj sie z nami poprzez formularz kontaktowy.</p><p><em>Ta tresc jest szablonem i powinna zostac zweryfikowana przez prawnika przed publikacja produkcyjna.</em></p>',
+        'content'          => '<h2>Administrator danych</h2><p>Administratorem danych osobowych przetwarzanych w związku z korzystaniem z serwisu secureware.pl jest SecureWare. Dane kontaktowe administratora znajdują się w stopce strony oraz na podstronie Kontakt.</p><h2>Jakie dane przetwarzamy</h2><p>Przetwarzamy dane podane dobrowolnie w formularzu kontaktowym (imię, adres e-mail, numer telefonu, treść wiadomości) w celu udzielenia odpowiedzi na zapytanie oraz przygotowania oferty.</p><h2>Pliki cookies</h2><p>Serwis wykorzystuje pliki cookies w celach statystycznych (Google Analytics) oraz do zarządzania zgodami na przetwarzanie danych (CookieYes). Szczegółowe ustawienia zgód można zmienić w każdej chwili z poziomu banera cookies.</p><h2>Twoje prawa</h2><p>Przysługuje Ci prawo dostępu do danych, ich sprostowania, usunięcia oraz ograniczenia przetwarzania. W celu realizacji swoich praw skontaktuj się z nami poprzez formularz kontaktowy.</p><p><em>Ta treść jest szablonem i powinna zostać zweryfikowana przez prawnika przed publikacją produkcyjną.</em></p>',
     ],
     [
         'title'            => 'Regulamin',
         'slug'             => 'regulamin',
-        'meta_description' => 'Regulamin korzystania z serwisu secureware.pl oraz swiadczenia uslug przez SecureWare.',
-        'content'          => '<h2>Postanowienia ogolne</h2><p>Niniejszy regulamin okresla zasady korzystania z serwisu internetowego secureware.pl oraz ogolne warunki swiadczenia uslug backupu, disaster recovery i uslug pokrewnych przez SecureWare.</p><h2>Zakres uslug</h2><p>Szczegolowy zakres, warunki i ceny poszczegolnych uslug (Managed Backup, Backup as a Service, Disaster Recovery i pozostale) sa kazdorazowo okreslane w indywidualnej umowie lub ofercie handlowej.</p><h2>Reklamacje</h2><p>Reklamacje dotyczace swiadczonych uslug mozna zglaszac za posrednictwem formularza kontaktowego lub adresu e-mail wskazanego w stopce serwisu.</p><p><em>Ta tresc jest szablonem i powinna zostac zweryfikowana przez prawnika przed publikacja produkcyjna.</em></p>',
+        'meta_description' => 'Regulamin korzystania z serwisu secureware.pl oraz świadczenia usług przez SecureWare.',
+        'content'          => '<h2>Postanowienia ogólne</h2><p>Niniejszy regulamin określa zasady korzystania z serwisu internetowego secureware.pl oraz ogólne warunki świadczenia usług backupu, disaster recovery i usług pokrewnych przez SecureWare.</p><h2>Zakres usług</h2><p>Szczegółowy zakres, warunki i ceny poszczególnych usług (Managed Backup, Backup as a Service, Disaster Recovery i pozostałe) są każdorazowo określane w indywidualnej umowie lub ofercie handlowej.</p><h2>Reklamacje</h2><p>Reklamacje dotyczące świadczonych usług można zgłaszać za pośrednictwem formularza kontaktowego lub adresu e-mail wskazanego w stopce serwisu.</p><p><em>Ta treść jest szablonem i powinna zostać zweryfikowana przez prawnika przed publikacją produkcyjną.</em></p>',
     ],
 ];

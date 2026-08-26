@@ -13,7 +13,7 @@ $totalPages = max(1, (int) ceil($total / $perPage));
     <div class="sw-wrap">
         <span class="sw-hero__eyebrow sw-anim-in sw-delay-1">Blog</span>
         <h1 class="sw-anim-in sw-delay-2" style="font-size:36px;">Backup, ransomware i <span>disaster recovery</span> po ludzku</h1>
-        <p class="lead sw-anim-in sw-delay-3">Praktyczna wiedza o ochronie danych - bez marketingowego zargonu.</p>
+        <p class="lead sw-anim-in sw-delay-3">Praktyczna wiedza o ochronie danych - bez marketingowego żargonu.</p>
     </div>
 </section>
 
@@ -39,7 +39,7 @@ $totalPages = max(1, (int) ceil($total / $perPage));
                     </div>
                 </a>
             <?php endforeach; ?>
-            <?php if (!$articles): ?><p>Brak wpisow w tej kategorii.</p><?php endif; ?>
+            <?php if (!$articles): ?><p>Brak wpisów w tej kategorii.</p><?php endif; ?>
         </div>
 
         <?php if ($totalPages > 1): ?>

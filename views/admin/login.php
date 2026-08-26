@@ -21,10 +21,10 @@ use SecureWare\Core\Csrf;
         <label>E-mail
             <input type="email" name="email" required autofocus>
         </label>
-        <label>Haslo
+        <label>Hasło
             <input type="password" name="password" required>
         </label>
-        <button type="submit">Zaloguj sie</button>
+        <button type="submit">Zaloguj się</button>
     </form>
 </body>
 </html>

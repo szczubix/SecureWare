@@ -7,18 +7,18 @@ $totalPages = max(1, (int) ceil($total / $perPage));
 
 $actionLabels = [
     'login' => 'Logowanie', 'logout' => 'Wylogowanie',
-    'create' => 'Utworzono', 'update' => 'Zaktualizowano', 'delete' => 'Usunieto',
+    'create' => 'Utworzono', 'update' => 'Zaktualizowano', 'delete' => 'Usunięto',
     'upload' => 'Wgrano plik',
 ];
 ?>
 <div class="toolbar">
-    <h1>Logi aktywnosci</h1>
+    <h1>Logi aktywności</h1>
 </div>
 
 <div class="admin-card">
     <div class="table-wrap">
     <table class="admin-table">
-        <thead><tr><th>Data</th><th>Uzytkownik</th><th>Akcja</th><th>Obiekt</th><th>IP</th></tr></thead>
+        <thead><tr><th>Data</th><th>Użytkownik</th><th>Akcja</th><th>Obiekt</th><th>IP</th></tr></thead>
         <tbody>
         <?php foreach ($logs as $l): ?>
             <tr>
@@ -29,7 +29,7 @@ $actionLabels = [
                 <td><?= htmlspecialchars($l['ip'], ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
         <?php endforeach; ?>
-        <?php if (!$logs): ?><tr><td colspan="5">Brak wpisow.</td></tr><?php endif; ?>
+        <?php if (!$logs): ?><tr><td colspan="5">Brak wpisów.</td></tr><?php endif; ?>
         </tbody>
     </table>
     </div>

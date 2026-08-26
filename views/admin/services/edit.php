@@ -11,8 +11,8 @@ $meta     = $service['meta'] ?? [];
 $icons    = ['shield-check','cloud-upload','map-pin','lock','mail','server','layers','life-buoy','refresh-ccw','clipboard-check','tool','activity','file-check','shield'];
 ?>
 <div class="toolbar">
-    <h1><?= $isEdit ? 'Edytuj usluge' : 'Nowa usluga' ?></h1>
-    <a href="<?= $adminUrl ?>/services" class="button button--ghost">← Wroc do listy</a>
+    <h1><?= $isEdit ? 'Edytuj usługę' : 'Nowa usługa' ?></h1>
+    <a href="<?= $adminUrl ?>/services" class="button button--ghost">← Wróć do listy</a>
 </div>
 
 <?php if ($error): ?><p class="alert alert--error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
@@ -33,12 +33,12 @@ $icons    = ['shield-check','cloud-upload','map-pin','lock','mail','server','lay
         </div>
 
         <div class="field">
-            <label>Krotki opis (widoczny na liscie ofert)</label>
+            <label>Krótki opis (widoczny na liście ofert)</label>
             <textarea name="short_description" rows="2" required><?= htmlspecialchars($service['short_description'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
         </div>
 
         <div class="field">
-            <label>Tresc pelna</label>
+            <label>Treść pełna</label>
             <textarea name="content" id="content-editor"><?= $service['content'] ?? '' ?></textarea>
         </div>
 
@@ -52,7 +52,7 @@ $icons    = ['shield-check','cloud-upload','map-pin','lock','mail','server','lay
                 </select>
             </div>
             <div class="field">
-                <label>Kolejnosc wyswietlania</label>
+                <label>Kolejność wyświetlania</label>
                 <input type="number" name="position" value="<?= (int) ($service['position'] ?? 0) ?>">
             </div>
         </div>
@@ -71,8 +71,8 @@ $icons    = ['shield-check','cloud-upload','map-pin','lock','mail','server','lay
                 <?php foreach ($meta as $key => $value): ?>
                     <div class="row">
                         <input type="text" name="meta_key[]" value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>" placeholder="Nazwa pola">
-                        <input type="text" name="meta_value[]" value="<?= htmlspecialchars($value, ENT_QUOTES, 'UTF-8') ?>" placeholder="Wartosc">
-                        <button type="button" class="button button--ghost button--small" data-remove-row>Usun</button>
+                        <input type="text" name="meta_value[]" value="<?= htmlspecialchars($value, ENT_QUOTES, 'UTF-8') ?>" placeholder="Wartość">
+                        <button type="button" class="button button--ghost button--small" data-remove-row>Usuń</button>
                     </div>
                 <?php endforeach; ?>
             </div>

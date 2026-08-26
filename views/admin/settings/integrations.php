@@ -26,7 +26,7 @@ use SecureWare\Core\Csrf;
         </div>
 
         <h2>Poczta</h2>
-        <p class="hint">Adres, z ktorego wysylane sa powiadomienia o nowych zapytaniach z formularza kontaktowego (naglowek "From"). Odbiorca to e-mail kontaktowy z zakladki Branding.</p>
+        <p class="hint">Adres, z którego wysyłane są powiadomienia o nowych zapytaniach z formularza kontaktowego (nagłówek "From"). Odbiorcą jest e-mail kontaktowy z zakładki Branding.</p>
         <div class="field">
             <label>Adres nadawcy (From)</label>
             <input type="email" name="mail_from_address" placeholder="no-reply@twojadomena.pl" value="<?= htmlspecialchars($settings['mail_from_address'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
@@ -42,7 +42,7 @@ use SecureWare\Core\Csrf;
         <div class="field">
             <label>Skrypt CookieYes</label>
             <textarea name="cookieyes_script" rows="3" placeholder='&lt;script id="cookieyes" type="text/javascript" src="https://cdn-cookieyes.com/client_data/XXXXXXXXXXXXXXXXXXXX/script.js"&gt;&lt;/script&gt;'><?= htmlspecialchars($settings['cookieyes_script'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
-            <span class="hint">Wklej caly tag &lt;script&gt; wygenerowany w panelu cookieyes.com - zostanie wstawiony w sekcji &lt;head&gt; strony.</span>
+            <span class="hint">Wklej cały tag &lt;script&gt; wygenerowany w panelu cookieyes.com - zostanie wstawiony w sekcji &lt;head&gt; strony.</span>
         </div>
 
         <div class="form-actions">

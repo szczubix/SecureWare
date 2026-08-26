@@ -25,9 +25,9 @@ $error = Session::flash('error');
                 <td class="actions">
                     <?php if (Auth::can('roles.edit')): ?><a href="<?= (int) $r['id'] ?>/edit">Edytuj</a><?php endif; ?>
                     <?php if (Auth::can('roles.delete')): ?>
-                    <form method="post" action="<?= (int) $r['id'] ?>/delete" onsubmit="return confirm('Usunac role?');">
+                    <form method="post" action="<?= (int) $r['id'] ?>/delete" onsubmit="return confirm('Usunąć rolę?');">
                         <?= Csrf::field() ?>
-                        <button type="submit" class="link-button" style="color:#d92d20;">Usun</button>
+                        <button type="submit" class="link-button" style="color:#d92d20;">Usuń</button>
                     </form>
                     <?php endif; ?>
                 </td>

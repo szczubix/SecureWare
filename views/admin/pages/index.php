@@ -11,7 +11,7 @@ use SecureWare\Core\Csrf;
 <div class="admin-card">
     <div class="table-wrap">
     <table class="admin-table">
-        <thead><tr><th>Tytul</th><th>Adres</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Tytuł</th><th>Adres</th><th>Status</th><th></th></tr></thead>
         <tbody>
         <?php foreach ($pages as $p): ?>
             <tr>
@@ -21,9 +21,9 @@ use SecureWare\Core\Csrf;
                 <td class="actions">
                     <?php if (Auth::can('pages.edit')): ?><a href="<?= (int) $p['id'] ?>/edit">Edytuj</a><?php endif; ?>
                     <?php if (Auth::can('pages.delete')): ?>
-                    <form method="post" action="<?= (int) $p['id'] ?>/delete" onsubmit="return confirm('Usunac podstrone?');">
+                    <form method="post" action="<?= (int) $p['id'] ?>/delete" onsubmit="return confirm('Usunąć podstronę?');">
                         <?= Csrf::field() ?>
-                        <button type="submit" class="link-button" style="color:#d92d20;">Usun</button>
+                        <button type="submit" class="link-button" style="color:#d92d20;">Usuń</button>
                     </form>
                     <?php endif; ?>
                 </td>

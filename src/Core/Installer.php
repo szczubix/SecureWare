@@ -18,29 +18,29 @@ class Installer
     private static function permissions(): array
     {
         return [
-            'dashboard.view'   => 'Podglad panelu',
-            'articles.view'    => 'Przegladanie artykulow',
-            'articles.edit'    => 'Edycja artykulow',
-            'articles.delete'  => 'Usuwanie artykulow',
-            'pages.view'       => 'Przegladanie podstron',
+            'dashboard.view'   => 'Podgląd panelu',
+            'articles.view'    => 'Przeglądanie artykułów',
+            'articles.edit'    => 'Edycja artykułów',
+            'articles.delete'  => 'Usuwanie artykułów',
+            'pages.view'       => 'Przeglądanie podstron',
             'pages.edit'       => 'Edycja podstron',
             'pages.delete'     => 'Usuwanie podstron',
-            'services.view'    => 'Przegladanie uslug (oferta)',
-            'services.edit'    => 'Edycja uslug (oferta)',
-            'services.delete'  => 'Usuwanie uslug (oferta)',
-            'media.view'       => 'Przegladanie biblioteki mediow',
-            'media.upload'     => 'Wgrywanie plikow',
-            'media.delete'     => 'Usuwanie plikow',
-            'users.view'       => 'Przegladanie uzytkownikow',
-            'users.edit'       => 'Edycja uzytkownikow',
-            'users.delete'     => 'Usuwanie uzytkownikow',
-            'roles.view'       => 'Przegladanie rol',
-            'roles.edit'       => 'Edycja rol i uprawnien',
-            'roles.delete'     => 'Usuwanie rol',
-            'settings.edit'    => 'Edycja ustawien (branding/integracje)',
-            'logs.view'        => 'Podglad logow aktywnosci',
-            'leads.view'       => 'Przegladanie zapytan (leadow)',
-            'leads.edit'       => 'Zarzadzanie statusem zapytan',
+            'services.view'    => 'Przeglądanie usług (oferta)',
+            'services.edit'    => 'Edycja usług (oferta)',
+            'services.delete'  => 'Usuwanie usług (oferta)',
+            'media.view'       => 'Przeglądanie biblioteki mediów',
+            'media.upload'     => 'Wgrywanie plików',
+            'media.delete'     => 'Usuwanie plików',
+            'users.view'       => 'Przeglądanie użytkowników',
+            'users.edit'       => 'Edycja użytkowników',
+            'users.delete'     => 'Usuwanie użytkowników',
+            'roles.view'       => 'Przeglądanie ról',
+            'roles.edit'       => 'Edycja ról i uprawnień',
+            'roles.delete'     => 'Usuwanie ról',
+            'settings.edit'    => 'Edycja ustawień (branding/integracje)',
+            'logs.view'        => 'Podgląd logów aktywności',
+            'leads.view'       => 'Przeglądanie zapytań (leadów)',
+            'leads.edit'       => 'Zarządzanie statusem zapytań',
         ];
     }
 
@@ -78,7 +78,7 @@ class Installer
             $count++;
         }
 
-        return ["Schemat bazy danych: OK ({$count} zapytan)"];
+        return ["Schemat bazy danych: OK ({$count} zapytań)"];
     }
 
     /**
@@ -128,7 +128,7 @@ class Installer
                 'dashboard.view', 'articles.view', 'articles.edit', 'articles.delete',
                 'pages.view', 'pages.edit', 'media.view', 'media.upload', 'media.delete',
             ]],
-            'sprzedaz'      => ['name' => 'Sprzedaz', 'permissions' => [
+            'sprzedaz'      => ['name' => 'Sprzedaż', 'permissions' => [
                 'dashboard.view', 'leads.view', 'leads.edit',
             ]],
         ];
@@ -169,19 +169,19 @@ class Installer
             $admin = ['email' => $email, 'password' => $password];
             $log[] = 'Utworzono konto administratora panelu.';
         } else {
-            $log[] = 'Uzytkownicy juz istnieja - pomijam tworzenie administratora.';
+            $log[] = 'Użytkownicy już istnieją - pomijam tworzenie administratora.';
         }
 
         // -- Domyslne ustawienia -----------------------------------------
         $settings = [
             'site_name'          => 'SecureWare',
-            'site_tagline'       => 'Backup i disaster recovery, ktore dzialaja, gdy najbardziej ich potrzebujesz.',
+            'site_tagline'       => 'Backup i disaster recovery, które działają, gdy najbardziej ich potrzebujesz.',
             'contact_email'      => 'kontakt@secureware.pl',
             'contact_phone'      => '+48 000 000 000',
             'contact_address'    => 'Polska',
             'color_primary'      => '#0ba5ef',
             'color_dark'         => '#182a42',
-            'footer_text'        => '© ' . date('Y') . ' SecureWare. Wszelkie prawa zastrzezone.',
+            'footer_text'        => '© ' . date('Y') . ' SecureWare. Wszelkie prawa zastrzeżone.',
             'social_linkedin'    => '',
             'social_twitter'     => '',
             'nav_menu'           => json_encode([
@@ -202,11 +202,11 @@ class Installer
         foreach ($settings as $key => $value) {
             $insSetting->execute(['key' => $key, 'value' => (string) $value]);
         }
-        $log[] = 'Ustawienia domyslne: OK';
+        $log[] = 'Ustawienia domyślne: OK';
 
         // -- Kategoria bloga -----------------------------------------------
         $pdo->prepare('INSERT IGNORE INTO categories (name, slug) VALUES (:name, :slug)')
-            ->execute(['name' => 'Backup i bezpieczenstwo', 'slug' => 'backup-i-bezpieczenstwo']);
+            ->execute(['name' => 'Backup i bezpieczeństwo', 'slug' => 'backup-i-bezpieczenstwo']);
         $categoryId = (int) $pdo->query("SELECT id FROM categories WHERE slug = 'backup-i-bezpieczenstwo'")->fetchColumn();
 
         // -- Uslugi (Oferta) - 13 pozycji ------------------------------------
@@ -228,7 +228,7 @@ class Installer
                 'meta_description'  => $s['short_description'],
             ]);
         }
-        $log[] = 'Uslugi (oferta): OK (' . count($services) . ')';
+        $log[] = 'Usługi (oferta): OK (' . count($services) . ')';
 
         // -- Podstrony CMS ---------------------------------------------------
         $pages   = require ROOT_PATH . '/database/seed-data/pages.php';
@@ -248,7 +248,7 @@ class Installer
         }
         $log[] = 'Podstrony CMS: OK (' . count($pages) . ')';
 
-        // -- Przykladowe wpisy na blogu --------------------------------------
+        // -- Przykładowe wpisy na blogu --------------------------------------
         $adminUserId = (int) $pdo->query('SELECT id FROM users ORDER BY id LIMIT 1')->fetchColumn();
         $articles    = require ROOT_PATH . '/database/seed-data/articles.php';
         $insArticle  = $pdo->prepare(
@@ -271,5 +271,103 @@ class Installer
         $log[] = 'Wpisy na blogu: OK (' . count($articles) . ')';
 
         return ['log' => $log, 'admin' => $admin];
+    }
+
+    /**
+     * Nadpisuje treść domyślnych usług/stron/artykułów (dopasowanych po
+     * slug), etykiety uprawnień, nazwy ról oraz kilka domyślnych ustawień
+     * aktualną wersją z seed-data/Installer - na wypadek gdyby domyślna
+     * treść była błędna w chwili pierwszej instalacji (np. literówki,
+     * brak polskich znaków). Nie dotyka leadów, użytkowników ani treści,
+     * które nie pochodzą z domyślnego seeda (dopasowanie wyłącznie po
+     * istniejącym slug/key, bez wstawiania nowych wierszy).
+     *
+     * @return string[] log
+     */
+    public static function refreshDefaultContent(): array
+    {
+        $pdo = Database::connection();
+        $log = [];
+
+        // -- Usługi (Oferta) --------------------------------------------------
+        $services = require ROOT_PATH . '/database/seed-data/services.php';
+        $updService = $pdo->prepare(
+            'UPDATE services SET name = :name, icon = :icon, short_description = :short_description,
+             content = :content, meta_title = :meta_title, meta_description = :meta_description
+             WHERE slug = :slug'
+        );
+        $updated = 0;
+        foreach ($services as $s) {
+            $updService->execute([
+                'name'              => $s['name'],
+                'icon'              => $s['icon'],
+                'short_description' => $s['short_description'],
+                'content'           => $s['content'],
+                'meta_title'        => $s['name'] . ' | SecureWare',
+                'meta_description'  => $s['short_description'],
+                'slug'              => $s['slug'],
+            ]);
+            $updated += $updService->rowCount();
+        }
+        $log[] = 'Usługi (oferta): zaktualizowano ' . $updated . ' z ' . count($services);
+
+        // -- Podstrony CMS -----------------------------------------------------
+        $pages = require ROOT_PATH . '/database/seed-data/pages.php';
+        $updPage = $pdo->prepare(
+            'UPDATE pages SET title = :title, content = :content, meta_title = :meta_title,
+             meta_description = :meta_description WHERE slug = :slug'
+        );
+        $updated = 0;
+        foreach ($pages as $p) {
+            $updPage->execute([
+                'title'            => $p['title'],
+                'content'          => $p['content'],
+                'meta_title'       => $p['title'] . ' | SecureWare',
+                'meta_description' => $p['meta_description'] ?? '',
+                'slug'             => $p['slug'],
+            ]);
+            $updated += $updPage->rowCount();
+        }
+        $log[] = 'Podstrony CMS: zaktualizowano ' . $updated . ' z ' . count($pages);
+
+        // -- Wpisy na blogu ------------------------------------------------------
+        $articles = require ROOT_PATH . '/database/seed-data/articles.php';
+        $updArticle = $pdo->prepare(
+            'UPDATE articles SET title = :title, excerpt = :excerpt, content = :content,
+             meta_title = :meta_title, meta_description = :meta_description WHERE slug = :slug'
+        );
+        $updated = 0;
+        foreach ($articles as $a) {
+            $updArticle->execute([
+                'title'            => $a['title'],
+                'excerpt'          => $a['excerpt'],
+                'content'          => $a['content'],
+                'meta_title'       => $a['title'] . ' | SecureWare',
+                'meta_description' => $a['excerpt'],
+                'slug'             => $a['slug'],
+            ]);
+            $updated += $updArticle->rowCount();
+        }
+        $log[] = 'Wpisy na blogu: zaktualizowano ' . $updated . ' z ' . count($articles);
+
+        // -- Kategoria bloga, uprawnienia, role --------------------------------
+        $pdo->prepare('UPDATE categories SET name = :name WHERE slug = :slug')
+            ->execute(['name' => 'Backup i bezpieczeństwo', 'slug' => 'backup-i-bezpieczenstwo']);
+
+        $updPerm = $pdo->prepare('UPDATE permissions SET label = :label WHERE `key` = :key');
+        foreach (self::permissions() as $key => $label) {
+            $updPerm->execute(['label' => $label, 'key' => $key]);
+        }
+
+        $pdo->prepare('UPDATE roles SET name = :name WHERE slug = :slug')->execute(['name' => 'Sprzedaż', 'slug' => 'sprzedaz']);
+        $log[] = 'Etykiety uprawnień, nazwy ról, kategoria bloga: OK';
+
+        // -- Kilka domyślnych ustawień (tylko treść opisowa, nie branding) ----
+        $updSetting = $pdo->prepare('UPDATE settings SET `value` = :value WHERE `key` = :key');
+        $updSetting->execute(['key' => 'site_tagline', 'value' => 'Backup i disaster recovery, które działają, gdy najbardziej ich potrzebujesz.']);
+        $updSetting->execute(['key' => 'footer_text', 'value' => '© ' . date('Y') . ' SecureWare. Wszelkie prawa zastrzeżone.']);
+        $log[] = 'Domyślne teksty ustawień (tagline, stopka): OK';
+
+        return $log;
     }
 }

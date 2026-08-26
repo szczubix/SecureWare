@@ -39,7 +39,7 @@ class MediaController
         Auth::requirePermission('media.upload');
 
         if (!Csrf::verify($request->input('_csrf'))) {
-            Session::flash('error', 'Sesja wygasla, sprobuj ponownie.');
+            Session::flash('error', 'Sesja wygasła, spróbuj ponownie.');
             Response::redirect($this->url());
         }
 
@@ -50,12 +50,12 @@ class MediaController
         }
 
         if ($file['error'] !== UPLOAD_ERR_OK) {
-            Session::flash('error', 'Blad podczas wgrywania pliku.');
+            Session::flash('error', 'Błąd podczas wgrywania pliku.');
             Response::redirect($this->url());
         }
 
         if ($file['size'] > self::MAX_SIZE) {
-            Session::flash('error', 'Plik jest za duzy (limit 8 MB).');
+            Session::flash('error', 'Plik jest za duży (limit 8 MB).');
             Response::redirect($this->url());
         }
 
@@ -77,7 +77,7 @@ class MediaController
 
         $destination = $uploadDir . '/' . $uniqueName;
         if (!move_uploaded_file($file['tmp_name'], $destination)) {
-            Session::flash('error', 'Nie udalo sie zapisac pliku na serwerze.');
+            Session::flash('error', 'Nie udało się zapisać pliku na serwerze.');
             Response::redirect($this->url());
         }
 

@@ -4,8 +4,8 @@ use SecureWare\Core\Auth;
 use SecureWare\Core\Csrf;
 ?>
 <div class="toolbar">
-    <h1>Oferta (uslugi)</h1>
-    <?php if (Auth::can('services.edit')): ?><a href="new" class="button">+ Nowa usluga</a><?php endif; ?>
+    <h1>Oferta (usługi)</h1>
+    <?php if (Auth::can('services.edit')): ?><a href="new" class="button">+ Nowa usługa</a><?php endif; ?>
 </div>
 
 <div class="admin-card">
@@ -22,15 +22,15 @@ use SecureWare\Core\Csrf;
                 <td class="actions">
                     <?php if (Auth::can('services.edit')): ?><a href="<?= (int) $s['id'] ?>/edit">Edytuj</a><?php endif; ?>
                     <?php if (Auth::can('services.delete')): ?>
-                    <form method="post" action="<?= (int) $s['id'] ?>/delete" onsubmit="return confirm('Usunac usluge?');">
+                    <form method="post" action="<?= (int) $s['id'] ?>/delete" onsubmit="return confirm('Usunąć usługę?');">
                         <?= Csrf::field() ?>
-                        <button type="submit" class="link-button" style="color:#d92d20;">Usun</button>
+                        <button type="submit" class="link-button" style="color:#d92d20;">Usuń</button>
                     </form>
                     <?php endif; ?>
                 </td>
             </tr>
         <?php endforeach; ?>
-        <?php if (!$services): ?><tr><td colspan="5">Brak uslug.</td></tr><?php endif; ?>
+        <?php if (!$services): ?><tr><td colspan="5">Brak usług.</td></tr><?php endif; ?>
         </tbody>
     </table>
     </div>

@@ -64,7 +64,7 @@ class ServiceAdminController
         if ($name === '' || $slug === '') {
             echo View::render('admin/services/edit', [
                 'service' => $id ? Service::find($id) : null,
-                'error'   => 'Nazwa i slug sa wymagane.',
+                'error'   => 'Nazwa i slug są wymagane.',
             ], 'admin/layout');
             return;
         }

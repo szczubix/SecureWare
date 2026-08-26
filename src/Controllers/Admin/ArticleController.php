@@ -80,7 +80,7 @@ class ArticleController
         $slug  = Str::slug((string) $request->input('slug', '') ?: $title);
 
         if ($title === '' || $slug === '') {
-            $this->renderError($request, $id, 'Tytul i slug sa wymagane.');
+            $this->renderError($request, $id, 'Tytuł i slug są wymagane.');
             return;
         }
 

@@ -36,7 +36,7 @@ use SecureWare\Core\Str;
 <?php if ($related): ?>
 <section class="sw-related">
     <div class="sw-wrap">
-        <h2 style="font-size:22px;margin-bottom:20px;">Zobacz rowniez</h2>
+        <h2 style="font-size:22px;margin-bottom:20px;">Zobacz również</h2>
         <div class="sw-blog-grid reveal-stagger">
             <?php foreach ($related as $a): ?>
                 <a class="sw-blog-card" href="/blog/<?= htmlspecialchars($a['slug'], ENT_QUOTES, 'UTF-8') ?>">

@@ -23,7 +23,7 @@ class AuthController
     public function login(Request $request): void
     {
         if (!Csrf::verify($request->input('_csrf'))) {
-            echo View::render('admin/login', ['error' => 'Sesja wygasla, sprobuj ponownie.']);
+            echo View::render('admin/login', ['error' => 'Sesja wygasła, spróbuj ponownie.']);
             return;
         }
 
@@ -33,12 +33,12 @@ class AuthController
         $result = Auth::attempt((string) $email, (string) $password, $request->ip());
 
         if ($result === 'locked') {
-            echo View::render('admin/login', ['error' => 'Zbyt wiele nieudanych prob logowania. Sprobuj ponownie za 15 minut.']);
+            echo View::render('admin/login', ['error' => 'Zbyt wiele nieudanych prób logowania. Spróbuj ponownie za 15 minut.']);
             return;
         }
 
         if ($result !== true) {
-            echo View::render('admin/login', ['error' => 'Nieprawidlowy e-mail lub haslo.']);
+            echo View::render('admin/login', ['error' => 'Nieprawidłowy e-mail lub hasło.']);
             return;
         }
 

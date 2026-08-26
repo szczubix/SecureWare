@@ -30,9 +30,9 @@ class Database
             } catch (PDOException $e) {
                 http_response_code(500);
                 if (Config::get('app')['debug']) {
-                    die('Blad polaczenia z baza danych: ' . $e->getMessage());
+                    die('Błąd połączenia z bazą danych: ' . $e->getMessage());
                 }
-                die('Chwilowo niedostepne. Sprobuj ponownie za chwile.');
+                die('Chwilowo niedostępne. Spróbuj ponownie za chwilę.');
             }
         }
 

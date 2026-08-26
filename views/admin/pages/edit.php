@@ -11,8 +11,8 @@ $action   = $isEdit ? $adminUrl . '/pages/' . $page['id'] : $adminUrl . '/pages'
 $meta     = $page['meta'] ?? [];
 ?>
 <div class="toolbar">
-    <h1><?= $isEdit ? 'Edytuj podstrone' : 'Nowa podstrona' ?></h1>
-    <a href="<?= $adminUrl ?>/pages" class="button button--ghost">← Wroc do listy</a>
+    <h1><?= $isEdit ? 'Edytuj podstronę' : 'Nowa podstrona' ?></h1>
+    <a href="<?= $adminUrl ?>/pages" class="button button--ghost">← Wróć do listy</a>
 </div>
 
 <?php if ($error): ?><p class="alert alert--error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
@@ -23,7 +23,7 @@ $meta     = $page['meta'] ?? [];
 
         <div class="form-row">
             <div class="field">
-                <label>Tytul</label>
+                <label>Tytuł</label>
                 <input type="text" name="title" required value="<?= htmlspecialchars($page['title'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             </div>
             <div class="field">
@@ -33,7 +33,7 @@ $meta     = $page['meta'] ?? [];
         </div>
 
         <div class="field">
-            <label>Tresc</label>
+            <label>Treść</label>
             <textarea name="content" id="content-editor"><?= $page['content'] ?? '' ?></textarea>
         </div>
 
@@ -41,15 +41,15 @@ $meta     = $page['meta'] ?? [];
             <div class="field">
                 <label>Szablon</label>
                 <select name="template">
-                    <?php foreach (['default' => 'Domyslny', 'full-width' => 'Pelna szerokosc', 'landing' => 'Landing page'] as $val => $label): ?>
+                    <?php foreach (['default' => 'Domyślny', 'full-width' => 'Pełna szerokość', 'landing' => 'Landing page'] as $val => $label): ?>
                         <option value="<?= $val ?>" <?= (($page['template'] ?? 'default') === $val) ? 'selected' : '' ?>><?= $label ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
             <div class="field">
-                <label>Strona nadrzedna</label>
+                <label>Strona nadrzędna</label>
                 <select name="parent_id">
-                    <option value="">— brak (strona glowna poziomu) —</option>
+                    <option value="">— brak (strona głównego poziomu) —</option>
                     <?php foreach ($allPages as $p): if ($isEdit && (int) $p['id'] === (int) $page['id']) continue; ?>
                         <option value="<?= (int) $p['id'] ?>" <?= (isset($page['parent_id']) && (int) $page['parent_id'] === (int) $p['id']) ? 'selected' : '' ?>>
                             <?= htmlspecialchars($p['title'], ENT_QUOTES, 'UTF-8') ?>
@@ -73,8 +73,8 @@ $meta     = $page['meta'] ?? [];
                 <?php foreach ($meta as $key => $value): ?>
                     <div class="row">
                         <input type="text" name="meta_key[]" value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>" placeholder="Nazwa pola">
-                        <input type="text" name="meta_value[]" value="<?= htmlspecialchars($value, ENT_QUOTES, 'UTF-8') ?>" placeholder="Wartosc">
-                        <button type="button" class="button button--ghost button--small" data-remove-row>Usun</button>
+                        <input type="text" name="meta_value[]" value="<?= htmlspecialchars($value, ENT_QUOTES, 'UTF-8') ?>" placeholder="Wartość">
+                        <button type="button" class="button button--ghost button--small" data-remove-row>Usuń</button>
                     </div>
                 <?php endforeach; ?>
             </div>

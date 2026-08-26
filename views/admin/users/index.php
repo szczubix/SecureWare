@@ -4,14 +4,14 @@ use SecureWare\Core\Auth;
 use SecureWare\Core\Csrf;
 ?>
 <div class="toolbar">
-    <h1>Uzytkownicy</h1>
-    <?php if (Auth::can('users.edit')): ?><a href="new" class="button">+ Nowy uzytkownik</a><?php endif; ?>
+    <h1>Użytkownicy</h1>
+    <?php if (Auth::can('users.edit')): ?><a href="new" class="button">+ Nowy użytkownik</a><?php endif; ?>
 </div>
 
 <div class="admin-card">
     <div class="table-wrap">
     <table class="admin-table">
-        <thead><tr><th>Imie i nazwisko</th><th>E-mail</th><th>Rola</th><th>Status</th><th>Ostatnie logowanie</th><th></th></tr></thead>
+        <thead><tr><th>Imię i nazwisko</th><th>E-mail</th><th>Rola</th><th>Status</th><th>Ostatnie logowanie</th><th></th></tr></thead>
         <tbody>
         <?php foreach ($users as $u): ?>
             <tr>
@@ -23,9 +23,9 @@ use SecureWare\Core\Csrf;
                 <td class="actions">
                     <?php if (Auth::can('users.edit')): ?><a href="<?= (int) $u['id'] ?>/edit">Edytuj</a><?php endif; ?>
                     <?php if (Auth::can('users.delete') && (int) $u['id'] !== Auth::id()): ?>
-                    <form method="post" action="<?= (int) $u['id'] ?>/delete" onsubmit="return confirm('Usunac uzytkownika?');">
+                    <form method="post" action="<?= (int) $u['id'] ?>/delete" onsubmit="return confirm('Usunąć użytkownika?');">
                         <?= Csrf::field() ?>
-                        <button type="submit" class="link-button" style="color:#d92d20;">Usun</button>
+                        <button type="submit" class="link-button" style="color:#d92d20;">Usuń</button>
                     </form>
                     <?php endif; ?>
                 </td>

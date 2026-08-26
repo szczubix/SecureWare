@@ -68,7 +68,7 @@ class UserController
             echo View::render('admin/users/edit', [
                 'editUser' => $id ? User::find($id) : null,
                 'roles'    => Role::all(),
-                'error'    => 'Podaj poprawne imie, e-mail oraz role.',
+                'error'    => 'Podaj poprawne imię, e-mail oraz rolę.',
             ], 'admin/layout');
             return;
         }
@@ -77,7 +77,7 @@ class UserController
             if ($password === '') {
                 echo View::render('admin/users/edit', [
                     'editUser' => null, 'roles' => Role::all(),
-                    'error'    => 'Haslo jest wymagane dla nowego uzytkownika.',
+                    'error'    => 'Hasło jest wymagane dla nowego użytkownika.',
                 ], 'admin/layout');
                 return;
             }

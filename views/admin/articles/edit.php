@@ -13,8 +13,8 @@ $action   = $isEdit ? $adminUrl . '/articles/' . $article['id'] : $adminUrl . '/
 $publishedAtValue = $isEdit && $article['published_at'] ? str_replace(' ', 'T', substr($article['published_at'], 0, 16)) : '';
 ?>
 <div class="toolbar">
-    <h1><?= $isEdit ? 'Edytuj artykul' : 'Nowy artykul' ?></h1>
-    <a href="<?= $adminUrl ?>/articles" class="button button--ghost">← Wroc do listy</a>
+    <h1><?= $isEdit ? 'Edytuj artykuł' : 'Nowy artykuł' ?></h1>
+    <a href="<?= $adminUrl ?>/articles" class="button button--ghost">← Wróć do listy</a>
 </div>
 
 <?php if ($error): ?><p class="alert alert--error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
@@ -25,7 +25,7 @@ $publishedAtValue = $isEdit && $article['published_at'] ? str_replace(' ', 'T', 
 
         <div class="form-row">
             <div class="field">
-                <label>Tytul</label>
+                <label>Tytuł</label>
                 <input type="text" name="title" required value="<?= htmlspecialchars($article['title'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             </div>
             <div class="field">
@@ -37,11 +37,11 @@ $publishedAtValue = $isEdit && $article['published_at'] ? str_replace(' ', 'T', 
         <div class="field">
             <label>Zajawka (excerpt)</label>
             <textarea name="excerpt" rows="2"><?= htmlspecialchars($article['excerpt'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
-            <span class="hint">Jesli puste, zostanie wygenerowana automatycznie z tresci.</span>
+            <span class="hint">Jeśli puste, zostanie wygenerowana automatycznie z treści.</span>
         </div>
 
         <div class="field">
-            <label>Tresc</label>
+            <label>Treść</label>
             <textarea name="content" id="content-editor"><?= $article['content'] ?? '' ?></textarea>
         </div>
 
@@ -70,7 +70,7 @@ $publishedAtValue = $isEdit && $article['published_at'] ? str_replace(' ', 'T', 
 
         <div class="form-row">
             <div class="field">
-                <label>Zdjecie wyrozniajace</label>
+                <label>Zdjęcie wyróżniające</label>
                 <select name="featured_image_id">
                     <option value="">— brak —</option>
                     <?php foreach ($media as $m): if (!str_starts_with($m['mime'], 'image/')) continue; ?>
@@ -79,7 +79,7 @@ $publishedAtValue = $isEdit && $article['published_at'] ? str_replace(' ', 'T', 
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <span class="hint">Zarzadzaj plikami w <a href="<?= $adminUrl ?>/media">bibliotece mediow</a>.</span>
+                <span class="hint">Zarządzaj plikami w <a href="<?= $adminUrl ?>/media">bibliotece mediów</a>.</span>
             </div>
             <div class="field">
                 <label>Status</label>

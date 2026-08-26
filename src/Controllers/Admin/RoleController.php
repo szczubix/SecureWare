@@ -97,7 +97,7 @@ class RoleController
 
         if (Csrf::verify($request->input('_csrf'))) {
             if (Role::isInUse((int) $id)) {
-                Session::flash('error', 'Nie mozna usunac roli przypisanej do uzytkownikow.');
+                Session::flash('error', 'Nie można usunąć roli przypisanej do użytkowników.');
             } else {
                 Role::delete((int) $id);
                 Logger::record('delete', 'role', (int) $id);

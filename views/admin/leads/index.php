@@ -3,7 +3,7 @@
 use SecureWare\Core\Auth;
 use SecureWare\Core\Csrf;
 
-$statusLabels = ['new' => 'Nowe', 'contacted' => 'Skontaktowano', 'closed' => 'Zamkniete'];
+$statusLabels = ['new' => 'Nowe', 'contacted' => 'Skontaktowano', 'closed' => 'Zamknięte'];
 ?>
 <div class="toolbar">
     <h1>Zapytania (leady)</h1>
@@ -12,7 +12,7 @@ $statusLabels = ['new' => 'Nowe', 'contacted' => 'Skontaktowano', 'closed' => 'Z
 <div class="admin-card">
     <div class="table-wrap">
     <table class="admin-table">
-        <thead><tr><th>Data</th><th>Imie</th><th>Firma</th><th>Kontakt</th><th>Wiadomosc</th><th>Zrodlo</th><th>Status</th></tr></thead>
+        <thead><tr><th>Data</th><th>Imię</th><th>Firma</th><th>Kontakt</th><th>Wiadomość</th><th>Źródło</th><th>Status</th></tr></thead>
         <tbody>
         <?php foreach ($leads as $l): ?>
             <tr>
@@ -38,7 +38,7 @@ $statusLabels = ['new' => 'Nowe', 'contacted' => 'Skontaktowano', 'closed' => 'Z
                 </td>
             </tr>
         <?php endforeach; ?>
-        <?php if (!$leads): ?><tr><td colspan="7">Brak zapytan.</td></tr><?php endif; ?>
+        <?php if (!$leads): ?><tr><td colspan="7">Brak zapytań.</td></tr><?php endif; ?>
         </tbody>
     </table>
     </div>

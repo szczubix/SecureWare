@@ -13,7 +13,7 @@ $adminUrl = '/' . Config::get('admin_path');
 <div class="stat-grid">
     <div class="stat-card">
         <span class="stat-card__value"><?= $stats['articles'] ?></span>
-        <span class="stat-card__label">Artykuly na blogu</span>
+        <span class="stat-card__label">Artykuły na blogu</span>
     </div>
     <div class="stat-card">
         <span class="stat-card__value"><?= $stats['pages'] ?></span>
@@ -21,7 +21,7 @@ $adminUrl = '/' . Config::get('admin_path');
     </div>
     <div class="stat-card">
         <span class="stat-card__value"><?= $stats['services'] ?></span>
-        <span class="stat-card__label">Uslugi w ofercie</span>
+        <span class="stat-card__label">Usługi w ofercie</span>
     </div>
     <div class="stat-card stat-card--highlight">
         <span class="stat-card__value"><?= $stats['leads_new'] ?></span>
@@ -30,10 +30,10 @@ $adminUrl = '/' . Config::get('admin_path');
 </div>
 
 <div class="admin-card">
-    <h2>Skroty</h2>
+    <h2>Skróty</h2>
     <div class="quick-links">
-        <?php if (Auth::can('articles.edit')): ?><a href="<?= $adminUrl ?>/articles/new" class="button">+ Nowy artykul</a><?php endif; ?>
-        <?php if (Auth::can('services.edit')): ?><a href="<?= $adminUrl ?>/services/new" class="button">+ Nowa usluga</a><?php endif; ?>
+        <?php if (Auth::can('articles.edit')): ?><a href="<?= $adminUrl ?>/articles/new" class="button">+ Nowy artykuł</a><?php endif; ?>
+        <?php if (Auth::can('services.edit')): ?><a href="<?= $adminUrl ?>/services/new" class="button">+ Nowa usługa</a><?php endif; ?>
         <?php if (Auth::can('pages.edit')): ?><a href="<?= $adminUrl ?>/pages/new" class="button">+ Nowa podstrona</a><?php endif; ?>
         <?php if (Auth::can('leads.view')): ?><a href="<?= $adminUrl ?>/leads" class="button button--ghost">Zobacz zapytania</a><?php endif; ?>
     </div>

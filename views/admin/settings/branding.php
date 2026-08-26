@@ -22,7 +22,7 @@ $navMenu = json_decode($settings['nav_menu'] ?? '[]', true) ?: [];
                 <input type="text" name="site_name" value="<?= htmlspecialchars($settings['site_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             </div>
             <div class="field">
-                <label>Haslo / tagline</label>
+                <label>Hasło / tagline</label>
                 <input type="text" name="site_tagline" value="<?= htmlspecialchars($settings['site_tagline'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             </div>
         </div>
@@ -58,7 +58,7 @@ $navMenu = json_decode($settings['nav_menu'] ?? '[]', true) ?: [];
                 <input type="text" name="color_primary" value="<?= htmlspecialchars($settings['color_primary'] ?? '#0b5fff', ENT_QUOTES, 'UTF-8') ?>">
             </div>
             <div class="field">
-                <label>Kolor ciemny (tlo/naglowki)</label>
+                <label>Kolor ciemny (tło/nagłówki)</label>
                 <input type="text" name="color_dark" value="<?= htmlspecialchars($settings['color_dark'] ?? '#0a0f1e', ENT_QUOTES, 'UTF-8') ?>">
             </div>
         </div>
@@ -96,17 +96,17 @@ $navMenu = json_decode($settings['nav_menu'] ?? '[]', true) ?: [];
         </div>
 
         <div class="field">
-            <label>Menu glowne</label>
+            <label>Menu główne</label>
             <div class="repeatable-rows" id="nav-rows">
                 <?php foreach ($navMenu as $item): ?>
                     <div class="row">
                         <input type="text" name="nav_label[]" value="<?= htmlspecialchars($item['label'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Etykieta">
                         <input type="text" name="nav_url[]" value="<?= htmlspecialchars($item['url'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="/adres">
-                        <button type="button" class="button button--ghost button--small" data-remove-row>Usun</button>
+                        <button type="button" class="button button--ghost button--small" data-remove-row>Usuń</button>
                     </div>
                 <?php endforeach; ?>
             </div>
-            <button type="button" class="button button--ghost button--small" data-add-row="nav-rows" style="align-self:flex-start;margin-top:6px;">+ Dodaj pozycje menu</button>
+            <button type="button" class="button button--ghost button--small" data-add-row="nav-rows" style="align-self:flex-start;margin-top:6px;">+ Dodaj pozycję menu</button>
         </div>
 
         <div class="form-actions">
@@ -127,7 +127,7 @@ $navMenu = json_decode($settings['nav_menu'] ?? '[]', true) ?: [];
         e.preventDefault();
         var row = document.createElement('div');
         row.className = 'row';
-        row.innerHTML = '<input type="text" name="nav_label[]" placeholder="Etykieta"><input type="text" name="nav_url[]" placeholder="/adres"><button type="button" class="button button--ghost button--small" data-remove-row>Usun</button>';
+        row.innerHTML = '<input type="text" name="nav_label[]" placeholder="Etykieta"><input type="text" name="nav_url[]" placeholder="/adres"><button type="button" class="button button--ghost button--small" data-remove-row>Usuń</button>';
         container.appendChild(row);
     });
 })();

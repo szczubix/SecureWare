@@ -10,17 +10,17 @@ use SecureWare\Models\Service;
 class OfferController
 {
     /**
-     * Prezentacyjne pogrupowanie uslug wg scenariusza (podobnie jak strona
-     * "Solutions" u wiodacych dostawcow backupu) - wylacznie do wyswietlania
-     * na /oferta, nie wplywa na dane w bazie. Usluga spoza mapy trafia do
-     * grupy "Pozostale uslugi", wiec nowe wpisy dodane w panelu nigdy nie
-     * znikaja z listy.
+     * Prezentacyjne pogrupowanie usług wg scenariusza (podobnie jak strona
+     * "Solutions" u wiodących dostawców backupu) - wyłącznie do wyświetlania
+     * na /oferta, nie wpływa na dane w bazie. Usługa spoza mapy trafia do
+     * grupy "Pozostałe usługi", więc nowe wpisy dodane w panelu nigdy nie
+     * znikają z listy.
      */
     private const GROUPS = [
-        'Wdrozenie i zarzadzanie' => ['backup-audit', 'backup-implementation', 'managed-backup', 'backup-as-a-service'],
-        'Odpornosc na awarie i ransomware' => ['off-site-backup', 'immutable-backup', 'disaster-recovery', 'restore-testing'],
+        'Wdrożenie i zarządzanie' => ['backup-audit', 'backup-implementation', 'managed-backup', 'backup-as-a-service'],
+        'Odporność na awarie i ransomware' => ['off-site-backup', 'immutable-backup', 'disaster-recovery', 'restore-testing'],
         'Zakres ochrony' => ['microsoft-365-backup', 'server-backup', 'virtualization-backup'],
-        'Nadzor i zgodnosc' => ['monitoring-24-7', 'retention-compliance'],
+        'Nadzór i zgodność' => ['monitoring-24-7', 'retention-compliance'],
     ];
 
     public function index(Request $request): void
@@ -35,13 +35,13 @@ class OfferController
         $grouped = array_merge(...array_values(self::GROUPS));
         $rest    = array_values(array_filter($services, fn ($s) => !in_array($s['slug'], $grouped, true)));
         if ($rest) {
-            $groups['Pozostale uslugi'] = $rest;
+            $groups['Pozostałe usługi'] = $rest;
         }
 
         echo View::render('site/offer-index', [
             'groups'          => array_filter($groups),
             'metaTitle'       => 'Oferta — SecureWare',
-            'metaDescription' => 'Managed Backup, Backup as a Service, Disaster Recovery i inne uslugi ochrony danych dla firm.',
+            'metaDescription' => 'Managed Backup, Backup as a Service, Disaster Recovery i inne usługi ochrony danych dla firm.',
         ], 'site/layout');
     }
 

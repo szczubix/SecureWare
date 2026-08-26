@@ -5,7 +5,7 @@ use SecureWare\Core\Auth;
 use SecureWare\Core\Csrf;
 ?>
 <div class="toolbar">
-    <h1>Biblioteka mediow</h1>
+    <h1>Biblioteka mediów</h1>
 </div>
 
 <?php if ($error): ?><p class="alert alert--error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
@@ -33,13 +33,13 @@ use SecureWare\Core\Csrf;
             <div class="media-item__meta">
                 <span title="<?= htmlspecialchars($m['filename'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars(mb_strimwidth($m['filename'], 0, 16, '…'), ENT_QUOTES, 'UTF-8') ?></span>
                 <?php if (Auth::can('media.delete')): ?>
-                <form method="post" action="<?= (int) $m['id'] ?>/delete" onsubmit="return confirm('Usunac ten plik?');">
+                <form method="post" action="<?= (int) $m['id'] ?>/delete" onsubmit="return confirm('Usunąć ten plik?');">
                     <?= Csrf::field() ?>
-                    <button type="submit" class="link-button" style="color:#d92d20;">Usun</button>
+                    <button type="submit" class="link-button" style="color:#d92d20;">Usuń</button>
                 </form>
                 <?php endif; ?>
             </div>
         </div>
     <?php endforeach; ?>
-    <?php if (!$media): ?><p>Brak plikow w bibliotece.</p><?php endif; ?>
+    <?php if (!$media): ?><p>Brak plików w bibliotece.</p><?php endif; ?>
 </div>
