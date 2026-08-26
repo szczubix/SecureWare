@@ -7,43 +7,10 @@
 (function () {
     var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    if (reduceMotion || !('IntersectionObserver' in window)) {
-        document.querySelectorAll('.reveal, .reveal-stagger').forEach(function (el) {
-            el.classList.add('is-visible');
-        });
-    } else {
-        var observer = new IntersectionObserver(function (entries) {
-            entries.forEach(function (entry) {
-                if (!entry.isIntersecting) return;
-                var el = entry.target;
-
-                if (el.classList.contains('reveal-stagger')) {
-                    Array.prototype.forEach.call(el.children, function (child, i) {
-                        child.style.transitionDelay = (i * 80) + 'ms';
-                    });
-                }
-
-                el.classList.add('is-visible');
-                observer.unobserve(el);
-            });
-        }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
-
-        document.querySelectorAll('.reveal, .reveal-stagger').forEach(function (el) {
-            observer.observe(el);
-        });
-    }
-
-    var header = document.querySelector('.sw-header');
-    if (header) {
-        var onScroll = function () {
-            header.classList.toggle('is-scrolled', window.scrollY > 12);
-        };
-        onScroll();
-        window.addEventListener('scroll', onScroll, { passive: true });
-    }
-
-    // Count-up animation for the hero "product mockup" headline number.
-    document.querySelectorAll('[data-count]').forEach(function (el) {
+    // Count-up animation - shared by any [data-count] element, triggered
+    // when it actually scrolls into view (not on page load), so numbers
+    // further down the page (e.g. the stats band) animate when seen.
+    function startCountUp(el) {
         var target = parseInt(el.getAttribute('data-count'), 10);
         var suffix = el.getAttribute('data-suffix') || '';
         if (reduceMotion || isNaN(target)) {
@@ -59,8 +26,56 @@
             el.textContent = Math.round(eased * target) + suffix;
             if (progress < 1) requestAnimationFrame(step);
         }
-        setTimeout(function () { requestAnimationFrame(step); }, 500);
-    });
+        requestAnimationFrame(step);
+    }
+
+    if (reduceMotion || !('IntersectionObserver' in window)) {
+        document.querySelectorAll('.reveal, .reveal-stagger').forEach(function (el) {
+            el.classList.add('is-visible');
+        });
+        document.querySelectorAll('[data-count]').forEach(startCountUp);
+    } else {
+        var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting) return;
+                var el = entry.target;
+
+                if (el.classList.contains('reveal-stagger')) {
+                    Array.prototype.forEach.call(el.children, function (child, i) {
+                        child.style.transitionDelay = (i * 80) + 'ms';
+                    });
+                }
+
+                el.classList.add('is-visible');
+                el.querySelectorAll('[data-count]').forEach(function (el2) {
+                    setTimeout(function () { startCountUp(el2); }, 300);
+                });
+                observer.unobserve(el);
+            });
+        }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
+
+        document.querySelectorAll('.reveal, .reveal-stagger').forEach(function (el) {
+            observer.observe(el);
+        });
+
+        // [data-count] elements outside any .reveal/.reveal-stagger container
+        // (e.g. above-the-fold hero content) aren't scroll-gated - count up
+        // right away like the rest of the hero's entrance animation.
+        document.querySelectorAll('[data-count]').forEach(function (el) {
+            if (!el.closest('.reveal, .reveal-stagger')) {
+                setTimeout(function () { startCountUp(el); }, 500);
+            }
+        });
+    }
+
+    var header = document.querySelector('.sw-header');
+    if (header) {
+        var onScroll = function () {
+            header.classList.toggle('is-scrolled', window.scrollY > 12);
+        };
+        onScroll();
+        window.addEventListener('scroll', onScroll, { passive: true });
+    }
 
     // 3-2-1-1-0 rule flow diagram: each node expands its own detail panel independently.
     document.querySelectorAll('.sw-rule__node').forEach(function (btn) {
@@ -83,7 +98,18 @@
                 tab.classList.add('is-active');
                 tab.setAttribute('aria-selected', 'true');
                 var target = wrap.querySelector('.sw-platform__panel[data-panel="' + tab.getAttribute('data-tab') + '"]');
-                if (target) target.classList.add('is-active');
+                if (target) {
+                    target.classList.add('is-active');
+                    target.querySelectorAll('li').forEach(function (li, i) {
+                        li.style.transition = 'none';
+                        li.style.opacity = '0';
+                        li.style.transform = 'translateY(8px)';
+                        void li.offsetWidth;
+                        li.style.transition = 'opacity .4s ease ' + (i * 90) + 'ms, transform .4s ease ' + (i * 90) + 'ms';
+                        li.style.opacity = '1';
+                        li.style.transform = 'translateY(0)';
+                    });
+                }
             });
         });
     });

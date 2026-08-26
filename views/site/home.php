@@ -17,6 +17,7 @@ $teaser = array_slice($services, 0, 6);
                 <a href="/oferta" class="sw-btn sw-btn--ghost">Zobacz ofertę <?= Icons::svg('arrow-right', 16) ?></a>
             </div>
             <div class="sw-hero__specs sw-anim-in sw-delay-5">
+                <div><strong data-count="7" data-suffix=" lat">0 lat</strong><span>Doświadczenia w branży backupu</span></div>
                 <div><strong>3-2-1-1-0</strong><span>Zasada ochrony danych</span></div>
                 <div><strong>Immutable</strong><span>Kopie odporne na ransomware</span></div>
                 <div><strong>24/7</strong><span>Monitoring i reakcja</span></div>
@@ -110,10 +111,10 @@ $teaser = array_slice($services, 0, 6);
     <div class="sw-wrap">
         <div class="sw-stats-band reveal">
             <div class="sw-stats reveal-stagger reveal-stagger--pop">
+                <div><strong data-count="7" data-suffix=" lat">0 lat</strong><span>Doświadczenia w branży backupu</span></div>
                 <div><strong>24/7</strong><span>Monitoring środowisk backupu</span></div>
-                <div><strong>3-2-1-1-0</strong><span>Zasada ochrony danych, która działa</span></div>
                 <div><strong>&lt; 1h</strong><span>Docelowy czas reakcji na incydent</span></div>
-                <div><strong>100%</strong><span>Testowane, nie zakładane</span></div>
+                <div><strong data-count="100" data-suffix="%">0%</strong><span>Testowane, nie zakładane</span></div>
             </div>
         </div>
     </div>
