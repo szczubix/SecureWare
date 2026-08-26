@@ -32,6 +32,14 @@ class Icons
         'twitter'          => '<path d="M21 5.5a8 8 0 0 1-2.3.65 4 4 0 0 0 1.76-2.2 8 8 0 0 1-2.55 1A4 4 0 0 0 11 8.5c0 .3 0 .6.1.9A11.4 11.4 0 0 1 3 4.9a4 4 0 0 0 1.24 5.3A4 4 0 0 1 2.4 9.6v.05A4 4 0 0 0 5.6 13.5a4 4 0 0 1-1.8.07 4 4 0 0 0 3.7 2.75A8 8 0 0 1 2 18a11.3 11.3 0 0 0 6.1 1.8c7.3 0 11.3-6 11.3-11.3v-.5A8 8 0 0 0 21 5.5z"/>',
         'quote'            => '<path d="M7 7h4v5a4 4 0 0 1-4 4H6v-2h1a2 2 0 0 0 2-2H7V7z"/><path d="M15 7h4v5a4 4 0 0 1-4 4h-1v-2h1a2 2 0 0 0 2-2h-2V7z"/>',
         'chevron-down'     => '<path d="M6 9l6 6 6-6"/>',
+        'grid'             => '<rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/>',
+        'users'            => '<circle cx="9" cy="8" r="3.3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M15.3 14.2c2.4.5 4.2 2.7 4.2 5.3"/>',
+        'image'            => '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.6" fill="currentColor" stroke="none"/><path d="M21 16.5l-5.4-5.3a2 2 0 0 0-2.8 0L4 20"/>',
+        'inbox'            => '<path d="M3 12h5l2 3h4l2-3h5"/><rect x="3" y="6" width="18" height="13" rx="2"/>',
+        'sliders'          => '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h6M14 18h6"/><circle cx="15" cy="6" r="2"/><circle cx="7" cy="12" r="2"/><circle cx="10" cy="18" r="2"/>',
+        'plug'             => '<path d="M9 3v6M15 3v6"/><path d="M6 9h12v3a6 6 0 0 1-12 0V9z"/><path d="M12 18v3"/>',
+        'list'             => '<path d="M8.5 6h12M8.5 12h12M8.5 18h12"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
+        'logout'           => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
     ];
 
     public static function svg(string $name, int $size = 24): string
