@@ -76,6 +76,10 @@ class HomeContentController
                 'intro'     => $text('offer_intro'),
                 'cta_label' => $text('offer_cta_label'),
             ],
+            'stack' => [
+                'eyebrow' => $text('stack_eyebrow'),
+                'items'   => $text('stack_items'),
+            ],
             'stats' => ['items' => $stats],
             'platform' => [
                 'eyebrow' => $text('platform_eyebrow'),

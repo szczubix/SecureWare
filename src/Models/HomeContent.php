@@ -46,6 +46,10 @@ class HomeContent
                 'intro'    => 'Od zarządzania istniejącym backupem po disaster recovery i cykliczne testy odtwarzania.',
                 'cta_label' => 'Zobacz pełną ofertę (13 usług)',
             ],
+            'stack' => [
+                'eyebrow' => 'Integrujemy się z Twoim środowiskiem',
+                'items'   => "Veeam\nProxmox Backup Server\nMicrosoft 365\nVMware\nHyper-V",
+            ],
             'stats' => [
                 'items' => [
                     ['count' => 7, 'suffix' => ' lat', 'value' => '', 'label' => 'Doświadczenia w branży backupu'],
@@ -185,6 +189,10 @@ class HomeContent
                 'heading'  => 'Full-scope data protection',
                 'intro'    => 'From managing your existing backup to disaster recovery and recurring restore tests.',
                 'cta_label' => 'See the full range (13 services)',
+            ],
+            'stack' => [
+                'eyebrow' => 'Integrates with the environment you already run',
+                'items'   => "Veeam\nProxmox Backup Server\nMicrosoft 365\nVMware\nHyper-V",
             ],
             'stats' => [
                 'items' => [

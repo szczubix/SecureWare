@@ -1,6 +1,7 @@
 <?php
 /** @var array $article */
 /** @var array $related */
+use SecureWare\Core\Icons;
 use SecureWare\Core\Lang;
 use SecureWare\Core\Locale;
 use SecureWare\Core\Str;
@@ -43,7 +44,7 @@ use SecureWare\Models\Diagram;
         <div class="sw-blog-grid reveal-stagger">
             <?php foreach ($related as $a): ?>
                 <a class="sw-blog-card" href="<?= Locale::url('/blog/' . $a['slug']) ?>">
-                    <div class="sw-blog-card__img"><?php if ($a['featured_image_path']): ?><img src="<?= htmlspecialchars($a['featured_image_path'], ENT_QUOTES, 'UTF-8') ?>" alt=""><?php endif; ?></div>
+                    <div class="sw-blog-card__img<?= $a['featured_image_path'] ? '' : ' sw-blog-card__img--empty' ?>"><?php if ($a['featured_image_path']): ?><img src="<?= htmlspecialchars($a['featured_image_path'], ENT_QUOTES, 'UTF-8') ?>" alt=""><?php else: ?><span class="sw-blog-card__ph"><?= Icons::svg(Str::fallbackIcon($a['slug']), 34) ?></span><?php endif; ?></div>
                     <div class="sw-blog-card__body">
                         <span class="meta"><?= htmlspecialchars($a['category_name'] ?? 'Blog', ENT_QUOTES, 'UTF-8') ?></span>
                         <h3><?= htmlspecialchars($a['title'], ENT_QUOTES, 'UTF-8') ?></h3>

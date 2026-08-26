@@ -25,4 +25,11 @@ class Str
 
         return mb_substr($text, 0, $length) . '…';
     }
+
+    /** Deterministyczna ikona zastepcza (np. dla kart bloga bez zdjecia glownego) - ta sama tresc zawsze dostaje ta sama ikone. */
+    public static function fallbackIcon(string $seed): string
+    {
+        $icons = ['shield-check', 'cloud-upload', 'server', 'refresh-ccw', 'lock', 'activity', 'layers', 'file-check'];
+        return $icons[crc32($seed) % count($icons)];
+    }
 }

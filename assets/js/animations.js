@@ -116,4 +116,38 @@
             });
         });
     });
+
+    // Cursor-reactive spotlight on dark sections (hero, CTA band) - a soft
+    // radial glow that follows the pointer, common on premium SaaS sites.
+    // Skipped entirely under prefers-reduced-motion (see CSS: .sw-cursor-glow
+    // is display:none there), and harmless with no listener on touch devices.
+    if (!reduceMotion) {
+        document.querySelectorAll('.sw-hero, .sw-cta').forEach(function (section) {
+            var glow = document.createElement('div');
+            glow.className = 'sw-cursor-glow';
+            glow.setAttribute('aria-hidden', 'true');
+            section.prepend(glow);
+            section.addEventListener('mousemove', function (e) {
+                var rect = section.getBoundingClientRect();
+                glow.style.setProperty('--gx', ((e.clientX - rect.left) / rect.width * 100) + '%');
+                glow.style.setProperty('--gy', ((e.clientY - rect.top) / rect.height * 100) + '%');
+            });
+        });
+    }
+
+    // Magnetic hover on primary buttons - the button nudges slightly toward
+    // the cursor within its own bounds, snapping back on leave.
+    if (!reduceMotion) {
+        document.querySelectorAll('.sw-btn--primary, .sw-btn--dark').forEach(function (btn) {
+            btn.addEventListener('mousemove', function (e) {
+                var rect = btn.getBoundingClientRect();
+                var x = (e.clientX - rect.left - rect.width / 2) * 0.25;
+                var y = (e.clientY - rect.top - rect.height / 2) * 0.35;
+                btn.style.transform = 'translate(' + x + 'px, ' + (y - 2) + 'px)';
+            });
+            btn.addEventListener('mouseleave', function () {
+                btn.style.transform = '';
+            });
+        });
+    }
 })();

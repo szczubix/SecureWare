@@ -6,6 +6,7 @@
 /** @var array $categories */
 /** @var string|null $activeCategory */
 /** @var array $content */
+use SecureWare\Core\Icons;
 use SecureWare\Core\Lang;
 use SecureWare\Core\Locale;
 use SecureWare\Core\Str;
@@ -35,7 +36,7 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
         <div class="sw-blog-grid reveal-stagger">
             <?php foreach ($articles as $i => $a): ?>
                 <a class="sw-blog-card<?= ($i === 0 && $page === 1) ? ' sw-blog-card--featured' : '' ?>" href="<?= Locale::url('/blog/' . $a['slug']) ?>">
-                    <div class="sw-blog-card__img"><?php if ($a['featured_image_path']): ?><img src="<?= htmlspecialchars($a['featured_image_path'], ENT_QUOTES, 'UTF-8') ?>" alt=""><?php endif; ?></div>
+                    <div class="sw-blog-card__img<?= $a['featured_image_path'] ? '' : ' sw-blog-card__img--empty' ?>"><?php if ($a['featured_image_path']): ?><img src="<?= htmlspecialchars($a['featured_image_path'], ENT_QUOTES, 'UTF-8') ?>" alt=""><?php else: ?><span class="sw-blog-card__ph"><?= Icons::svg(Str::fallbackIcon($a['slug']), 34) ?></span><?php endif; ?></div>
                     <div class="sw-blog-card__body">
                         <span class="meta"><?= htmlspecialchars($a['category_name'] ?? 'Blog', ENT_QUOTES, 'UTF-8') ?></span>
                         <h3><?= htmlspecialchars($a['title'], ENT_QUOTES, 'UTF-8') ?></h3>

@@ -87,6 +87,14 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
     </div>
 
     <div class="admin-card">
+        <h2 style="margin-top:0;">Pasek "Integrujemy się z"</h2>
+        <div class="form-grid form-grid--wide">
+            <div class="field"><label>Etykieta nad paskiem</label><input type="text" name="stack_eyebrow" value="<?= $h($content['stack']['eyebrow']) ?>"></div>
+            <div class="field"><label>Nazwy narzędzi/technologii (jedna na linię)</label><textarea name="stack_items" rows="5"><?= $h($content['stack']['items']) ?></textarea><span class="hint">Pokazuje się jako pasek zaufania zaraz pod hero. Wpisuj tylko realne technologie, z którymi faktycznie współpracujecie.</span></div>
+        </div>
+    </div>
+
+    <div class="admin-card">
         <h2 style="margin-top:0;">Pasek statystyk</h2>
         <div class="form-grid form-grid--wide">
             <?php foreach ($content['stats']['items'] as $i => $stat): ?>

@@ -28,6 +28,7 @@ $ransomware = $content['ransomware'];
 $scenario = $content['scenario'];
 $why = $content['why'];
 $steps = $content['steps'];
+$stack = $content['stack'];
 $blog = $content['blog'];
 $faq = $content['faq'];
 $cta = $content['cta'];
@@ -108,6 +109,17 @@ $cta = $content['cta'];
         <?php endforeach; ?>
     </div>
 </div>
+
+<section class="sw-stack">
+    <div class="sw-wrap">
+        <p class="sw-stack__label reveal"><?= $h($stack['eyebrow']) ?></p>
+        <div class="sw-stack__row reveal-stagger">
+            <?php foreach (array_filter(array_map('trim', explode("\n", $stack['items']))) as $item): ?>
+                <span class="sw-stack__item"><?= htmlspecialchars($item, ENT_QUOTES, 'UTF-8') ?></span>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</section>
 
 <section class="sw-section">
     <div class="sw-wrap">
@@ -332,7 +344,7 @@ $cta = $content['cta'];
         <div class="sw-blog-grid reveal-stagger">
             <?php foreach ($latestArticles as $a): ?>
                 <a class="sw-blog-card" href="<?= Locale::url('/blog/' . $a['slug']) ?>">
-                    <div class="sw-blog-card__img"><?php if ($a['featured_image_path']): ?><img src="<?= htmlspecialchars($a['featured_image_path'], ENT_QUOTES, 'UTF-8') ?>" alt=""><?php endif; ?></div>
+                    <div class="sw-blog-card__img<?= $a['featured_image_path'] ? '' : ' sw-blog-card__img--empty' ?>"><?php if ($a['featured_image_path']): ?><img src="<?= htmlspecialchars($a['featured_image_path'], ENT_QUOTES, 'UTF-8') ?>" alt=""><?php else: ?><span class="sw-blog-card__ph"><?= Icons::svg(Str::fallbackIcon($a['slug']), 34) ?></span><?php endif; ?></div>
                     <div class="sw-blog-card__body">
                         <span class="meta"><?= htmlspecialchars($a['category_name'] ?? 'Blog', ENT_QUOTES, 'UTF-8') ?></span>
                         <h3><?= htmlspecialchars($a['title'], ENT_QUOTES, 'UTF-8') ?></h3>
