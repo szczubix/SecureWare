@@ -72,7 +72,7 @@ $alreadyInstalled = !$deleted && !$deleteFailed && !$result && Installer::isInst
 <meta name="robots" content="noindex, nofollow">
 <title>Instalacja - SecureWare</title>
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/assets/css/admin.css">
+<link rel="stylesheet" href="/assets/css/admin.css?v=<?= @filemtime(ROOT_PATH . '/assets/css/admin.css') ?: '1' ?>">
 </head>
 <body class="admin admin-login-page">
     <div class="login-card" style="width:520px;">

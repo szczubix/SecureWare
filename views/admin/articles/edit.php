@@ -114,5 +114,5 @@ $publishedAtValue = $isEdit && $article['published_at'] ? str_replace(' ', 'T', 
     </form>
 </div>
 
-<script src="/assets/js/admin-editor.js"></script>
+<script src="/assets/js/admin-editor.js?v=<?= @filemtime(ROOT_PATH . '/assets/js/admin-editor.js') ?: '1' ?>"></script>
 <script>SecureWareEditor.init('content-editor');</script>

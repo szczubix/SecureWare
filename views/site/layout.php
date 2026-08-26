@@ -40,7 +40,7 @@ $cookieYes = $settings['cookieyes_script'] ?? '';
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/site.css">
+<link rel="stylesheet" href="/assets/css/site.css?v=<?= @filemtime(ROOT_PATH . '/assets/css/site.css') ?: '1' ?>">
 <style>:root{--sw-primary:<?= htmlspecialchars($settings['color_primary'] ?? '#0b5fff', ENT_QUOTES, 'UTF-8') ?>;--sw-dark:<?= htmlspecialchars($settings['color_dark'] ?? '#0a0f1e', ENT_QUOTES, 'UTF-8') ?>;}</style>
 <?php if ($cookieYes): ?>
 <?= $cookieYes ?>
@@ -134,6 +134,6 @@ document.getElementById('sw-nav-toggle').addEventListener('click', function () {
     document.getElementById('sw-nav').classList.toggle('is-open');
 });
 </script>
-<script src="/assets/js/animations.js"></script>
+<script src="/assets/js/animations.js?v=<?= @filemtime(ROOT_PATH . '/assets/js/animations.js') ?: '1' ?>"></script>
 </body>
 </html>
