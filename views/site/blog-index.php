@@ -29,8 +29,8 @@ $totalPages = max(1, (int) ceil($total / $perPage));
         <?php endif; ?>
 
         <div class="sw-blog-grid reveal-stagger">
-            <?php foreach ($articles as $a): ?>
-                <a class="sw-blog-card" href="/blog/<?= htmlspecialchars($a['slug'], ENT_QUOTES, 'UTF-8') ?>">
+            <?php foreach ($articles as $i => $a): ?>
+                <a class="sw-blog-card<?= ($i === 0 && $page === 1) ? ' sw-blog-card--featured' : '' ?>" href="/blog/<?= htmlspecialchars($a['slug'], ENT_QUOTES, 'UTF-8') ?>">
                     <div class="sw-blog-card__img"><?php if ($a['featured_image_path']): ?><img src="<?= htmlspecialchars($a['featured_image_path'], ENT_QUOTES, 'UTF-8') ?>" alt=""><?php endif; ?></div>
                     <div class="sw-blog-card__body">
                         <span class="meta"><?= htmlspecialchars($a['category_name'] ?? 'Blog', ENT_QUOTES, 'UTF-8') ?></span>
@@ -43,10 +43,9 @@ $totalPages = max(1, (int) ceil($total / $perPage));
         </div>
 
         <?php if ($totalPages > 1): ?>
-        <div class="pagination" style="margin-top:36px;display:flex;gap:8px;">
+        <div class="sw-pagination">
             <?php for ($p = 1; $p <= $totalPages; $p++): ?>
-                <a href="?page=<?= $p ?><?= $activeCategory ? '&kategoria=' . urlencode($activeCategory) : '' ?>"
-                   style="padding:8px 14px;border:1px solid var(--sw-border);border-radius:8px;<?= $p === $page ? 'background:var(--sw-ink);color:#fff;' : '' ?>">
+                <a href="?page=<?= $p ?><?= $activeCategory ? '&kategoria=' . urlencode($activeCategory) : '' ?>" class="<?= $p === $page ? 'active' : '' ?>">
                     <?= $p ?>
                 </a>
             <?php endfor; ?>

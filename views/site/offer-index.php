@@ -9,6 +9,12 @@ $hasAny = (bool) array_filter($groups);
         <span class="sw-hero__eyebrow sw-anim-in sw-delay-1">Oferta</span>
         <h1 class="sw-anim-in sw-delay-2" style="font-size:36px;">Pelen zakres ochrony <span>danych</span> dla firm</h1>
         <p class="lead sw-anim-in sw-delay-3">13 uslug pokrywajacych caly cykl zycia backupu — od wdrozenia, przez codzienne zarzadzanie, po disaster recovery i testy odtwarzania.</p>
+        <div class="sw-highlights sw-anim-in sw-delay-4">
+            <span><?= Icons::svg('shield-check', 16) ?> Kopie niezmienne (immutable)</span>
+            <span><?= Icons::svg('refresh-ccw', 16) ?> Realne testy odtwarzania</span>
+            <span><?= Icons::svg('activity', 16) ?> Monitoring 24/7</span>
+            <span><?= Icons::svg('file-check', 16) ?> Jasne raporty SLA</span>
+        </div>
     </div>
 </section>
 
