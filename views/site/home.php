@@ -68,6 +68,14 @@ $teaser = array_slice($services, 0, 6);
     </div>
 </section>
 
+<div class="sw-ticker" aria-hidden="true">
+    <div class="sw-ticker__track">
+        <?php foreach (array_merge($services, $services) as $s): ?>
+            <span><?= htmlspecialchars($s['name'], ENT_QUOTES, 'UTF-8') ?></span>
+        <?php endforeach; ?>
+    </div>
+</div>
+
 <section class="sw-section">
     <div class="sw-wrap">
         <div class="sw-section-head reveal">

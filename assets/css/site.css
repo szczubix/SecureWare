@@ -156,6 +156,15 @@ h1, h2, h3, h4 { font-family: var(--sw-font); line-height: 1.12; margin: 0 0 .5e
     .sw-mock__badge { display: none; }
 }
 
+/* ---- Ticker strip ---- */
+.sw-ticker { border-top: 1px solid var(--sw-border); border-bottom: 1px solid var(--sw-border); background: var(--sw-bg); overflow: hidden; padding: 18px 0; }
+.sw-ticker__track { display: flex; width: max-content; animation: swTicker 34s linear infinite; }
+.sw-ticker__track span { display: flex; align-items: center; white-space: nowrap; padding: 0 28px; font-size: 13.5px; font-weight: 700; color: var(--sw-muted); }
+.sw-ticker__track span::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--sw-primary); margin-left: 28px; flex-shrink: 0; }
+.sw-ticker:hover .sw-ticker__track { animation-play-state: paused; }
+@keyframes swTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (max-width: 640px) { .sw-ticker__track span { padding: 0 18px; font-size: 12.5px; } }
+
 /* ---- Section basics ---- */
 .sw-section { padding: 96px 0; }
 .sw-section--tight { padding: 64px 0; }
@@ -218,8 +227,8 @@ h1, h2, h3, h4 { font-family: var(--sw-font); line-height: 1.12; margin: 0 0 .5e
 .sw-faq details[open] { border-color: var(--sw-primary); box-shadow: 0 8px 24px rgba(11,165,239,.08); }
 .sw-faq summary { padding: 18px 0; cursor: pointer; font-weight: 700; font-size: 16px; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .sw-faq summary::-webkit-details-marker { display: none; }
-.sw-faq summary::after { content: '+'; font-size: 22px; color: var(--sw-primary); font-weight: 400; flex-shrink: 0; transition: transform .25s ease; }
-.sw-faq details[open] summary::after { content: '−'; }
+.sw-faq summary::after { content: '+'; font-size: 22px; color: var(--sw-primary); font-weight: 400; flex-shrink: 0; display: inline-block; transition: transform .25s cubic-bezier(.16,.8,.24,1); }
+.sw-faq details[open] summary::after { transform: rotate(135deg); }
 .sw-faq p { color: var(--sw-muted); font-size: 14.5px; margin: 0 0 20px; }
 
 /* ---- CTA band ---- */
