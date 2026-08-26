@@ -17,7 +17,7 @@ $teaser = array_slice($services, 0, 6);
                 <a href="/oferta" class="sw-btn sw-btn--ghost">Zobacz ofertę <?= Icons::svg('arrow-right', 16) ?></a>
             </div>
             <div class="sw-hero__specs sw-anim-in sw-delay-5">
-                <div><strong>3-2-1</strong><span>Zasada ochrony danych</span></div>
+                <div><strong>3-2-1-1-0</strong><span>Zasada ochrony danych</span></div>
                 <div><strong>Immutable</strong><span>Kopie odporne na ransomware</span></div>
                 <div><strong>24/7</strong><span>Monitoring i reakcja</span></div>
             </div>
@@ -25,42 +25,51 @@ $teaser = array_slice($services, 0, 6);
         <div class="sw-anim-in sw-delay-3">
             <div class="sw-diagram-card">
                 <div class="sw-diagram-card__head">
-                    <h3>Zasada 3-2-1 w praktyce</h3>
+                    <h3>Zasada 3-2-1-1-0 w praktyce</h3>
                     <span class="sw-diagram-card__live">Monitorowane 24/7</span>
                 </div>
                 <svg class="sw-diagram" viewBox="0 0 480 380" xmlns="http://www.w3.org/2000/svg">
-                    <path class="flow" d="M240,76 C240,170 88,170 88,280"/>
-                    <path class="flow" d="M240,76 L240,280"/>
-                    <path class="flow" d="M240,76 C240,170 392,170 392,280"/>
+                    <path class="flow" d="M240,72 L240,140"/>
+                    <path class="flow" d="M240,196 C240,240 140,240 140,280"/>
+                    <path class="flow" d="M240,196 C240,240 340,240 340,280"/>
 
                     <g class="node primary">
-                        <rect x="160" y="16" width="160" height="60" rx="10"/>
-                        <svg class="icon" x="176" y="32" width="22" height="22"><?= Icons::svg('server', 22) ?></svg>
-                        <text x="210" y="42">Dane</text>
-                        <text x="210" y="58" class="sub">produkcyjne</text>
+                        <rect x="160" y="16" width="160" height="56" rx="10"/>
+                        <svg class="icon" x="176" y="30" width="22" height="22"><?= Icons::svg('server', 22) ?></svg>
+                        <text x="210" y="40">Dane</text>
+                        <text x="210" y="56" class="sub">produkcyjne</text>
                     </g>
 
                     <g class="node">
-                        <rect x="20" y="280" width="136" height="70" rx="10"/>
-                        <svg class="icon" x="34" y="296" width="20" height="20"><?= Icons::svg('layers', 20) ?></svg>
-                        <text x="64" y="309">Kopia lokalna</text>
-                        <text x="64" y="325" class="sub">inny nośnik</text>
+                        <rect x="160" y="140" width="160" height="56" rx="10"/>
+                        <svg class="icon" x="176" y="154" width="22" height="22"><?= Icons::svg('layers', 22) ?></svg>
+                        <text x="210" y="164">Kopia lokalna</text>
+                        <text x="210" y="180" class="sub">inny nośnik</text>
                     </g>
 
                     <g class="node">
-                        <rect x="172" y="280" width="136" height="70" rx="10"/>
-                        <svg class="icon" x="186" y="296" width="20" height="20"><?= Icons::svg('cloud-upload', 20) ?></svg>
-                        <text x="216" y="309">Kopia offsite</text>
-                        <text x="216" y="325" class="sub">poza siedzibą</text>
+                        <rect x="60" y="280" width="160" height="70" rx="10"/>
+                        <svg class="icon" x="76" y="296" width="20" height="20"><?= Icons::svg('cloud-upload', 20) ?></svg>
+                        <text x="106" y="309">Kopia offsite</text>
+                        <text x="106" y="325" class="sub">poza siedzibą</text>
+                        <g class="verified" transform="translate(206,282)">
+                            <circle r="10"/>
+                            <svg x="-6" y="-6" width="12" height="12"><?= Icons::svg('check', 12) ?></svg>
+                        </g>
                     </g>
 
                     <g class="node">
-                        <rect x="324" y="280" width="136" height="70" rx="10"/>
-                        <svg class="icon" x="338" y="296" width="20" height="20"><?= Icons::svg('lock', 20) ?></svg>
-                        <text x="368" y="309">Repozytorium</text>
-                        <text x="368" y="325" class="sub">immutable</text>
+                        <rect x="260" y="280" width="160" height="70" rx="10"/>
+                        <svg class="icon" x="276" y="296" width="20" height="20"><?= Icons::svg('lock', 20) ?></svg>
+                        <text x="306" y="309">Immutable</text>
+                        <text x="306" y="325" class="sub">offline / niezmienna</text>
+                        <g class="verified" transform="translate(406,282)">
+                            <circle r="10"/>
+                            <svg x="-6" y="-6" width="12" height="12"><?= Icons::svg('check', 12) ?></svg>
+                        </g>
                     </g>
                 </svg>
+                <div class="sw-diagram-card__foot">0 błędów — każda kopia jest testowana i weryfikowana</div>
             </div>
         </div>
     </div>
@@ -102,7 +111,7 @@ $teaser = array_slice($services, 0, 6);
         <div class="sw-stats-band reveal">
             <div class="sw-stats reveal-stagger reveal-stagger--pop">
                 <div><strong>24/7</strong><span>Monitoring środowisk backupu</span></div>
-                <div><strong>3-2-1</strong><span>Zasada ochrony danych, która działa</span></div>
+                <div><strong>3-2-1-1-0</strong><span>Zasada ochrony danych, która działa</span></div>
                 <div><strong>&lt; 1h</strong><span>Docelowy czas reakcji na incydent</span></div>
                 <div><strong>100%</strong><span>Testowane, nie zakładane</span></div>
             </div>
@@ -113,15 +122,15 @@ $teaser = array_slice($services, 0, 6);
 <section class="sw-section">
     <div class="sw-wrap">
         <div class="sw-section-head reveal">
-            <h5>Platforma</h5>
-            <h2>Jedna platforma, pełna ochrona danych</h2>
-            <p>Trzy filary, na których opieramy każde wdrożenie — od pierwszej kopii po pełne disaster recovery.</p>
+            <h5>Jak działamy</h5>
+            <h2>Trzy filary pełnej ochrony danych</h2>
+            <p>Backup, disaster recovery i monitoring — na tym opieramy każde wdrożenie, od pierwszej kopii po pełne disaster recovery.</p>
         </div>
         <div class="sw-platform reveal">
             <div class="sw-platform__tabs" role="tablist">
                 <button type="button" class="sw-platform__tab is-active" data-tab="backup" role="tab" aria-selected="true">
                     <span class="icon"><?= Icons::svg('cloud-upload', 20) ?></span>
-                    <span><strong>Backup i ochrona</strong><small>Kopie niezmienne, zgodne z 3-2-1</small></span>
+                    <span><strong>Backup i ochrona</strong><small>Kopie niezmienne, zgodne z 3-2-1-1-0</small></span>
                 </button>
                 <button type="button" class="sw-platform__tab" data-tab="dr" role="tab" aria-selected="false">
                     <span class="icon"><?= Icons::svg('life-buoy', 20) ?></span>
@@ -135,7 +144,7 @@ $teaser = array_slice($services, 0, 6);
             <div class="sw-platform__panels">
                 <div class="sw-platform__panel is-active" data-panel="backup">
                     <h3>Backup, który przetrwa atak</h3>
-                    <p>Kopie w repozytorium niezmiennym (immutable), zgodne z zasadą 3-2-1 - dane pozostają odzyskiwalne nawet po przejęciu konta administratora.</p>
+                    <p>Kopie w repozytorium niezmiennym (immutable), zgodne z zasadą 3-2-1-1-0 - dane pozostają odzyskiwalne nawet po przejęciu konta administratora.</p>
                     <ul>
                         <li><?= Icons::svg('check', 14) ?> Codzienne, automatyczne kopie bez ingerencji Twojego zespołu IT</li>
                         <li><?= Icons::svg('check', 14) ?> Wsparcie dla narzędzi, które już masz (np. Veeam, Proxmox Backup Server)</li>
@@ -170,16 +179,18 @@ $teaser = array_slice($services, 0, 6);
         <div class="sw-section-head reveal">
             <h5>Standard branżowy</h5>
             <h2>Zasada 3-2-1-1-0</h2>
-            <p>Rozszerzenie klasycznej zasady 3-2-1 o ochronę przed ransomware i obowiązek regularnej weryfikacji kopii. Kliknij element, żeby zobaczyć szczegóły.</p>
+            <p>Rozszerzenie klasycznej zasady 3-2-1 do 3-2-1-1-0, o ochronę przed ransomware i obowiązek regularnej weryfikacji kopii. Kliknij element, żeby zobaczyć szczegóły.</p>
         </div>
         <div class="sw-rule reveal">
             <svg class="sw-rule__line" viewBox="0 0 1000 24" preserveAspectRatio="none" aria-hidden="true">
                 <path class="base" d="M0,12 H1000"/>
                 <path class="flow" d="M0,12 H1000"/>
             </svg>
-            <div class="sw-rule__row">
+            <span class="sw-rule__packet" aria-hidden="true"></span>
+            <div class="sw-rule__row reveal-stagger">
                 <div class="sw-rule__item">
                     <button type="button" class="sw-rule__node" aria-expanded="false">
+                        <span class="icon-badge"><?= Icons::svg('layers', 18) ?></span>
                         <span class="num">3</span>
                         <span class="label">Kopie danych</span>
                         <?= Icons::svg('chevron-down', 14) ?>
@@ -190,6 +201,7 @@ $teaser = array_slice($services, 0, 6);
                 </div>
                 <div class="sw-rule__item">
                     <button type="button" class="sw-rule__node" aria-expanded="false">
+                        <span class="icon-badge"><?= Icons::svg('server', 18) ?></span>
                         <span class="num">2</span>
                         <span class="label">Rodzaje nośników</span>
                         <?= Icons::svg('chevron-down', 14) ?>
@@ -200,6 +212,7 @@ $teaser = array_slice($services, 0, 6);
                 </div>
                 <div class="sw-rule__item">
                     <button type="button" class="sw-rule__node" aria-expanded="false">
+                        <span class="icon-badge"><?= Icons::svg('cloud-upload', 18) ?></span>
                         <span class="num">1</span>
                         <span class="label">Kopia offsite</span>
                         <?= Icons::svg('chevron-down', 14) ?>
@@ -210,6 +223,7 @@ $teaser = array_slice($services, 0, 6);
                 </div>
                 <div class="sw-rule__item">
                     <button type="button" class="sw-rule__node" aria-expanded="false">
+                        <span class="icon-badge"><?= Icons::svg('lock', 18) ?></span>
                         <span class="num">1</span>
                         <span class="label">Offline / immutable</span>
                         <?= Icons::svg('chevron-down', 14) ?>
@@ -220,6 +234,7 @@ $teaser = array_slice($services, 0, 6);
                 </div>
                 <div class="sw-rule__item">
                     <button type="button" class="sw-rule__node" aria-expanded="false">
+                        <span class="icon-badge"><?= Icons::svg('shield-check', 18) ?></span>
                         <span class="num">0</span>
                         <span class="label">Błędów w kopiach</span>
                         <?= Icons::svg('chevron-down', 14) ?>
