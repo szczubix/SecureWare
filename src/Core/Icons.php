@@ -41,6 +41,7 @@ class Icons
         'list'             => '<path d="M8.5 6h12M8.5 12h12M8.5 18h12"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
         'logout'           => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
         'bug'              => '<circle cx="12" cy="13" r="6"/><path d="M12 7V4M9.5 5.5L10.5 7M14.5 5.5L13.5 7M6 13H3M6.5 10L4.5 8M6.5 16L4.5 18M18 13h3M17.5 10l2-2M17.5 16l2 2M9.5 19l1-2.5M14.5 19l-1-2.5"/>',
+        'user'             => '<circle cx="12" cy="8" r="4"/><path d="M4.5 20c0-3.6 3.4-6.5 7.5-6.5s7.5 2.9 7.5 6.5"/>',
     ];
 
     public static function svg(string $name, int $size = 24): string

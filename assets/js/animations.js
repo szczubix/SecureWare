@@ -13,8 +13,11 @@
     function startCountUp(el) {
         var target = parseInt(el.getAttribute('data-count'), 10);
         var suffix = el.getAttribute('data-suffix') || '';
+        // Liczby >= 1000 (np. kwoty w zl) dostaja polskie separatory tysiecy
+        // ("1 000 000"), mniejsze (7, 100...) renderuja sie bez zmian.
+        var format = function (n) { return n >= 1000 ? n.toLocaleString('pl-PL') : String(n); };
         if (reduceMotion || isNaN(target)) {
-            el.textContent = target + suffix;
+            el.textContent = format(target) + suffix;
             return;
         }
         var start = null;
@@ -23,7 +26,7 @@
             if (!start) start = ts;
             var progress = Math.min((ts - start) / duration, 1);
             var eased = 1 - Math.pow(1 - progress, 3);
-            el.textContent = Math.round(eased * target) + suffix;
+            el.textContent = format(Math.round(eased * target)) + suffix;
             if (progress < 1) requestAnimationFrame(step);
         }
         requestAnimationFrame(step);

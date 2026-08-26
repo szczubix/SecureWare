@@ -23,6 +23,7 @@ $stats = $content['stats'];
 $platform = $content['platform'];
 $rule = $content['rule'];
 $ransomware = $content['ransomware'];
+$scenario = $content['scenario'];
 $why = $content['why'];
 $steps = $content['steps'];
 $blog = $content['blog'];
@@ -231,6 +232,48 @@ $cta = $content['cta'];
                     <span class="sw-ransomware__shield"><?= Icons::svg('shield-check', 13) ?> <?= $h($ransomware['protected_label']) ?></span>
                 </div>
                 <div class="sw-ransomware__actor" aria-hidden="true"><?= Icons::svg('bug', 20) ?></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="sw-section">
+    <div class="sw-wrap">
+        <div class="sw-section-head reveal">
+            <h5><?= $h($scenario['eyebrow']) ?></h5>
+            <h2><?= $h($scenario['heading']) ?></h2>
+            <p><?= $h($scenario['intro']) ?></p>
+        </div>
+        <div class="sw-scenario">
+            <div class="sw-scenario__panel sw-scenario__panel--threat reveal">
+                <div class="sw-scenario__avatars">
+                    <span class="sw-scenario__avatar sw-scenario__avatar--attacker"><?= Icons::svg('bug', 16) ?></span>
+                    <span class="sw-scenario__avatar sw-scenario__avatar--ceo"><?= Icons::svg('user', 16) ?></span>
+                </div>
+                <span class="sw-scenario__badge"><?= Icons::svg('lock', 13) ?> <?= $h($scenario['threat_badge']) ?></span>
+                <div class="sw-scenario__bubble reveal-stagger">
+                    <?php foreach (preg_split('/\r?\n/', trim((string) $scenario['threat_lines'])) as $line): if (trim($line) === '') continue; ?>
+                        <p class="sw-scenario__line"><?= $h($line) ?></p>
+                    <?php endforeach; ?>
+                    <p class="sw-scenario__amount"><strong data-count="<?= (int) $scenario['threat_amount'] ?>" data-suffix="<?= $h($scenario['threat_suffix']) ?>">0<?= $h($scenario['threat_suffix']) ?></strong></p>
+                    <p class="sw-scenario__deadline"><?= Icons::svg('activity', 13) ?> <?= $h($scenario['threat_deadline']) ?></p>
+                </div>
+            </div>
+            <div class="sw-scenario__vs">VS</div>
+            <div class="sw-scenario__panel sw-scenario__panel--safe reveal">
+                <div class="sw-scenario__avatars">
+                    <span class="sw-scenario__avatar sw-scenario__avatar--admin"><?= Icons::svg('user', 16) ?></span>
+                </div>
+                <span class="sw-scenario__badge sw-scenario__badge--safe"><?= Icons::svg('shield-check', 13) ?> <?= $h($scenario['safe_badge']) ?></span>
+                <div class="sw-scenario__bubble sw-scenario__bubble--safe reveal-stagger">
+                    <p class="sw-scenario__line"><?= $h($scenario['safe_intro']) ?></p>
+                    <ul class="sw-scenario__checklist">
+                        <?php foreach (preg_split('/\r?\n/', trim((string) $scenario['safe_checklist'])) as $item): if (trim($item) === '') continue; ?>
+                            <li><?= Icons::svg('check', 13) ?> <?= $h($item) ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <p class="sw-scenario__result"><?= Icons::svg('shield-check', 13) ?> <?= $h($scenario['safe_result']) ?></p>
+                </div>
             </div>
         </div>
     </div>

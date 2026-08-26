@@ -148,6 +148,32 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
     </div>
 
     <div class="admin-card">
+        <h2 style="margin-top:0;">Sekcja "Dwa scenariusze ataku" (animacja)</h2>
+        <div class="form-grid form-grid--wide">
+            <div class="form-row">
+                <div class="field"><label>Eyebrow</label><input type="text" name="scenario_eyebrow" value="<?= $h($content['scenario']['eyebrow']) ?>"></div>
+                <div class="field"><label>Nagłówek</label><input type="text" name="scenario_heading" value="<?= $h($content['scenario']['heading']) ?>"></div>
+            </div>
+            <div class="field"><label>Wstęp</label><textarea name="scenario_intro" rows="2"><?= $h($content['scenario']['intro']) ?></textarea></div>
+
+            <h3>Panel zagrożenia (bez immutable)</h3>
+            <div class="field"><label>Odznaka</label><input type="text" name="scenario_threat_badge" value="<?= $h($content['scenario']['threat_badge']) ?>"></div>
+            <div class="field"><label>Linie wiadomości okupu (jedna na linię)</label><textarea name="scenario_threat_lines" rows="3"><?= $h($content['scenario']['threat_lines']) ?></textarea></div>
+            <div class="form-row">
+                <div class="field"><label>Kwota okupu (liczba)</label><input type="number" name="scenario_threat_amount" value="<?= $h($content['scenario']['threat_amount']) ?>"></div>
+                <div class="field"><label>Sufiks (np. " zł")</label><input type="text" name="scenario_threat_suffix" value="<?= $h($content['scenario']['threat_suffix']) ?>"></div>
+            </div>
+            <div class="field"><label>Termin</label><input type="text" name="scenario_threat_deadline" value="<?= $h($content['scenario']['threat_deadline']) ?>"></div>
+
+            <h3>Panel bezpieczeństwa (z immutable)</h3>
+            <div class="field"><label>Odznaka</label><input type="text" name="scenario_safe_badge" value="<?= $h($content['scenario']['safe_badge']) ?>"></div>
+            <div class="field"><label>Wstęp</label><input type="text" name="scenario_safe_intro" value="<?= $h($content['scenario']['safe_intro']) ?>"></div>
+            <div class="field"><label>Lista kontrolna (jedna pozycja na linię)</label><textarea name="scenario_safe_checklist" rows="3"><?= $h($content['scenario']['safe_checklist']) ?></textarea></div>
+            <div class="field"><label>Wynik końcowy</label><input type="text" name="scenario_safe_result" value="<?= $h($content['scenario']['safe_result']) ?>"></div>
+        </div>
+    </div>
+
+    <div class="admin-card">
         <h2 style="margin-top:0;">Sekcja "Dlaczego SecureWare"</h2>
         <div class="form-grid form-grid--wide">
             <div class="form-row">
