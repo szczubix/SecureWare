@@ -165,32 +165,110 @@ $teaser = array_slice($services, 0, 6);
     </div>
 </section>
 
-<section class="sw-section sw-section--muted">
+<section class="sw-section">
     <div class="sw-wrap">
         <div class="sw-section-head reveal">
+            <h5>Standard branzowy</h5>
+            <h2>Zasada 3-2-1-1-0</h2>
+            <p>Rozszerzenie klasycznej zasady 3-2-1 o ochrone przed ransomware i obowiazek regularnej weryfikacji kopii. Kliknij element, zeby zobaczyc szczegoly.</p>
+        </div>
+        <div class="sw-rule reveal">
+            <svg class="sw-rule__line" viewBox="0 0 1000 24" preserveAspectRatio="none" aria-hidden="true">
+                <path class="base" d="M0,12 H1000"/>
+                <path class="flow" d="M0,12 H1000"/>
+            </svg>
+            <div class="sw-rule__row">
+                <div class="sw-rule__item">
+                    <button type="button" class="sw-rule__node" aria-expanded="false">
+                        <span class="num">3</span>
+                        <span class="label">Kopie danych</span>
+                        <?= Icons::svg('chevron-down', 14) ?>
+                    </button>
+                    <div class="sw-rule__panel">
+                        <p>Zawsze co najmniej trzy kopie: dane produkcyjne oraz dwie kopie zapasowe. Nawet jesli jedna zawiedzie, pozostale pozwalaja odzyskac dane.</p>
+                    </div>
+                </div>
+                <div class="sw-rule__item">
+                    <button type="button" class="sw-rule__node" aria-expanded="false">
+                        <span class="num">2</span>
+                        <span class="label">Rodzaje nosnikow</span>
+                        <?= Icons::svg('chevron-down', 14) ?>
+                    </button>
+                    <div class="sw-rule__panel">
+                        <p>Kopie przechowywane na dwoch roznych typach nosnikow (np. lokalny storage i chmura) - awaria jednego typu nosnika nie uniewaznia wszystkich kopii naraz.</p>
+                    </div>
+                </div>
+                <div class="sw-rule__item">
+                    <button type="button" class="sw-rule__node" aria-expanded="false">
+                        <span class="num">1</span>
+                        <span class="label">Kopia offsite</span>
+                        <?= Icons::svg('chevron-down', 14) ?>
+                    </button>
+                    <div class="sw-rule__panel">
+                        <p>Co najmniej jedna kopia poza siedziba firmy. Chroni dane przed zdarzeniami, ktore moga zniszczyc cala lokalna infrastrukture - pozarem, zalaniem, kradzieza sprzetu.</p>
+                    </div>
+                </div>
+                <div class="sw-rule__item">
+                    <button type="button" class="sw-rule__node" aria-expanded="false">
+                        <span class="num">1</span>
+                        <span class="label">Offline / immutable</span>
+                        <?= Icons::svg('chevron-down', 14) ?>
+                    </button>
+                    <div class="sw-rule__panel">
+                        <p>Dodatkowa kopia odizolowana od sieci lub niezmienna (immutable) - odporna na ransomware, ktory celuje wlasnie w systemy backupu, zeby odciac droge do odzyskania danych.</p>
+                    </div>
+                </div>
+                <div class="sw-rule__item">
+                    <button type="button" class="sw-rule__node" aria-expanded="false">
+                        <span class="num">0</span>
+                        <span class="label">Bledow w kopiach</span>
+                        <?= Icons::svg('chevron-down', 14) ?>
+                    </button>
+                    <div class="sw-rule__panel">
+                        <p>Kopie regularnie testowane i weryfikowane przez realne odtwarzanie danych - zero niespodzianek w momencie, w ktorym backup trzeba faktycznie uzyc.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="sw-section sw-section--muted">
+    <div class="sw-wrap sw-why">
+        <div class="sw-why__intro reveal">
             <h5>Dlaczego SecureWare</h5>
             <h2>Backup, ktoremu mozna zaufac</h2>
+            <p>Nie sprzedajemy licencji i nie znikamy po wdrozeniu — zarzadzamy Twoim backupem tak, jakby byl naszym wlasnym.</p>
+            <a href="/kontakt" class="sw-why__link">Porozmawiajmy o Twoim srodowisku <?= Icons::svg('arrow-right', 14) ?></a>
         </div>
-        <div class="sw-why-grid reveal-stagger">
-            <div>
-                <div class="icon"><?= Icons::svg('shield-check', 24) ?></div>
-                <h4>Ochrona przed ransomware</h4>
-                <p>Kopie niezmienne i segmentacja infrastruktury backupu.</p>
+        <div class="sw-why__list reveal-stagger">
+            <div class="sw-why__item">
+                <span class="num">01</span>
+                <div>
+                    <h4>Ochrona przed ransomware</h4>
+                    <p>Kopie niezmienne i segmentacja infrastruktury backupu.</p>
+                </div>
             </div>
-            <div>
-                <div class="icon"><?= Icons::svg('refresh-ccw', 24) ?></div>
-                <h4>Rzeczywiste testy</h4>
-                <p>Nie sprawdzamy tylko statusu zadania - realnie odtwarzamy dane.</p>
+            <div class="sw-why__item">
+                <span class="num">02</span>
+                <div>
+                    <h4>Rzeczywiste testy</h4>
+                    <p>Nie sprawdzamy tylko statusu zadania - realnie odtwarzamy dane.</p>
+                </div>
             </div>
-            <div>
-                <div class="icon"><?= Icons::svg('activity', 24) ?></div>
-                <h4>Nadzor 24/7</h4>
-                <p>Reagujemy zanim problem stanie sie awaria.</p>
+            <div class="sw-why__item">
+                <span class="num">03</span>
+                <div>
+                    <h4>Nadzor 24/7</h4>
+                    <p>Reagujemy zanim problem stanie sie awaria.</p>
+                </div>
             </div>
-            <div>
-                <div class="icon"><?= Icons::svg('file-check', 24) ?></div>
-                <h4>Jasne raporty</h4>
-                <p>Zrozumiale raporty rowniez dla osob spoza IT.</p>
+            <div class="sw-why__item">
+                <span class="num">04</span>
+                <div>
+                    <h4>Jasne raporty</h4>
+                    <p>Zrozumiale raporty rowniez dla osob spoza IT.</p>
+                </div>
             </div>
         </div>
     </div>

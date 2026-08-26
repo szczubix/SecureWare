@@ -62,6 +62,16 @@
         setTimeout(function () { requestAnimationFrame(step); }, 500);
     });
 
+    // 3-2-1-1-0 rule flow diagram: each node expands its own detail panel independently.
+    document.querySelectorAll('.sw-rule__node').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var expanded = btn.getAttribute('aria-expanded') === 'true';
+            btn.setAttribute('aria-expanded', String(!expanded));
+            var panel = btn.parentElement.querySelector('.sw-rule__panel');
+            if (panel) panel.classList.toggle('is-open', !expanded);
+        });
+    });
+
     // Platform tabs on the homepage ("Backup" / "Disaster Recovery" / "Monitoring").
     document.querySelectorAll('.sw-platform').forEach(function (wrap) {
         var tabs = wrap.querySelectorAll('.sw-platform__tab');
