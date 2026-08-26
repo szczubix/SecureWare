@@ -27,6 +27,7 @@ $rule = $content['rule'];
 $ransomware = $content['ransomware'];
 $scenario = $content['scenario'];
 $why = $content['why'];
+$certs = $content['certs'];
 $steps = $content['steps'];
 $stack = $content['stack'];
 $blog = $content['blog'];
@@ -310,6 +311,17 @@ $cta = $content['cta'];
                         <p><?= $h($item['text']) ?></p>
                     </div>
                 </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</section>
+
+<section class="sw-certs">
+    <div class="sw-wrap">
+        <p class="sw-certs__label reveal"><?= $h($certs['eyebrow']) ?></p>
+        <div class="sw-certs__row reveal-stagger">
+            <?php foreach (array_filter(array_map('trim', explode("\n", $certs['items']))) as $item): ?>
+                <span class="sw-certs__item"><?= Icons::svg('shield-check', 15) ?><?= htmlspecialchars($item, ENT_QUOTES, 'UTF-8') ?></span>
             <?php endforeach; ?>
         </div>
     </div>

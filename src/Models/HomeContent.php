@@ -127,6 +127,10 @@ class HomeContent
                     ['title' => 'Jasne raporty', 'text' => 'Zrozumiałe raporty również dla osób spoza IT.'],
                 ],
             ],
+            'certs' => [
+                'eyebrow' => 'Kompetencje potwierdzone certyfikatami',
+                'items'   => "Certified Ethical Hacker (CEH)\ncPanel/WHM Certified Professional\nLFCS - Linux Foundation Certified System Administrator\nITIL Foundation",
+            ],
             'steps' => [
                 'eyebrow' => 'Jak to działa',
                 'heading' => 'Wdrożenie krok po kroku',
@@ -270,6 +274,10 @@ class HomeContent
                     ['title' => '24/7 oversight', 'text' => 'We react before a problem becomes an outage.'],
                     ['title' => 'Clear reports', 'text' => 'Reports that make sense even outside of IT.'],
                 ],
+            ],
+            'certs' => [
+                'eyebrow' => 'Skills backed by certification',
+                'items'   => "Certified Ethical Hacker (CEH)\ncPanel/WHM Certified Professional\nLFCS - Linux Foundation Certified System Administrator\nITIL Foundation",
             ],
             'steps' => [
                 'eyebrow' => 'How it works',
