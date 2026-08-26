@@ -210,14 +210,6 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
     </div>
 
     <div class="admin-card">
-        <h2 style="margin-top:0;">Pasek "Certyfikowany zespół"</h2>
-        <div class="form-grid form-grid--wide">
-            <div class="field"><label>Etykieta nad paskiem</label><input type="text" name="certs_eyebrow" value="<?= $h($content['certs']['eyebrow']) ?>"></div>
-            <div class="field"><label>Certyfikaty (jeden na linię)</label><textarea name="certs_items" rows="5"><?= $h($content['certs']['items']) ?></textarea><span class="hint">Wpisuj pełną, oficjalną nazwę certyfikatu. To realne kompetencje zespołu (niekoniecznie związane wprost z backupem) - budują wiarygodność jako sygnał profesjonalizmu, nie jako gwarancja konkretnej technologii.</span></div>
-        </div>
-    </div>
-
-    <div class="admin-card">
         <h2 style="margin-top:0;">Sekcja "Wdrożenie krok po kroku"</h2>
         <div class="form-grid form-grid--wide">
             <div class="form-row">

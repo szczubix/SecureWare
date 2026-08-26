@@ -120,10 +120,6 @@ class HomeContentController
                 'link_label' => $text('why_link_label'),
                 'items'      => $whyItems,
             ],
-            'certs' => [
-                'eyebrow' => $text('certs_eyebrow'),
-                'items'   => $text('certs_items'),
-            ],
             'steps' => [
                 'eyebrow' => $text('steps_eyebrow'),
                 'heading' => $text('steps_heading'),
