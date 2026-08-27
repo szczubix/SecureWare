@@ -135,7 +135,7 @@ $alreadyInstalled = !$deleted && !$deleteFailed && !$result && Installer::isInst
             <ul style="margin:0 0 16px;padding-left:18px;font-size:14px;">
                 <li>zaimportuje schemat bazy danych z <code>database/schema.sql</code>,</li>
                 <li>utworzy role, uprawnienia i pierwsze konto administratora panelu,</li>
-                <li>doda domyślne ustawienia oraz przykładową treść (13 usług, strony, wpisy na blogu).</li>
+                <li>doda domyślne ustawienia oraz przykładową treść (14 usług, strony, wpisy na blogu).</li>
             </ul>
             <p class="hint">Upewnij się, że plik <code>.env</code> ma już poprawne dane połączenia z bazą danych.</p>
             <form method="post" action="">

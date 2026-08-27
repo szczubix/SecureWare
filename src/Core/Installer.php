@@ -219,6 +219,7 @@ class Installer
             'social_twitter'     => '',
             'nav_menu'           => json_encode([
                 ['label' => 'Oferta', 'url' => '/oferta'],
+                ['label' => 'Bezpieczeństwo', 'url' => '/bezpieczenstwo'],
                 ['label' => 'Blog', 'url' => '/blog'],
                 ['label' => 'O nas', 'url' => '/o-nas'],
                 ['label' => 'Kontakt', 'url' => '/kontakt'],
@@ -435,6 +436,36 @@ class Installer
 
         // -- Usługi (Oferta) --------------------------------------------------
         $services = require ROOT_PATH . '/database/seed-data/services.php';
+
+        // Dodaje usługi, których jeszcze nie ma (nowe pozycje dopisane w kodzie
+        // po pierwszej instalacji) - dopasowanie po unikalnym slug, wiec nie
+        // dubluje istniejacych ani nie rusza recznie dodanych przez admina.
+        $insService = $pdo->prepare(
+            'INSERT INTO services (name, slug, icon, short_description, content, position, status, meta,
+                                    meta_title, meta_description, created_at, updated_at)
+             SELECT :name, :slug, :icon, :short_description, :content,
+                    (SELECT COALESCE(MAX(position), -1) + 1 FROM services s2), "published", "[]",
+                    :meta_title, :meta_description, NOW(), NOW()
+             WHERE NOT EXISTS (SELECT 1 FROM services WHERE slug = :slug_check)'
+        );
+        $added = 0;
+        foreach ($services as $s) {
+            $insService->execute([
+                'name'              => $s['name'],
+                'slug'              => $s['slug'],
+                'slug_check'        => $s['slug'],
+                'icon'              => $s['icon'],
+                'short_description' => $s['short_description'],
+                'content'           => $s['content'],
+                'meta_title'        => $s['name'] . ' | SecureWare',
+                'meta_description'  => $s['short_description'],
+            ]);
+            $added += $insService->rowCount();
+        }
+        if ($added > 0) {
+            $log[] = 'Usługi (oferta): dodano ' . $added . ' nowych';
+        }
+
         $updService = $pdo->prepare(
             'UPDATE services SET name = :name, icon = :icon, short_description = :short_description,
              content = :content, meta_title = :meta_title, meta_description = :meta_description
@@ -457,6 +488,30 @@ class Installer
 
         // -- Podstrony CMS -----------------------------------------------------
         $pages = require ROOT_PATH . '/database/seed-data/pages.php';
+
+        // Dodaje strony, ktorych jeszcze nie ma (np. nowa strona dopisana w
+        // kodzie po pierwszej instalacji) - dopasowanie po unikalnym slug.
+        $insPage = $pdo->prepare(
+            'INSERT INTO pages (title, slug, content, template, status, meta, meta_title, meta_description, created_at, updated_at)
+             SELECT :title, :slug, :content, "default", "published", "[]", :meta_title, :meta_description, NOW(), NOW()
+             WHERE NOT EXISTS (SELECT 1 FROM pages WHERE slug = :slug_check)'
+        );
+        $added = 0;
+        foreach ($pages as $p) {
+            $insPage->execute([
+                'title'            => $p['title'],
+                'slug'             => $p['slug'],
+                'slug_check'       => $p['slug'],
+                'content'          => $p['content'],
+                'meta_title'       => $p['title'] . ' | SecureWare',
+                'meta_description' => $p['meta_description'] ?? '',
+            ]);
+            $added += $insPage->rowCount();
+        }
+        if ($added > 0) {
+            $log[] = 'Podstrony CMS: dodano ' . $added . ' nowych';
+        }
+
         $updPage = $pdo->prepare(
             'UPDATE pages SET title = :title, content = :content, meta_title = :meta_title,
              meta_description = :meta_description WHERE slug = :slug'

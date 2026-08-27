@@ -23,7 +23,7 @@ class SiteContent
                 'heading_pre'       => 'Pełen zakres ochrony ',
                 'heading_highlight' => 'danych',
                 'heading_post'      => ' dla firm',
-                'lead'              => '13 usług pokrywających cały cykl życia backupu — od wdrożenia, przez codzienne zarządzanie, po disaster recovery i testy odtwarzania.',
+                'lead'              => '14 usług pokrywających cały cykl życia backupu — od wdrożenia, przez codzienne zarządzanie, po disaster recovery i testy odtwarzania.',
                 'highlights' => [
                     ['icon' => 'shield-check', 'text' => 'Kopie niezmienne (immutable)'],
                     ['icon' => 'refresh-ccw', 'text' => 'Realne testy odtwarzania'],
@@ -69,7 +69,7 @@ class SiteContent
                 'heading_pre'       => 'Full-scope data ',
                 'heading_highlight' => 'protection',
                 'heading_post'      => ' for businesses',
-                'lead'              => '13 services covering the entire backup lifecycle — from deployment, through day-to-day management, to disaster recovery and restore testing.',
+                'lead'              => '14 services covering the entire backup lifecycle — from deployment, through day-to-day management, to disaster recovery and restore testing.',
                 'highlights' => [
                     ['icon' => 'shield-check', 'text' => 'Immutable copies'],
                     ['icon' => 'refresh-ccw', 'text' => 'Real restore tests'],

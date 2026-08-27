@@ -15,10 +15,15 @@
  * danych, oraz Installer::seedTranslations() (angielskie tłumaczenia
  * domyślnej treści z database/seed-data/translations-en.php).
  *
- * Dopasowanie wyłącznie po istniejącym slug/key - nie tworzy nowych
- * wpisów i nie rusza leadów ani użytkowników. Nadpisuje tagline i tekst
- * stopki w Ustawieniach - jeśli już ręcznie zmieniłeś te dwa pola,
- * zapisz ich obecną treść przed uruchomieniem.
+ * Usługi i strony CMS: istniejące (dopasowane po slug) są nadpisywane
+ * aktualną treścią z kodu; usługi/strony, których jeszcze nie ma (nowe
+ * pozycje dopisane w kodzie po pierwszej instalacji, np. nowa usługa w
+ * ofercie albo nowa strona), zostają dodane. Nie rusza leadów ani
+ * użytkowników. Nadpisuje tagline i tekst stopki w Ustawieniach - jeśli
+ * już ręcznie zmieniłeś te dwa pola, zapisz ich obecną treść przed
+ * uruchomieniem. Uwaga: treść strony głównej (Ustawienia -> Strona
+ * główna) NIE jest tu ruszana - jeśli dodano nową usługę, licznik typu
+ * "13 usług" w tej treści trzeba poprawić ręcznie w panelu.
  *
  * Ten plik NIE usuwa się sam (w przeciwieństwie do install.php) - można
  * go uruchomić ponownie w przyszłości. Jeśli wolisz, żeby nie leżał na
@@ -109,10 +114,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <p>To narzędzie nadpisze bieżącą treść domyślnych usług, stron CMS i
             wpisów na blogu (dopasowanych po adresie URL / slug) aktualną wersją
             z kodu, wraz z etykietami uprawnień, nazwami ról, nazwą kategorii
-            bloga oraz tagline'em i tekstem stopki w Ustawieniach.</p>
-            <p class="hint">Jeśli ręcznie edytowałeś którąś z tych 13 usług, 3 stron,
-            3 wpisów na blogu, tagline lub stopkę w panelu - te zmiany zostaną
-            nadpisane. Nowe wpisy dodane przez Ciebie w panelu nie zostaną ruszone.</p>
+            bloga oraz tagline'em i tekstem stopki w Ustawieniach. Usługi i strony,
+            których jeszcze nie masz (nowe pozycje dodane w kodzie od ostatniego
+            odświeżenia), zostaną dodane.</p>
+            <p class="hint">Jeśli ręcznie edytowałeś którąś z domyślnych usług, stron CMS,
+            wpisów na blogu, tagline lub stopkę w panelu - te zmiany zostaną
+            nadpisane. Wpisy dodane przez Ciebie w panelu pod innym adresem/slugiem
+            nie zostaną ruszone.</p>
             <form method="post" action="" onsubmit="return confirm('Nadpisać domyślną treść aktualną wersją z kodu?');">
                 <?= Csrf::field() ?>
                 <button type="submit" class="button" style="width:100%;">Odśwież treść</button>

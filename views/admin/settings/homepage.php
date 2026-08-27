@@ -191,6 +191,19 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
     </div>
 
     <div class="admin-card">
+        <h2 style="margin-top:0;">Pasek "Kalkulator kosztu przestoju"</h2>
+        <p class="hint" style="margin-top:-6px;">Link do narzędzia wskazuje zawsze na /kalkulator-kosztu-przestoju - nieedytowalny, żeby nie dało się go przypadkiem zepsuć.</p>
+        <div class="form-grid form-grid--wide">
+            <div class="form-row">
+                <div class="field"><label>Eyebrow</label><input type="text" name="calc_promo_eyebrow" value="<?= $h($content['calc_promo']['eyebrow']) ?>"></div>
+                <div class="field"><label>Nagłówek</label><input type="text" name="calc_promo_heading" value="<?= $h($content['calc_promo']['heading']) ?>"></div>
+            </div>
+            <div class="field"><label>Tekst</label><textarea name="calc_promo_text" rows="2"><?= $h($content['calc_promo']['text']) ?></textarea></div>
+            <div class="field"><label>Tekst przycisku</label><input type="text" name="calc_promo_button_label" value="<?= $h($content['calc_promo']['button_label']) ?>"></div>
+        </div>
+    </div>
+
+    <div class="admin-card">
         <h2 style="margin-top:0;">Sekcja "Dlaczego SecureWare"</h2>
         <div class="form-grid form-grid--wide">
             <div class="form-row">
@@ -206,6 +219,45 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
                     <div class="field"><label>Pozycja <?= $i + 1 ?> — opis</label><input type="text" name="why_item_text[]" value="<?= $h($item['text']) ?>"></div>
                 </div>
             <?php endforeach; ?>
+        </div>
+    </div>
+
+    <div class="admin-card">
+        <h2 style="margin-top:0;">Sekcja "Case studies"</h2>
+        <p class="hint" style="margin-top:-6px;">Prawdziwe, najlepiej zanonimizowane historie klientów z konkretnymi liczbami - to najmocniejszy dowód, więc nie zmyślaj tych danych.</p>
+        <div class="form-grid form-grid--wide">
+            <div class="form-row">
+                <div class="field"><label>Eyebrow</label><input type="text" name="cases_eyebrow" value="<?= $h($content['cases']['eyebrow']) ?>"></div>
+                <div class="field"><label>Nagłówek</label><input type="text" name="cases_heading" value="<?= $h($content['cases']['heading']) ?>"></div>
+            </div>
+            <div class="field"><label>Wstęp</label><textarea name="cases_intro" rows="2"><?= $h($content['cases']['intro']) ?></textarea></div>
+
+            <div class="repeatable-rows" id="case-rows">
+                <?php foreach ($content['cases']['items'] as $i => $item): ?>
+                    <div class="row" style="flex-direction:column;align-items:stretch;gap:8px;border-top:1px solid var(--sw-border);padding-top:14px;margin-top:6px;">
+                        <div class="form-row">
+                            <div class="field"><label>Ikona</label><?php $iconSelect('case_item_icon[]', $item['icon']); ?></div>
+                            <div class="field"><label>Branża</label><input type="text" name="case_item_industry[]" value="<?= $h($item['industry']) ?>" placeholder="np. E-commerce"></div>
+                        </div>
+                        <div class="field"><label>Nagłówek wyniku</label><input type="text" name="case_item_title[]" value="<?= $h($item['title']) ?>"></div>
+                        <div class="field"><label>Sytuacja</label><textarea name="case_item_situation[]" rows="2"><?= $h($item['situation']) ?></textarea></div>
+                        <div class="form-row">
+                            <div class="field"><label>Metryka 1 — wartość</label><input type="text" name="case_item_metric1_value[]" value="<?= $h($item['metric1_value']) ?>" placeholder="np. 4h"></div>
+                            <div class="field"><label>Metryka 1 — opis</label><input type="text" name="case_item_metric1_label[]" value="<?= $h($item['metric1_label']) ?>"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="field"><label>Metryka 2 — wartość</label><input type="text" name="case_item_metric2_value[]" value="<?= $h($item['metric2_value']) ?>"></div>
+                            <div class="field"><label>Metryka 2 — opis</label><input type="text" name="case_item_metric2_label[]" value="<?= $h($item['metric2_label']) ?>"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="field"><label>Metryka 3 — wartość</label><input type="text" name="case_item_metric3_value[]" value="<?= $h($item['metric3_value']) ?>"></div>
+                            <div class="field"><label>Metryka 3 — opis</label><input type="text" name="case_item_metric3_label[]" value="<?= $h($item['metric3_label']) ?>"></div>
+                        </div>
+                        <button type="button" class="button button--ghost button--small" data-remove-row style="align-self:flex-end;">Usuń case study</button>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <button type="button" class="button button--ghost button--small" data-add-row="case-rows" style="align-self:flex-start;margin-top:6px;">+ Dodaj case study</button>
         </div>
     </div>
 
@@ -294,6 +346,42 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
         row.innerHTML = '<input type="text" name="faq_question[]" placeholder="Pytanie">' +
             '<textarea name="faq_answer[]" rows="2" placeholder="Odpowiedź"></textarea>' +
             '<button type="button" class="button button--ghost button--small" data-remove-row style="align-self:flex-end;">Usuń</button>';
+        container.appendChild(row);
+    });
+})();
+(function () {
+    var container = document.getElementById('case-rows');
+    var addBtn = document.querySelector('[data-add-row="case-rows"]');
+    if (!container || !addBtn) return;
+    var iconOptions = <?= json_encode($icons) ?>.map(function (i) { return '<option value="' + i + '">' + i + '</option>'; }).join('');
+    container.addEventListener('click', function (e) {
+        if (e.target.matches('[data-remove-row]')) { e.preventDefault(); e.target.closest('.row').remove(); }
+    });
+    addBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        var row = document.createElement('div');
+        row.className = 'row';
+        row.style.cssText = 'flex-direction:column;align-items:stretch;gap:8px;border-top:1px solid var(--sw-border);padding-top:14px;margin-top:6px;';
+        row.innerHTML =
+            '<div class="form-row">' +
+                '<div class="field"><label>Ikona</label><select name="case_item_icon[]">' + iconOptions + '</select></div>' +
+                '<div class="field"><label>Branża</label><input type="text" name="case_item_industry[]" placeholder="np. E-commerce"></div>' +
+            '</div>' +
+            '<div class="field"><label>Nagłówek wyniku</label><input type="text" name="case_item_title[]"></div>' +
+            '<div class="field"><label>Sytuacja</label><textarea name="case_item_situation[]" rows="2"></textarea></div>' +
+            '<div class="form-row">' +
+                '<div class="field"><label>Metryka 1 — wartość</label><input type="text" name="case_item_metric1_value[]" placeholder="np. 4h"></div>' +
+                '<div class="field"><label>Metryka 1 — opis</label><input type="text" name="case_item_metric1_label[]"></div>' +
+            '</div>' +
+            '<div class="form-row">' +
+                '<div class="field"><label>Metryka 2 — wartość</label><input type="text" name="case_item_metric2_value[]"></div>' +
+                '<div class="field"><label>Metryka 2 — opis</label><input type="text" name="case_item_metric2_label[]"></div>' +
+            '</div>' +
+            '<div class="form-row">' +
+                '<div class="field"><label>Metryka 3 — wartość</label><input type="text" name="case_item_metric3_value[]"></div>' +
+                '<div class="field"><label>Metryka 3 — opis</label><input type="text" name="case_item_metric3_label[]"></div>' +
+            '</div>' +
+            '<button type="button" class="button button--ghost button--small" data-remove-row style="align-self:flex-end;">Usuń case study</button>';
         container.appendChild(row);
     });
 })();

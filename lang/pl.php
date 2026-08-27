@@ -53,5 +53,21 @@ return [
     '404.see_offer' => 'Zobacz ofertę',
     '404.contact'   => 'Kontakt',
 
+    'calc.eyebrow'  => 'Darmowe narzędzie',
+    'calc.heading'  => 'Ile kosztuje Cię godzina przestoju?',
+    'calc.lead'     => 'Podaj kilka liczb z własnej firmy i zobacz szacunkowy koszt awarii - bez zapisywania się na nic.',
+    'calc.label_employees' => 'Liczba pracowników dotkniętych przestojem',
+    'calc.label_wage'      => 'Średni koszt godziny pracy jednego pracownika (zł)',
+    'calc.label_revenue'   => 'Roczny przychód firmy (zł, opcjonalnie)',
+    'calc.hint_revenue'    => 'Podaj, jeśli chcesz uwzględnić też szacunkowy koszt utraconych przychodów.',
+    'calc.label_hours'     => 'Szacowany czas przestoju',
+    'calc.result_label'    => 'Szacowany koszt tego przestoju',
+    'calc.breakdown_productivity' => 'Koszt utraconej produktywności zespołu',
+    'calc.breakdown_revenue'      => 'Koszt utraconych przychodów',
+    'calc.disclaimer' => 'To uproszczony szacunek na podstawie podanych przez Ciebie liczb - nie uwzględnia kosztów reputacyjnych, kar umownych ani utraty klientów, które w praktyce bywają wyższe niż policzone tu koszty bezpośrednie.',
+    'calc.cta' => 'Chcesz to wyeliminować? Umów bezpłatną konsultację',
+    'calc.meta_title'       => 'Kalkulator kosztu przestoju — SecureWare',
+    'calc.meta_description' => 'Sprawdź, ile może Cię kosztować godzina przestoju systemów - darmowy, prosty kalkulator.',
+
     'lang.switch_to' => 'English',
 ];

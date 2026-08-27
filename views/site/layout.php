@@ -24,6 +24,7 @@ $tagline    = Locale::isDefault() ? ($settings['site_tagline'] ?? '') : ($settin
 $navLabelFallback = [
     '/oferta' => 'Offer', '/blog' => 'Blog', '/o-nas' => 'About us', '/kontakt' => 'Contact',
     '/polityka-prywatnosci' => 'Privacy policy', '/regulamin' => 'Terms of service',
+    '/bezpieczenstwo' => 'Security',
 ];
 $navMenu = json_decode($settings['nav_menu'] ?? '[]', true) ?: [];
 if (!Locale::isDefault()) {

@@ -47,5 +47,21 @@ return [
     '404.see_offer' => 'See offer',
     '404.contact'   => 'Contact',
 
+    'calc.eyebrow'  => 'Free tool',
+    'calc.heading'  => 'How much does an hour of downtime cost you?',
+    'calc.lead'     => 'Enter a few numbers from your own company and see an estimated cost of an outage - no sign-up required.',
+    'calc.label_employees' => 'Number of employees affected by the downtime',
+    'calc.label_wage'      => 'Average hourly cost of one employee (PLN)',
+    'calc.label_revenue'   => 'Annual company revenue (PLN, optional)',
+    'calc.hint_revenue'    => 'Enter this if you also want to include an estimated cost of lost revenue.',
+    'calc.label_hours'     => 'Estimated downtime',
+    'calc.result_label'    => 'Estimated cost of this downtime',
+    'calc.breakdown_productivity' => 'Cost of lost team productivity',
+    'calc.breakdown_revenue'      => 'Cost of lost revenue',
+    'calc.disclaimer' => 'This is a simplified estimate based on the numbers you entered - it doesn\'t account for reputational costs, contractual penalties, or customer churn, which in practice often exceed the direct costs calculated here.',
+    'calc.cta' => 'Want to eliminate this risk? Book a free consultation',
+    'calc.meta_title'       => 'Downtime Cost Calculator — SecureWare',
+    'calc.meta_description' => 'See how much an hour of system downtime could cost you - a free, simple calculator.',
+
     'lang.switch_to' => 'Polski',
 ];

@@ -24,6 +24,7 @@ use SecureWare\Controllers\Site\HomeController;
 use SecureWare\Controllers\Site\OfferController;
 use SecureWare\Controllers\Site\PageController;
 use SecureWare\Controllers\Site\SeoController;
+use SecureWare\Controllers\Site\ToolsController;
 use SecureWare\Core\Config;
 
 // ---------------------------------------------------------------------
@@ -113,6 +114,8 @@ $router->get('/blog/{slug}', [BlogController::class, 'show']);
 
 $router->get('/kontakt', [ContactController::class, 'show']);
 $router->post('/kontakt', [ContactController::class, 'submit']);
+
+$router->get('/kalkulator-kosztu-przestoju', [ToolsController::class, 'downtimeCalculator']);
 
 $router->get('/sitemap.xml', [SeoController::class, 'sitemap']);
 $router->get('/robots.txt', [SeoController::class, 'robots']);

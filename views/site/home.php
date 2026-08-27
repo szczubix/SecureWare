@@ -26,7 +26,9 @@ $platform = $content['platform'];
 $rule = $content['rule'];
 $ransomware = $content['ransomware'];
 $scenario = $content['scenario'];
+$calcPromo = $content['calc_promo'];
 $why = $content['why'];
+$cases = $content['cases'];
 $steps = $content['steps'];
 $stack = $content['stack'];
 $blog = $content['blog'];
@@ -293,6 +295,19 @@ $cta = $content['cta'];
     </div>
 </section>
 
+<section class="sw-section sw-section--tight">
+    <div class="sw-wrap">
+        <div class="sw-calc-promo reveal">
+            <div>
+                <span class="sw-calc-promo__eyebrow"><?= $h($calcPromo['eyebrow']) ?></span>
+                <h2><?= $h($calcPromo['heading']) ?></h2>
+                <p><?= $h($calcPromo['text']) ?></p>
+            </div>
+            <a href="<?= Locale::url('/kalkulator-kosztu-przestoju') ?>" class="sw-btn sw-btn--primary"><?= $h($calcPromo['button_label']) ?> <?= Icons::svg('arrow-right', 14) ?></a>
+        </div>
+    </div>
+</section>
+
 <section class="sw-section sw-section--muted">
     <div class="sw-wrap sw-why">
         <div class="sw-why__intro reveal">
@@ -308,6 +323,33 @@ $cta = $content['cta'];
                     <div>
                         <h4><?= $h($item['title']) ?></h4>
                         <p><?= $h($item['text']) ?></p>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</section>
+
+<section class="sw-section">
+    <div class="sw-wrap">
+        <div class="sw-section-head reveal">
+            <h5><?= $h($cases['eyebrow']) ?></h5>
+            <h2><?= $h($cases['heading']) ?></h2>
+            <p><?= $h($cases['intro']) ?></p>
+        </div>
+        <div class="sw-cases reveal-stagger">
+            <?php foreach ($cases['items'] as $case): ?>
+                <div class="sw-case">
+                    <div class="sw-case__head">
+                        <span class="sw-case__icon"><?= Icons::svg($case['icon'], 20) ?></span>
+                        <span class="sw-case__industry"><?= $h($case['industry']) ?></span>
+                    </div>
+                    <h3><?= $h($case['title']) ?></h3>
+                    <p><?= $h($case['situation']) ?></p>
+                    <div class="sw-case__metrics">
+                        <div><strong><?= $h($case['metric1_value']) ?></strong><span><?= $h($case['metric1_label']) ?></span></div>
+                        <div><strong><?= $h($case['metric2_value']) ?></strong><span><?= $h($case['metric2_label']) ?></span></div>
+                        <div><strong><?= $h($case['metric3_value']) ?></strong><span><?= $h($case['metric3_label']) ?></span></div>
                     </div>
                 </div>
             <?php endforeach; ?>

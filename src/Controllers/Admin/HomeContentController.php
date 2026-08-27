@@ -43,6 +43,7 @@ class HomeContentController
         $tabs  = $this->rows($in, 'platform_tab', ['icon', 'title', 'subtitle', 'panel_title', 'panel_text', 'bullets']);
         $ruleItems = $this->rows($in, 'rule_item', ['icon', 'num', 'label', 'text']);
         $whyItems  = $this->rows($in, 'why_item', ['title', 'text']);
+        $caseItems = $this->rows($in, 'case_item', ['icon', 'industry', 'title', 'situation', 'metric1_value', 'metric1_label', 'metric2_value', 'metric2_label', 'metric3_value', 'metric3_label']);
         $stepItems = $this->rows($in, 'steps_item', ['title', 'text']);
         $faqItems  = $this->rows($in, 'faq', ['question', 'answer']);
 
@@ -113,12 +114,24 @@ class HomeContentController
                 'safe_checklist'  => $text('scenario_safe_checklist'),
                 'safe_result'     => $text('scenario_safe_result'),
             ],
+            'calc_promo' => [
+                'eyebrow'      => $text('calc_promo_eyebrow'),
+                'heading'      => $text('calc_promo_heading'),
+                'text'         => $text('calc_promo_text'),
+                'button_label' => $text('calc_promo_button_label'),
+            ],
             'why' => [
                 'eyebrow'    => $text('why_eyebrow'),
                 'heading'    => $text('why_heading'),
                 'intro'      => $text('why_intro'),
                 'link_label' => $text('why_link_label'),
                 'items'      => $whyItems,
+            ],
+            'cases' => [
+                'eyebrow' => $text('cases_eyebrow'),
+                'heading' => $text('cases_heading'),
+                'intro'   => $text('cases_intro'),
+                'items'   => $caseItems,
             ],
             'steps' => [
                 'eyebrow' => $text('steps_eyebrow'),

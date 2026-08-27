@@ -44,7 +44,7 @@ class HomeContent
                 'eyebrow'  => 'Nasza oferta',
                 'heading'  => 'Pełen zakres ochrony danych',
                 'intro'    => 'Od zarządzania istniejącym backupem po disaster recovery i cykliczne testy odtwarzania.',
-                'cta_label' => 'Zobacz pełną ofertę (13 usług)',
+                'cta_label' => 'Zobacz pełną ofertę (14 usług)',
             ],
             'stack' => [
                 'eyebrow' => 'Integrujemy się z Twoim środowiskiem',
@@ -115,6 +115,12 @@ class HomeContent
                 'safe_checklist' => "Kopia immutable: nienaruszona\nPrzywracanie danych: rozpoczęte\nOkup: nie zapłacony",
                 'safe_result'    => 'Przywrócono z kopii immutable. Zero złotych okupu.',
             ],
+            'calc_promo' => [
+                'eyebrow' => 'Darmowe narzędzie',
+                'heading' => 'Ile kosztuje Cię godzina przestoju?',
+                'text'    => 'Podaj kilka liczb z własnej firmy i sprawdź szacunkowy koszt awarii w 30 sekund - bez zapisywania się na nic.',
+                'button_label' => 'Policz swój koszt przestoju',
+            ],
             'why' => [
                 'eyebrow'    => 'Dlaczego SecureWare',
                 'heading'    => 'Backup, któremu można zaufać',
@@ -125,6 +131,29 @@ class HomeContent
                     ['title' => 'Rzeczywiste testy', 'text' => 'Nie sprawdzamy tylko statusu zadania - realnie odtwarzamy dane.'],
                     ['title' => 'Nadzór 24/7', 'text' => 'Reagujemy, zanim problem stanie się awarią.'],
                     ['title' => 'Jasne raporty', 'text' => 'Zrozumiałe raporty również dla osób spoza IT.'],
+                ],
+            ],
+            'cases' => [
+                'eyebrow' => 'Nie w teorii - w praktyce',
+                'heading' => 'Jak to wyglądało u naszych klientów',
+                'intro'   => 'Dwie prawdziwe sytuacje (dane zanonimizowane), w których zadziałało dokładnie to, co opisujemy powyżej.',
+                'items' => [
+                    [
+                        'icon' => 'lock', 'industry' => 'E-commerce',
+                        'title' => 'Sklep zaszyfrowany przez ransomware - bez zapłaconego okupu',
+                        'situation' => 'Atak ransomware zaszyfrował sklep internetowy klienta w trakcie normalnej pracy. Zamiast płacić okup, uruchomiliśmy przywracanie z kopii immutable.',
+                        'metric1_value' => '4h', 'metric1_label' => 'Czas przywrócenia sklepu',
+                        'metric2_value' => '0', 'metric2_label' => 'Utraconych danych klientów',
+                        'metric3_value' => '100 000 zł', 'metric3_label' => 'Zaoszczędzony okup',
+                    ],
+                    [
+                        'icon' => 'server', 'industry' => 'Produkcja',
+                        'title' => 'Awaria serwerów produkcyjnych - 20 systemów z powrotem w 8 godzin',
+                        'situation' => 'Awaria infrastruktury serwerowej wyłączyła 20 systemów produkcyjnych klienta. Przywróciliśmy wszystkie z backupu, z minimalną utratą danych.',
+                        'metric1_value' => '8h', 'metric1_label' => 'Czas pełnego przywrócenia',
+                        'metric2_value' => '20', 'metric2_label' => 'Przywróconych systemów',
+                        'metric3_value' => '11 min', 'metric3_label' => 'Utracona praca sprzed awarii',
+                    ],
                 ],
             ],
             'steps' => [
@@ -188,7 +217,7 @@ class HomeContent
                 'eyebrow'  => 'Our services',
                 'heading'  => 'Full-scope data protection',
                 'intro'    => 'From managing your existing backup to disaster recovery and recurring restore tests.',
-                'cta_label' => 'See the full range (13 services)',
+                'cta_label' => 'See the full range (14 services)',
             ],
             'stack' => [
                 'eyebrow' => 'Integrates with the environment you already run',
@@ -259,6 +288,12 @@ class HomeContent
                 'safe_checklist' => "Immutable copy: intact\nData restore: in progress\nRansom: not paid",
                 'safe_result'    => 'Restored from the immutable copy. Zero ransom paid.',
             ],
+            'calc_promo' => [
+                'eyebrow' => 'Free tool',
+                'heading' => 'How much does an hour of downtime cost you?',
+                'text'    => 'Enter a few numbers from your own company and see an estimated cost of an outage in 30 seconds - no sign-up required.',
+                'button_label' => 'Calculate your downtime cost',
+            ],
             'why' => [
                 'eyebrow'    => 'Why SecureWare',
                 'heading'    => 'Backup you can trust',
@@ -269,6 +304,29 @@ class HomeContent
                     ['title' => 'Real tests', 'text' => 'We don\'t just check a job\'s status - we actually restore the data.'],
                     ['title' => '24/7 oversight', 'text' => 'We react before a problem becomes an outage.'],
                     ['title' => 'Clear reports', 'text' => 'Reports that make sense even outside of IT.'],
+                ],
+            ],
+            'cases' => [
+                'eyebrow' => 'Not just in theory',
+                'heading' => 'What this looked like for our clients',
+                'intro'   => 'Two real situations (details anonymized) where exactly what\'s described above is what actually happened.',
+                'items' => [
+                    [
+                        'icon' => 'lock', 'industry' => 'E-commerce',
+                        'title' => 'Online store hit by ransomware - no ransom paid',
+                        'situation' => 'A ransomware attack encrypted the client\'s online store during normal operation. Instead of paying the ransom, we restored from an immutable backup.',
+                        'metric1_value' => '4h', 'metric1_label' => 'Store restored in',
+                        'metric2_value' => '0', 'metric2_label' => 'Customer records lost',
+                        'metric3_value' => 'PLN 100,000', 'metric3_label' => 'Ransom avoided',
+                    ],
+                    [
+                        'icon' => 'server', 'industry' => 'Manufacturing',
+                        'title' => 'Production server failure - 20 systems back online in 8 hours',
+                        'situation' => 'A server infrastructure failure took down 20 of the client\'s production systems. We restored all of them from backup, with minimal data loss.',
+                        'metric1_value' => '8h', 'metric1_label' => 'Full restoration time',
+                        'metric2_value' => '20', 'metric2_label' => 'Systems restored',
+                        'metric3_value' => '11 min', 'metric3_label' => 'Work lost before the failure',
+                    ],
                 ],
             ],
             'steps' => [

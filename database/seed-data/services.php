@@ -97,4 +97,11 @@ return [
         'short_description' => 'Polityki retencji danych, raportowanie i dokumentacja zgodna z wymogami audytowymi oraz regulacjami branżowymi.',
         'content'           => '<p>Właściwa retencja danych to nie tylko kwestia techniczna, ale również zgodności z regulacjami i wymogami audytowymi. Pomagamy zaprojektować i utrzymać polityki retencji, które spełniają wymagania prawne i branżowe.</p><ul><li>Projektowanie polityk retencji dopasowanych do wymagań</li><li>Raportowanie zgodności na potrzeby audytów</li><li>Dokumentacja procesów ochrony danych</li><li>Wsparcie przy audytach zewnętrznych</li></ul>',
     ],
+    [
+        'name'              => 'SIEM as a Service',
+        'slug'              => 'siem-as-a-service',
+        'icon'              => 'bug',
+        'short_description' => 'Zbieramy i analizujemy logi z Twojej infrastruktury backupu i kluczowych systemów, żeby wykryć próbę ataku, zanim dojdzie do zaszyfrowania danych.',
+        'content'           => '<p>Backup to ostatnia linia obrony - ale im wcześniej wykryjesz atak, tym mniej szkód wyrządzi, zanim w ogóle dojdzie do backupu. SIEM as a Service to zarządzana usługa zbierania i korelacji logów z Twojej infrastruktury (w tym środowiska backupu), która wykrywa podejrzaną aktywność - próby dostępu do repozytoriów, nietypowe wzorce logowania, oznaki ruchu bocznego (lateral movement) - i alarmuje Twój zespół, zanim atak się rozwinie.</p><ul><li>Zbieranie i korelacja logów z serwerów, backupu i kluczowych systemów</li><li>Reguły detekcji dopasowane do wzorców ataków na infrastrukturę backupu</li><li>Alarmowanie zespołu przy wykryciu podejrzanej aktywności</li><li>Miesięczny raport zdarzeń i rekomendacji</li></ul><p>Nie zastępujemy Twojego działu bezpieczeństwa - wzmacniamy widoczność tam, gdzie najczęściej atakuje ransomware: w warstwie backupu.</p>',
+    ],
 ];
