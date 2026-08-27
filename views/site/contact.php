@@ -15,6 +15,7 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 ?>
 <section class="sw-hero" style="padding:64px 0;">
     <div class="sw-wrap">
+        <div class="meta sw-anim-in" style="color:#8791a8;font-size:13.5px;font-weight:600;margin-bottom:14px;"><a href="<?= Locale::url('/') ?>" style="color:#aab4c8;">&larr; <?= Lang::t('breadcrumb.home') ?></a></div>
         <span class="sw-hero__eyebrow sw-anim-in sw-delay-1"><?= $h($content['eyebrow']) ?></span>
         <h1 class="sw-anim-in sw-delay-2" style="font-size:36px;"><?= $h($content['heading_pre']) ?><span><?= $h($content['heading_highlight']) ?></span><?= $h($content['heading_post']) ?></h1>
         <p class="lead sw-anim-in sw-delay-3"><?= $h($content['lead']) ?></p>

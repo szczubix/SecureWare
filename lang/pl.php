@@ -11,10 +11,15 @@ return [
     'nav.book_call'      => 'Umów rozmowę',
     'nav.menu_aria'      => 'Menu',
     'footer.nav_heading'    => 'Nawigacja',
+    'footer.resources_heading' => 'Zasoby',
     'footer.legal_heading'  => 'Prawne',
     'footer.privacy'        => 'Polityka prywatności',
     'footer.terms'          => 'Regulamin',
     'footer.contact_heading'=> 'Kontakt',
+
+    'nav.resources_blog'       => 'Blog',
+    'nav.resources_calculator' => 'Kalkulator kosztu przestoju',
+    'nav.resources_security'   => 'Bezpieczeństwo',
 
     'offer.read_more'        => 'Dowiedz się więcej',
     'offer.breadcrumb'       => 'Oferta',
@@ -49,6 +54,10 @@ return [
     'contact.error_captcha' => 'Weryfikacja antyspamowa nie powiodła się. Spróbuj ponownie.',
     'contact.meta_title'       => 'Kontakt — SecureWare',
     'contact.meta_description' => 'Skontaktuj się z nami - wycena backupu, disaster recovery i ochrony danych dla Twojej firmy.',
+
+    'breadcrumb.home'     => 'Strona główna',
+    'breadcrumb.toc_label' => 'Na tej stronie',
+    'breadcrumb.toc_aria'  => 'Spis treści',
 
     '404.see_offer' => 'Zobacz ofertę',
     '404.contact'   => 'Kontakt',

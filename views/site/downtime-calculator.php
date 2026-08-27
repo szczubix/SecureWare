@@ -4,6 +4,7 @@ use SecureWare\Core\Locale;
 ?>
 <section class="sw-hero" style="padding:64px 0;">
     <div class="sw-wrap">
+        <div class="meta sw-anim-in" style="color:#8791a8;font-size:13.5px;font-weight:600;margin-bottom:14px;"><a href="<?= Locale::url('/') ?>" style="color:#aab4c8;">&larr; <?= Lang::t('breadcrumb.home') ?></a></div>
         <span class="sw-hero__eyebrow sw-anim-in sw-delay-1"><?= Lang::t('calc.eyebrow') ?></span>
         <h1 class="sw-anim-in sw-delay-2" style="font-size:36px;"><?= Lang::t('calc.heading') ?></h1>
         <p class="lead sw-anim-in sw-delay-3"><?= Lang::t('calc.lead') ?></p>

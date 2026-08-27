@@ -22,7 +22,7 @@ $tagline    = Locale::isDefault() ? ($settings['site_tagline'] ?? '') : ($settin
 // jeszcze osobnego menu EN (nav_menu_en) - tlumaczy znane adresy, resztę
 // zostawia w oryginalnym jezyku zamiast pokazac puste menu.
 $navLabelFallback = [
-    '/oferta' => 'Offer', '/blog' => 'Blog', '/o-nas' => 'About us', '/kontakt' => 'Contact',
+    '/oferta' => 'Offer', '/blog' => 'Resources', '/o-nas' => 'About us', '/kontakt' => 'Contact',
     '/polityka-prywatnosci' => 'Privacy policy', '/regulamin' => 'Terms of service',
     '/bezpieczenstwo' => 'Security',
 ];
@@ -131,6 +131,24 @@ if ($ogImageUrl && !preg_match('#^https?://#', $ogImageUrl)) {
                             <a class="sw-mega__all" href="<?= Locale::url('/oferta') ?>"><?= Lang::t('nav.see_full_offer') ?> <?= Icons::svg('arrow-right', 14) ?></a>
                         </div>
                     </div>
+                <?php elseif ($item['url'] === '/blog'): ?>
+                    <div class="sw-nav__item">
+                        <a href="<?= Locale::url('/blog') ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') ?> <?= Icons::svg('chevron-down', 14) ?></a>
+                        <div class="sw-mega sw-mega--simple">
+                            <a class="sw-mega__item" href="<?= Locale::url('/blog') ?>">
+                                <span class="icon"><?= Icons::svg('file-check', 16) ?></span>
+                                <span><?= Lang::t('nav.resources_blog') ?></span>
+                            </a>
+                            <a class="sw-mega__item" href="<?= Locale::url('/kalkulator-kosztu-przestoju') ?>">
+                                <span class="icon"><?= Icons::svg('activity', 16) ?></span>
+                                <span><?= Lang::t('nav.resources_calculator') ?></span>
+                            </a>
+                            <a class="sw-mega__item" href="<?= Locale::url('/bezpieczenstwo') ?>">
+                                <span class="icon"><?= Icons::svg('lock', 16) ?></span>
+                                <span><?= Lang::t('nav.resources_security') ?></span>
+                            </a>
+                        </div>
+                    </div>
                 <?php else: ?>
                     <a href="<?= Locale::url($item['url']) ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') ?></a>
                 <?php endif; ?>
@@ -158,9 +176,15 @@ if ($ogImageUrl && !preg_match('#^https?://#', $ogImageUrl)) {
         </div>
         <div>
             <h4><?= Lang::t('footer.nav_heading') ?></h4>
-            <?php foreach ($navMenu as $item): ?>
+            <?php foreach ($navMenu as $item): if ($item['url'] === '/blog') continue; ?>
                 <a href="<?= Locale::url($item['url']) ?>"><?= htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') ?></a>
             <?php endforeach; ?>
+        </div>
+        <div>
+            <h4><?= Lang::t('footer.resources_heading') ?></h4>
+            <a href="<?= Locale::url('/blog') ?>"><?= Lang::t('nav.resources_blog') ?></a>
+            <a href="<?= Locale::url('/bezpieczenstwo') ?>"><?= Lang::t('nav.resources_security') ?></a>
+            <a href="<?= Locale::url('/kalkulator-kosztu-przestoju') ?>"><?= Lang::t('nav.resources_calculator') ?></a>
         </div>
         <div>
             <h4><?= Lang::t('footer.legal_heading') ?></h4>

@@ -5,7 +5,12 @@ use SecureWare\Core\Icons;
 use SecureWare\Core\Lang;
 use SecureWare\Core\Locale;
 use SecureWare\Core\Str;
+use SecureWare\Core\Toc;
 use SecureWare\Models\Diagram;
+
+$toc = Toc::extract($article['content']);
+$hasToc = count($toc['items']) >= 2;
+$articleBody = Diagram::embedInto($toc['html']);
 ?>
 <section class="sw-prose-header">
     <div class="sw-wrap" style="max-width:760px;">
@@ -25,8 +30,28 @@ use SecureWare\Models\Diagram;
 </div>
 <?php endif; ?>
 
+<?php if ($hasToc): ?>
+<div class="sw-wrap sw-toc-layout">
+    <nav class="sw-toc" aria-label="<?= Lang::t('breadcrumb.toc_aria') ?>">
+        <span class="sw-toc__label"><?= Lang::t('breadcrumb.toc_label') ?></span>
+        <?php foreach ($toc['items'] as $item): ?>
+            <a href="#<?= $item['id'] ?>"><?= htmlspecialchars($item['text'], ENT_QUOTES, 'UTF-8') ?></a>
+        <?php endforeach; ?>
+    </nav>
+    <article class="sw-prose sw-prose--in-toc">
+        <?= $articleBody ?>
+        <?php if (!empty($article['tags'])): ?>
+            <div style="margin-top:30px;display:flex;gap:8px;flex-wrap:wrap;">
+                <?php foreach ($article['tags'] as $t): ?>
+                    <a href="<?= Locale::url('/blog') ?>?tag=<?= urlencode($t['slug']) ?>" style="padding:5px 12px;border:1px solid var(--sw-border);border-radius:999px;font-size:12.5px;">#<?= htmlspecialchars($t['name'], ENT_QUOTES, 'UTF-8') ?></a>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </article>
+</div>
+<?php else: ?>
 <article class="sw-prose">
-    <?= Diagram::embedInto($article['content']) ?>
+    <?= $articleBody ?>
 
     <?php if (!empty($article['tags'])): ?>
         <div style="margin-top:30px;display:flex;gap:8px;flex-wrap:wrap;">
@@ -36,6 +61,7 @@ use SecureWare\Models\Diagram;
         </div>
     <?php endif; ?>
 </article>
+<?php endif; ?>
 
 <?php if ($related): ?>
 <section class="sw-related">

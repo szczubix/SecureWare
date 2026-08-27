@@ -135,6 +135,31 @@
         });
     }
 
+    // Sticky table-of-contents scroll-spy - highlights the link for whichever
+    // <h2> section is currently in view.
+    var tocLinks = document.querySelectorAll('.sw-toc a');
+    if (tocLinks.length && 'IntersectionObserver' in window) {
+        var tocMap = {};
+        tocLinks.forEach(function (link) {
+            var id = link.getAttribute('href').slice(1);
+            var target = document.getElementById(id);
+            if (target) tocMap[id] = link;
+        });
+        var tocObserver = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                var link = tocMap[entry.target.id];
+                if (!link) return;
+                if (entry.isIntersecting) {
+                    tocLinks.forEach(function (l) { l.classList.remove('is-active'); });
+                    link.classList.add('is-active');
+                }
+            });
+        }, { rootMargin: '-15% 0px -70% 0px' });
+        Object.keys(tocMap).forEach(function (id) {
+            tocObserver.observe(document.getElementById(id));
+        });
+    }
+
     // Magnetic hover on primary buttons - the button nudges slightly toward
     // the cursor within its own bounds, snapping back on leave.
     if (!reduceMotion) {

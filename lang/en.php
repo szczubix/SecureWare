@@ -5,10 +5,15 @@ return [
     'nav.book_call'      => 'Book a call',
     'nav.menu_aria'      => 'Menu',
     'footer.nav_heading'    => 'Navigation',
+    'footer.resources_heading' => 'Resources',
     'footer.legal_heading'  => 'Legal',
     'footer.privacy'        => 'Privacy policy',
     'footer.terms'          => 'Terms of service',
     'footer.contact_heading'=> 'Contact',
+
+    'nav.resources_blog'       => 'Blog',
+    'nav.resources_calculator' => 'Downtime Cost Calculator',
+    'nav.resources_security'   => 'Security',
 
     'offer.read_more'        => 'Learn more',
     'offer.breadcrumb'       => 'Offer',
@@ -43,6 +48,10 @@ return [
     'contact.error_captcha' => 'Anti-spam verification failed. Please try again.',
     'contact.meta_title'       => 'Contact — SecureWare',
     'contact.meta_description' => 'Get in touch - a backup, disaster recovery, and data protection quote for your business.',
+
+    'breadcrumb.home'     => 'Home',
+    'breadcrumb.toc_label' => 'On this page',
+    'breadcrumb.toc_aria'  => 'Table of contents',
 
     '404.see_offer' => 'See offer',
     '404.contact'   => 'Contact',

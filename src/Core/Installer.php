@@ -219,8 +219,7 @@ class Installer
             'social_twitter'     => '',
             'nav_menu'           => json_encode([
                 ['label' => 'Oferta', 'url' => '/oferta'],
-                ['label' => 'Bezpieczeństwo', 'url' => '/bezpieczenstwo'],
-                ['label' => 'Blog', 'url' => '/blog'],
+                ['label' => 'Zasoby', 'url' => '/blog'],
                 ['label' => 'O nas', 'url' => '/o-nas'],
                 ['label' => 'Kontakt', 'url' => '/kontakt'],
             ], JSON_UNESCAPED_UNICODE),
