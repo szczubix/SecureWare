@@ -46,3 +46,4 @@ input.slider { padding: 0; }
 .sev-medium { color: #b26a00; font-weight: 600; }
 .button-link { display: inline-block; padding: 8px 14px; border-radius: 6px; background: var(--accent); color: #fff; text-decoration: none; }
 .snapshot-body nav > span { margin-right: 12px; color: var(--accent); }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }

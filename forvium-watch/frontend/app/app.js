@@ -253,8 +253,52 @@
         standingSection(org, h.standing_consents || [], units, reload, settings.dual_approval),
         card(el("h3", {}, "Historia sesji"), el("table", {},
           el("tr", {}, ...["Start", "Operator", "Zgłoszenie", "Status", "Koniec", ""].map((t) => el("th", {}, t))), ...sessionRows)),
+        reportsCard(org),
         panel);
     });
+  }
+
+  // Pobranie pliku z API (naglowek Authorization, wiec nie zwykly link).
+  async function download(path, fallbackName) {
+    const r = await fetch(API + path, { headers: { Authorization: "Bearer " + token() } });
+    if (!r.ok) throw new Error("Nie udało się pobrać pliku (" + r.status + ")");
+    const name = (r.headers.get("Content-Disposition") || "").match(/filename="([^"]+)"/);
+    const url = URL.createObjectURL(await r.blob());
+    const a = el("a", { href: url, download: name ? name[1] : fallbackName });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+
+  // Miesieczne raporty dostepu serwisowego (PDF) - tworzone automatycznie po koncu miesiaca.
+  function reportsCard(org) {
+    const body = el("div", {}, el("p", { class: "muted" }, "Ładowanie…"));
+    const load = async () => {
+      try {
+        const { reports } = await api(`/api/app/orgs/${org.id}/access-reports`);
+        body.replaceChildren(reports.length ? el("table", {},
+          el("tr", {}, ...["Okres", "Utworzono", "SHA-256", ""].map((t) => el("th", {}, t))),
+          ...reports.map((r) => el("tr", {}, el("td", {}, r.period_label), el("td", {}, fmt(r.created_at)),
+            el("td", { class: "mono", title: r.sha256 }, r.sha256.slice(0, 16) + "…"),
+            el("td", {}, el("button", { class: "secondary", onclick: () => download(
+              `/api/app/orgs/${org.id}/access-reports/${r.id}/pdf`, `raport-${r.period_start}.pdf`).catch((e) => alert(e.message)) }, "Pobierz PDF")))))
+          : el("p", { class: "muted" }, "Pierwszy raport pojawi się po zakończeniu miesiąca."));
+      } catch (e) { body.replaceChildren(el("p", { class: "error" }, e.message)); }
+    };
+    const month = el("input", { type: "month" });
+    load();
+    return card(el("h3", {}, "Raporty dostępu"),
+      el("p", { class: "muted" }, "Co miesiąc: wszystkie prośby Forvium o dostęp, decyzje, sesje wsparcia (czas, zakres, oglądane widoki, zablokowane próby) i zmiany zgód. Skrót SHA-256 pozwala sprawdzić, że plik nie został zmieniony."),
+      body,
+      el("div", { class: "row" }, month, el("button", { class: "secondary", onclick: async () => {
+        if (!month.value) return;
+        const [year, m] = month.value.split("-").map(Number);
+        try {
+          await api(`/api/app/orgs/${org.id}/access-reports`, { method: "POST", body: { year, month: m } });
+          load();
+        } catch (e) { alert(e.message); }
+      } }, "Utwórz raport za wybrany miesiąc")));
   }
 
   // Zatwierdzanie prosby - pierwsze albo (przy zatwierdzaniu przez dwie osoby) potwierdzenie przez drugą osobę.

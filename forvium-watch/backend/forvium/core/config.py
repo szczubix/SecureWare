@@ -24,6 +24,8 @@ class Settings:
     run_background_jobs: bool = field(default_factory=lambda: _env("RUN_BACKGROUND_JOBS", "true") == "true")
     # Logi: "json" (produkcja, zbieranie przez Loki/ELK) albo "text".
     log_format: str = field(default_factory=lambda: _env("LOG_FORMAT", "text"))
+    # Sprawdzanie, czy sa raporty dostepu za poprzedni miesiac do utworzenia (0 = wylaczone).
+    report_interval_seconds: int = field(default_factory=lambda: int(_env("REPORT_INTERVAL_SECONDS", "3600")))
     log_level: str = field(default_factory=lambda: _env("LOG_LEVEL", "INFO"))
     # Opcjonalny token dla /metrics (poza tym endpoint jest dostepny tylko w sieci wewnetrznej).
     metrics_token: str = field(default_factory=lambda: _env("METRICS_TOKEN", ""))

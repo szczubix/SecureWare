@@ -195,6 +195,7 @@ ENCRYPTED_COLUMNS = [
     ("forvium.identity.models", "User", ["mfa_secret"]),
     ("forvium.organizations.models", "Organization", ["secrets", "smtp_config", "webhooks"]),
     ("forvium.support_access.recording", "SupportSessionSnapshot", ["html"]),
+    ("forvium.reports.service", "AccessReport", ["pdf"]),
 ]
 
 

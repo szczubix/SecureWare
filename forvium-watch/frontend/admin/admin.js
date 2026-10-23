@@ -157,7 +157,7 @@
     const items = [];
     if (can(P.request)) items.push(["Użytkownicy", () => renderUsers()], ["Moje prośby", () => renderMyRequestsPage()]);
     if (can(P.oversight)) items.push(["Nadzór sesji", () => renderOversight()], ["Alerty", () => renderAlerts()]);
-    if (can(P.audit)) items.push(["Audyt", () => renderAudit()]);
+    if (can(P.audit)) items.push(["Audyt", () => renderAudit()], ["Raporty", () => renderReports()]);
     if (can(P.bgApprove) || can(P.bgReview)) items.push(["Break Glass", () => renderBreakGlass()]);
     items.push(["Powiadomienia", () => renderNotifications()], ["Konto", () => renderAccount()]);
     const nav = el("nav", { class: "card tabs" });
@@ -508,6 +508,42 @@
           el("td", {}, el("span", { class: "pill" + (j.stale ? " sev-high" : "") }, j.stale ? "zatrzymane" : "działa"))))));
       show(card(el("h2", {}, "Alerty bezpieczeństwa"), el("label", {}, "Status"), sel),
         card(table(["Czas", "Waga", "Alert", "Operator", "Status", ""], rows)), jobsCard);
+    } catch (e) { show(errorCard(e)); }
+  }
+
+  // ------------------------------------------------- raporty dostepu (PDF)
+  async function downloadPdf(path, fallbackName) {
+    const r = await api(path, { raw: true });
+    const name = (r.headers.get("Content-Disposition") || "").match(/filename="([^"]+)"/);
+    const url = URL.createObjectURL(await r.blob());
+    const a = el("a", { href: url, download: name ? name[1] : fallbackName });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+
+  async function renderReports() {
+    const show = begin();
+    try {
+      const { reports } = await api("/api/admin/access-reports");
+      const rows = reports.map((r) => el("tr", {},
+        el("td", {}, r.period_label), el("td", {}, r.kind === "auditor" ? "audytor (cała platforma)" : "klient"),
+        el("td", {}, r.organization_name || "—"),
+        el("td", {}, fmt(r.created_at)), el("td", { class: "mono", title: r.sha256 }, r.sha256.slice(0, 16) + "…"),
+        el("td", {}, el("button", { class: "secondary", onclick: () => downloadPdf(`/api/admin/access-reports/${r.id}/pdf`, `raport-${r.period_start}.pdf`).catch((e) => alert(e.message)) }, "Pobierz PDF"))));
+      const month = el("input", { type: "month" });
+      show(card(el("h2", {}, "Raporty dostępu serwisowego"),
+          el("p", { class: "muted" }, "Raporty miesięczne tworzą się automatycznie po zakończeniu miesiąca: dla każdej organizacji (wysyłany klientowi) i zbiorczy dla audytorów. Każde pobranie trafia do audytu."),
+          el("div", { class: "row" }, month, el("button", { onclick: async () => {
+            if (!month.value) return;
+            const [year, m] = month.value.split("-").map(Number);
+            try {
+              await api("/api/admin/access-reports", { method: "POST", body: { kind: "auditor", year, month: m } });
+              renderReports();
+            } catch (e) { alert(e.message); }
+          } }, "Utwórz raport audytora za miesiąc"))),
+        card(table(["Okres", "Rodzaj", "Organizacja", "Utworzono", "SHA-256", ""], rows)));
     } catch (e) { show(errorCard(e)); }
   }
 

@@ -45,6 +45,7 @@ class JobRun(Base):
 def background_jobs(app) -> list[tuple[str, int, Callable[[], object]]]:
     from forvium.audit.export import run_audit_export
     from forvium.notifications.mailer import run_delivery
+    from forvium.reports.service import run_report_job
     from forvium.security.anomalies import run_anomaly_job
     from forvium.support_access.scheduler import run_sweep
 
@@ -55,6 +56,7 @@ def background_jobs(app) -> list[tuple[str, int, Callable[[], object]]]:
         ("anomaly-detection", s.anomaly_interval_seconds, lambda: run_anomaly_job(app)),
         ("audit-export", s.audit_export_interval_seconds if app.state.audit_sinks else 0,
          lambda: run_audit_export(app)),
+        ("access-reports", s.report_interval_seconds, lambda: run_report_job(app)),
     ]
     return [j for j in jobs if j[1] > 0]
 

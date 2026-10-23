@@ -32,6 +32,8 @@ from forvium.support_access.router_app import router as support_app
 from forvium.audit.chain import ChainedJsonlFile
 from forvium.audit.export import sinks_from_settings
 from forvium.jobs import start_jobs
+from forvium.reports.router import admin_router as reports_admin
+from forvium.reports.router import app_router as reports_app
 from forvium.monitoring import install as install_monitoring
 from forvium.notifications.mailer import sender_from_settings
 from forvium.security.anomalies import AnomalyPolicy
@@ -84,11 +86,12 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
         allow_credentials=False,  # tokeny w naglowku Authorization, nie w ciasteczkach
         allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["Authorization", "Content-Type"],
+        expose_headers=["Content-Disposition", "X-Content-SHA256", "X-Request-ID"],
     )
 
     for router in (identity_app, organizations_app, support_app, notifications_app,
                    identity_admin, platform_admin, support_admin, break_glass_admin,
-                   audit_admin, security_admin):
+                   audit_admin, security_admin, reports_app, reports_admin):
         app.include_router(router)
 
     # Na koncu, wiec jako najbardziej zewnetrzne: identyfikator zadania obejmuje tez audyt i CORS.

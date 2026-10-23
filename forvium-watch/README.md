@@ -21,10 +21,11 @@ forvium-watch/
 │   │   ├── core/crypto.py     szyfrowanie danych w spoczynku (AES-256-GCM, klucze z KMS)
 │   │   ├── jobs.py, worker.py zadania w tle i ich heartbeat (osobny kontener `worker`)
 │   │   ├── monitoring.py      X-Request-ID, log dostępu, metryki Prometheus
+│   │   ├── reports/           miesięczne raporty dostępu (PDF) dla klientów i audytorów
 │   │   └── access.py          jedno miejsce uwierzytelniania i autoryzacji (RBAC + RLS)
 │   ├── migrations/            Alembic: 0001 schemat (+ trigger audytu), 0002 RLS i uprawnienia,
 │   │                          0003 szyfrowanie, WebAuthn, dwie osoby, przedłużenia, alerty, nagrania,
-│   │                          0004 heartbeat zadań w tle
+│   │                          0004 heartbeat zadań w tle, 0005 raporty dostępu
 │   └── tests/
 ├── deploy/             role PostgreSQL, gateway (routing po hoście, limity zapytań), kopie zapasowe,
 │                       monitoring (Prometheus, reguły alertów, Alertmanager, Grafana)
@@ -103,6 +104,35 @@ Break Glass jest domyślnie wyłączony. Żeby go włączyć lokalnie, uruchom
   zatrzymane zadanie w tle, niedostępna replika API, błędy 5xx, alerty bezpieczeństwa
   o wysokiej wadze, niewysyłane e-maile. Lokalnie Alertmanager wysyła alerty e-mailem
   do Mailpit (`security@forvium.local`).
+
+## Raporty dostępu (PDF)
+
+Po zakończeniu każdego miesiąca worker (zadanie `access-reports`) tworzy:
+
+* **raport klienta** dla każdej organizacji. Zawiera prośby Forvium o dostęp (operator, powód,
+  zakres, decyzja), sesje wsparcia (czas, przedłużenia, oglądane widoki, liczba operacji
+  i zablokowanych prób, powód zakończenia), zmiany zgód stałych, użycie Break Glass i
+  otwarcia nagrań przez Forvium. Raport powstaje także wtedy, gdy dostępu nie było
+  („Forvium nie prosiło o dostęp…”),
+* **raport audytora** dla całej platformy. Zawiera to samo w podziale na organizacje, a do
+  tego przeglądy Break Glass (zakończone / oczekujące) i alerty bezpieczeństwa.
+
+Każdy raport zawiera **odcisk zdarzeń audytu** z okresu (SHA-256 po identyfikatorach,
+czasach i akcjach), który można porównać z eksportem Audit Log. Skrót SHA-256 samego PDF
+jest zapisany w bazie, podany w powiadomieniu i w nagłówku `X-Content-SHA256`. PDF jest
+przechowywany zaszyfrowany (jak sekrety), a każde pobranie trafia do audytu.
+
+Kto ma dostęp do raportów:
+
+| Strona | Kto | Gdzie / jak |
+|---|---|---|
+| Klient | uprawnienie `org.support_access.view` | Dostęp serwisowy → Raporty dostępu (lista, pobieranie, raport za wybrany zakończony miesiąc) |
+| Forvium | `platform.audit.read` (kierownik supportu, oficerowie bezpieczeństwa) | zakładka Raporty |
+
+Sesja wsparcia nigdy nie ma uprawnień Support Access, więc operator w trybie wsparcia nie
+pobierze raportu o sobie. Powiadomienie (w aplikacji i e-mail) dostają zatwierdzający po
+stronie klienta i role z `platform.audit.read`. PDF generuje fpdf2 z dołączoną czcionką
+DejaVu (polskie znaki). Interwał sprawdzania: `FORVIUM_REPORT_INTERVAL_SECONDS` (3600).
 
 ## Kopie zapasowe i test odtwarzania
 
@@ -401,6 +431,7 @@ Dostęp awaryjny bez zgody klienta. Domyślnie jest **wyłączony**
 | `RUN_BACKGROUND_JOBS` | `true` | `false` w replikach API, gdy zadania wykonuje osobny `worker` |
 | `LOG_FORMAT`, `LOG_LEVEL` | `text`, `INFO` | `json` = jeden obiekt JSON na linię (logi aplikacji i dostępu) |
 | `METRICS_TOKEN` | — | wymagany `Authorization: Bearer …` dla `/metrics` |
+| `REPORT_INTERVAL_SECONDS` | 3600 | sprawdzanie, czy są raporty dostępu za poprzedni miesiąc do utworzenia (0 = wyłączone) |
 
 ### Wdrożenie
 

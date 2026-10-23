@@ -45,3 +45,4 @@ input.slider { padding: 0; }
 .sev-high, .sev-critical { color: var(--danger); font-weight: 700; }
 .sev-medium { color: #b26a00; font-weight: 600; }
 .snapshot-body nav > span { margin-right: 12px; color: var(--accent); }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }
