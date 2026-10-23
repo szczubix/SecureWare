@@ -31,3 +31,10 @@ nav a { margin-right: 12px; color: var(--accent); cursor: pointer; }
 #support-banner .meta { font-weight: 400; display: flex; gap: 16px; flex-wrap: wrap; }
 #support-banner button { background: #fff; color: var(--warn-bg); font-weight: 700; }
 #support-banner[hidden] { display: none; }
+input[type=checkbox], input[type=radio] { width: auto; }
+.spaced { margin-top: 10px; }
+.danger-text { color: var(--danger); font-weight: 600; }
+.tabs a.active { font-weight: 700; text-decoration: underline; }
+.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; align-items: end; }
+.pager { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+pre.body { white-space: pre-wrap; font: inherit; margin: 0; }

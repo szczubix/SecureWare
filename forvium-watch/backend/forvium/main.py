@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from forvium.audit.middleware import SupportAuditMiddleware
+from forvium.audit.router import router as audit_admin
 from forvium.audit.service import AuditLog
 from forvium.core.config import Settings, get_settings
 from forvium.core.context import DomainError
@@ -22,9 +23,14 @@ from forvium.notifications.service import NotificationEngine
 from forvium.organizations.router import router as organizations_app
 from forvium.platform_admin.router import router as platform_admin
 from forvium.support_access.policy import DEFAULT_POLICY, SupportAccessPolicy
+from forvium.support_access.router_admin import bg_router as break_glass_admin
 from forvium.support_access.router_admin import router as support_admin
 from forvium.support_access.router_app import router as support_app
 from forvium.core.periodic import periodic
+from forvium.audit.chain import ChainedJsonlFile
+from forvium.audit.export import run_audit_export, sinks_from_settings
+from forvium.identity.throttle import Throttle
+from forvium.support_access.break_glass import BreakGlassPolicy
 from forvium.notifications.mailer import run_delivery, sender_from_settings
 from forvium.support_access.scheduler import run_sweep
 
@@ -37,6 +43,8 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
         jobs = [
             ("support-sweep", settings.support_sweep_interval_seconds, lambda: run_sweep(app)),
             ("email-delivery", settings.email_interval_seconds, lambda: run_delivery(app)),
+            ("audit-export", settings.audit_export_interval_seconds if app.state.audit_sinks else 0,
+             lambda: run_audit_export(app)),
         ]
         tasks = [asyncio.create_task(periodic(name, interval, fn)) for name, interval, fn in jobs if interval > 0]
         yield
@@ -52,9 +60,15 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
         db.create_all()
     app.state.settings = settings
     app.state.db = db
-    app.state.audit = AuditLog(db.sessionmaker)
+    break_glass_policy = BreakGlassPolicy.from_settings(settings)
+    bg_sink = ChainedJsonlFile(settings.break_glass_audit_path, settings.audit_export_hmac_key.encode() or None) \
+        if settings.break_glass_audit_path else None
+    app.state.break_glass_policy = break_glass_policy
+    app.state.audit = AuditLog(db.sessionmaker, break_glass_sink=bg_sink)
     app.state.notifications = NotificationEngine()
     app.state.email_sender = sender_from_settings(settings)
+    app.state.throttle = Throttle(db.sessionmaker, app.state.audit)
+    app.state.audit_sinks = sinks_from_settings(settings)
     app.state.support_policy = policy or DEFAULT_POLICY
 
     @app.exception_handler(DomainError)
@@ -71,7 +85,8 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
     )
 
     for router in (identity_app, organizations_app, support_app, notifications_app,
-                   identity_admin, platform_admin, support_admin):
+                   identity_admin, platform_admin, support_admin, break_glass_admin,
+                   audit_admin):
         app.include_router(router)
 
     @app.get("/healthz")

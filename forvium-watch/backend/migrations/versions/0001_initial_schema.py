@@ -5,7 +5,7 @@ odrzuca UPDATE i DELETE (dziennik tylko do dopisywania).
 
 Revision ID: 0001
 Revises: 
-Create Date: 2026-10-23 10:44:30.347931
+Create Date: 2026-10-23 11:03:57.889090
 
 """
 from typing import Sequence, Union
@@ -51,16 +51,18 @@ def upgrade() -> None:
     sa.Column('organization_id', sa.String(length=36), nullable=True),
     sa.Column('support_session_id', sa.String(length=36), nullable=True),
     sa.Column('support_request_id', sa.String(length=36), nullable=True),
+    sa.Column('is_break_glass', sa.Boolean(), nullable=False),
     sa.Column('http_method', sa.String(length=8), nullable=True),
     sa.Column('route', sa.String(length=200), nullable=True),
     sa.Column('status_code', sa.Integer(), nullable=True),
     sa.Column('ip_address', sa.String(length=64), nullable=True),
     sa.Column('details', sa.JSON(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_audit_events'))
     )
     with op.batch_alter_table('audit_events', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_audit_events_action'), ['action'], unique=False)
         batch_op.create_index(batch_op.f('ix_audit_events_actor_user_id'), ['actor_user_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_audit_events_is_break_glass'), ['is_break_glass'], unique=False)
         batch_op.create_index(batch_op.f('ix_audit_events_occurred_at'), ['occurred_at'], unique=False)
         batch_op.create_index(batch_op.f('ix_audit_events_on_behalf_of_user_id'), ['on_behalf_of_user_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_audit_events_organization_id'), ['organization_id'], unique=False)
@@ -78,7 +80,7 @@ def upgrade() -> None:
     sa.Column('next_attempt_at', sa.DateTime(), nullable=True),
     sa.Column('last_error', sa.String(length=200), nullable=True),
     sa.Column('failed_at', sa.DateTime(), nullable=True),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_email_outbox'))
     )
     with op.batch_alter_table('email_outbox', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_email_outbox_sent_at'), ['sent_at'], unique=False)
@@ -93,7 +95,15 @@ def upgrade() -> None:
     sa.Column('secrets', sa.JSON(), nullable=False),
     sa.Column('deleted_at', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_organizations'))
+    )
+    op.create_table('rate_limit_buckets',
+    sa.Column('key', sa.String(length=64), nullable=False),
+    sa.Column('kind', sa.String(length=32), nullable=False),
+    sa.Column('failures', sa.Integer(), nullable=False),
+    sa.Column('window_started_at', sa.DateTime(), nullable=False),
+    sa.Column('locked_until', sa.DateTime(), nullable=True),
+    sa.PrimaryKeyConstraint('key', name=op.f('pk_rate_limit_buckets'))
     )
     op.create_table('users',
     sa.Column('id', sa.String(length=36), nullable=False),
@@ -105,10 +115,20 @@ def upgrade() -> None:
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('platform_role', sa.String(length=40), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_users'))
     )
     with op.batch_alter_table('users', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_users_email'), ['email'], unique=True)
+
+    op.create_table('audit_exports',
+    sa.Column('event_id', sa.String(length=36), nullable=False),
+    sa.Column('exported_at', sa.DateTime(), nullable=False),
+    sa.Column('chain_hash', sa.String(length=64), nullable=True),
+    sa.ForeignKeyConstraint(['event_id'], ['audit_events.id'], name=op.f('fk_audit_exports_event_id_audit_events')),
+    sa.PrimaryKeyConstraint('event_id', name=op.f('pk_audit_exports'))
+    )
+    with op.batch_alter_table('audit_exports', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_audit_exports_exported_at'), ['exported_at'], unique=False)
 
     op.create_table('diagnostic_events',
     sa.Column('id', sa.String(length=36), nullable=False),
@@ -117,8 +137,8 @@ def upgrade() -> None:
     sa.Column('component', sa.String(length=64), nullable=False),
     sa.Column('message', sa.String(length=500), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], name=op.f('fk_diagnostic_events_organization_id_organizations')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_diagnostic_events'))
     )
     with op.batch_alter_table('diagnostic_events', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_diagnostic_events_organization_id'), ['organization_id'], unique=False)
@@ -128,10 +148,10 @@ def upgrade() -> None:
     sa.Column('organization_id', sa.String(length=36), nullable=False),
     sa.Column('user_id', sa.String(length=36), nullable=False),
     sa.Column('role', sa.String(length=32), nullable=False),
-    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('organization_id', 'user_id')
+    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], name=op.f('fk_memberships_organization_id_organizations')),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_memberships_user_id_users')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_memberships')),
+    sa.UniqueConstraint('organization_id', 'user_id', name=op.f('uq_memberships_organization_id'))
     )
     with op.batch_alter_table('memberships', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_memberships_organization_id'), ['organization_id'], unique=False)
@@ -147,8 +167,8 @@ def upgrade() -> None:
     sa.Column('data', sa.JSON(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('read_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_notifications_user_id_users')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_notifications'))
     )
     with op.batch_alter_table('notifications', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_notifications_user_id'), ['user_id'], unique=False)
@@ -158,12 +178,33 @@ def upgrade() -> None:
     sa.Column('organization_id', sa.String(length=36), nullable=False),
     sa.Column('parent_id', sa.String(length=36), nullable=True),
     sa.Column('name', sa.String(length=200), nullable=False),
-    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['parent_id'], ['org_units.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], name=op.f('fk_org_units_organization_id_organizations')),
+    sa.ForeignKeyConstraint(['parent_id'], ['org_units.id'], name=op.f('fk_org_units_parent_id_org_units')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_org_units'))
     )
     with op.batch_alter_table('org_units', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_org_units_organization_id'), ['organization_id'], unique=False)
+
+    op.create_table('support_standing_consents',
+    sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('organization_id', sa.String(length=36), nullable=False),
+    sa.Column('granted_by_user_id', sa.String(length=36), nullable=False),
+    sa.Column('scopes', sa.JSON(), nullable=False),
+    sa.Column('unit_ids', sa.JSON(), nullable=True),
+    sa.Column('max_session_minutes', sa.Integer(), nullable=False),
+    sa.Column('allowed_platform_roles', sa.JSON(), nullable=True),
+    sa.Column('note', sa.String(length=1000), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('valid_until', sa.DateTime(), nullable=False),
+    sa.Column('revoked_at', sa.DateTime(), nullable=True),
+    sa.Column('revoked_by_user_id', sa.String(length=36), nullable=True),
+    sa.ForeignKeyConstraint(['granted_by_user_id'], ['users.id'], name=op.f('fk_support_standing_consents_granted_by_user_id_users')),
+    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], name=op.f('fk_support_standing_consents_organization_id_organizations')),
+    sa.ForeignKeyConstraint(['revoked_by_user_id'], ['users.id'], name=op.f('fk_support_standing_consents_revoked_by_user_id_users')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_support_standing_consents'))
+    )
+    with op.batch_alter_table('support_standing_consents', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_support_standing_consents_organization_id'), ['organization_id'], unique=False)
 
     op.create_table('support_tickets',
     sa.Column('id', sa.String(length=36), nullable=False),
@@ -173,9 +214,9 @@ def upgrade() -> None:
     sa.Column('subject', sa.String(length=300), nullable=False),
     sa.Column('status', sa.String(length=16), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['reporter_user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], name=op.f('fk_support_tickets_organization_id_organizations')),
+    sa.ForeignKeyConstraint(['reporter_user_id'], ['users.id'], name=op.f('fk_support_tickets_reporter_user_id_users')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_support_tickets'))
     )
     with op.batch_alter_table('support_tickets', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_support_tickets_number'), ['number'], unique=True)
@@ -189,8 +230,8 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('expires_at', sa.DateTime(), nullable=False),
     sa.Column('revoked_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_user_sessions_user_id_users')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_user_sessions'))
     )
     with op.batch_alter_table('user_sessions', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_user_sessions_token_hash'), ['token_hash'], unique=True)
@@ -204,22 +245,27 @@ def upgrade() -> None:
     sa.Column('reference_user_id', sa.String(length=36), nullable=False),
     sa.Column('ticket_id', sa.String(length=36), nullable=False),
     sa.Column('ticket_number', sa.String(length=32), nullable=False),
-    sa.Column('reason', sa.String(length=1000), nullable=False),
+    sa.Column('reason', sa.String(length=4000), nullable=False),
     sa.Column('requested_scopes', sa.JSON(), nullable=False),
     sa.Column('requested_duration_minutes', sa.Integer(), nullable=False),
     sa.Column('access_level', sa.String(length=16), nullable=False),
-    sa.Column('status', sa.String(length=16), nullable=False),
+    sa.Column('status', sa.String(length=32), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('decision_deadline', sa.DateTime(), nullable=False),
     sa.Column('decided_by_user_id', sa.String(length=36), nullable=True),
     sa.Column('decided_at', sa.DateTime(), nullable=True),
     sa.Column('decision_note', sa.String(length=1000), nullable=True),
-    sa.ForeignKeyConstraint(['decided_by_user_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['operator_user_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['reference_user_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['ticket_id'], ['support_tickets.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.Column('incident_category', sa.String(length=40), nullable=True),
+    sa.Column('review_completed_at', sa.DateTime(), nullable=True),
+    sa.Column('reviewed_by_user_id', sa.String(length=36), nullable=True),
+    sa.Column('review_notes', sa.String(length=4000), nullable=True),
+    sa.ForeignKeyConstraint(['decided_by_user_id'], ['users.id'], name=op.f('fk_support_access_requests_decided_by_user_id_users')),
+    sa.ForeignKeyConstraint(['operator_user_id'], ['users.id'], name=op.f('fk_support_access_requests_operator_user_id_users')),
+    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], name=op.f('fk_support_access_requests_organization_id_organizations')),
+    sa.ForeignKeyConstraint(['reference_user_id'], ['users.id'], name=op.f('fk_support_access_requests_reference_user_id_users')),
+    sa.ForeignKeyConstraint(['reviewed_by_user_id'], ['users.id'], name=op.f('fk_support_access_requests_reviewed_by_user_id_users')),
+    sa.ForeignKeyConstraint(['ticket_id'], ['support_tickets.id'], name=op.f('fk_support_access_requests_ticket_id_support_tickets')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_support_access_requests'))
     )
     with op.batch_alter_table('support_access_requests', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_support_access_requests_operator_user_id'), ['operator_user_id'], unique=False)
@@ -233,9 +279,9 @@ def upgrade() -> None:
     sa.Column('name', sa.String(length=200), nullable=False),
     sa.Column('version', sa.String(length=64), nullable=False),
     sa.Column('cves', sa.JSON(), nullable=False),
-    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['unit_id'], ['org_units.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], name=op.f('fk_technologies_organization_id_organizations')),
+    sa.ForeignKeyConstraint(['unit_id'], ['org_units.id'], name=op.f('fk_technologies_unit_id_org_units')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_technologies'))
     )
     with op.batch_alter_table('technologies', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_technologies_organization_id'), ['organization_id'], unique=False)
@@ -256,17 +302,21 @@ def upgrade() -> None:
     sa.Column('valid_until', sa.DateTime(), nullable=False),
     sa.Column('revoked_at', sa.DateTime(), nullable=True),
     sa.Column('revoked_by_user_id', sa.String(length=36), nullable=True),
-    sa.ForeignKeyConstraint(['granted_by_user_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['operator_user_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['reference_user_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['request_id'], ['support_access_requests.id'], ),
-    sa.ForeignKeyConstraint(['revoked_by_user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('request_id')
+    sa.Column('basis', sa.String(length=16), nullable=False),
+    sa.Column('standing_consent_id', sa.String(length=36), nullable=True),
+    sa.ForeignKeyConstraint(['granted_by_user_id'], ['users.id'], name=op.f('fk_support_consents_granted_by_user_id_users')),
+    sa.ForeignKeyConstraint(['operator_user_id'], ['users.id'], name=op.f('fk_support_consents_operator_user_id_users')),
+    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], name=op.f('fk_support_consents_organization_id_organizations')),
+    sa.ForeignKeyConstraint(['reference_user_id'], ['users.id'], name=op.f('fk_support_consents_reference_user_id_users')),
+    sa.ForeignKeyConstraint(['request_id'], ['support_access_requests.id'], name=op.f('fk_support_consents_request_id_support_access_requests')),
+    sa.ForeignKeyConstraint(['revoked_by_user_id'], ['users.id'], name=op.f('fk_support_consents_revoked_by_user_id_users')),
+    sa.ForeignKeyConstraint(['standing_consent_id'], ['support_standing_consents.id'], name=op.f('fk_support_consents_standing_consent_id_support_standing_consents')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_support_consents')),
+    sa.UniqueConstraint('request_id', name=op.f('uq_support_consents_request_id'))
     )
     with op.batch_alter_table('support_consents', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_support_consents_organization_id'), ['organization_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_support_consents_standing_consent_id'), ['standing_consent_id'], unique=False)
 
     op.create_table('support_sessions',
     sa.Column('id', sa.String(length=36), nullable=False),
@@ -290,14 +340,14 @@ def upgrade() -> None:
     sa.Column('token_hash', sa.String(length=64), nullable=True),
     sa.Column('launch_code_hash', sa.String(length=64), nullable=True),
     sa.Column('launch_code_expires_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['consent_id'], ['support_consents.id'], ),
-    sa.ForeignKeyConstraint(['operator_user_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], ),
-    sa.ForeignKeyConstraint(['reference_user_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['request_id'], ['support_access_requests.id'], ),
-    sa.ForeignKeyConstraint(['ticket_id'], ['support_tickets.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('launch_code_hash')
+    sa.ForeignKeyConstraint(['consent_id'], ['support_consents.id'], name=op.f('fk_support_sessions_consent_id_support_consents')),
+    sa.ForeignKeyConstraint(['operator_user_id'], ['users.id'], name=op.f('fk_support_sessions_operator_user_id_users')),
+    sa.ForeignKeyConstraint(['organization_id'], ['organizations.id'], name=op.f('fk_support_sessions_organization_id_organizations')),
+    sa.ForeignKeyConstraint(['reference_user_id'], ['users.id'], name=op.f('fk_support_sessions_reference_user_id_users')),
+    sa.ForeignKeyConstraint(['request_id'], ['support_access_requests.id'], name=op.f('fk_support_sessions_request_id_support_access_requests')),
+    sa.ForeignKeyConstraint(['ticket_id'], ['support_tickets.id'], name=op.f('fk_support_sessions_ticket_id_support_tickets')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_support_sessions')),
+    sa.UniqueConstraint('launch_code_hash', name=op.f('uq_support_sessions_launch_code_hash'))
     )
     with op.batch_alter_table('support_sessions', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_support_sessions_consent_id'), ['consent_id'], unique=False)
@@ -327,6 +377,7 @@ def downgrade() -> None:
 
     op.drop_table('support_sessions')
     with op.batch_alter_table('support_consents', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_support_consents_standing_consent_id'))
         batch_op.drop_index(batch_op.f('ix_support_consents_organization_id'))
 
     op.drop_table('support_consents')
@@ -351,6 +402,10 @@ def downgrade() -> None:
         batch_op.drop_index(batch_op.f('ix_support_tickets_number'))
 
     op.drop_table('support_tickets')
+    with op.batch_alter_table('support_standing_consents', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_support_standing_consents_organization_id'))
+
+    op.drop_table('support_standing_consents')
     with op.batch_alter_table('org_units', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_org_units_organization_id'))
 
@@ -368,10 +423,15 @@ def downgrade() -> None:
         batch_op.drop_index(batch_op.f('ix_diagnostic_events_organization_id'))
 
     op.drop_table('diagnostic_events')
+    with op.batch_alter_table('audit_exports', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_audit_exports_exported_at'))
+
+    op.drop_table('audit_exports')
     with op.batch_alter_table('users', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_users_email'))
 
     op.drop_table('users')
+    op.drop_table('rate_limit_buckets')
     op.drop_table('organizations')
     with op.batch_alter_table('email_outbox', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_email_outbox_sent_at'))
@@ -383,6 +443,7 @@ def downgrade() -> None:
         batch_op.drop_index(batch_op.f('ix_audit_events_organization_id'))
         batch_op.drop_index(batch_op.f('ix_audit_events_on_behalf_of_user_id'))
         batch_op.drop_index(batch_op.f('ix_audit_events_occurred_at'))
+        batch_op.drop_index(batch_op.f('ix_audit_events_is_break_glass'))
         batch_op.drop_index(batch_op.f('ix_audit_events_actor_user_id'))
         batch_op.drop_index(batch_op.f('ix_audit_events_action'))
 

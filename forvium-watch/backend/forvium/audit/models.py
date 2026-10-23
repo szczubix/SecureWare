@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, String
+from sqlalchemy import JSON, Boolean, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from forvium.core.db import Base, new_id
@@ -24,6 +24,8 @@ class AuditEvent(Base):
     organization_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     support_session_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     support_request_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    # Zdarzenie procedury Break Glass (ustawiane automatycznie na podstawie trybu prosby).
+    is_break_glass: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     # Dla operacji API: metoda + szablon trasy (bez wartosci parametrow i bez tresci)
     http_method: Mapped[str | None] = mapped_column(String(8), nullable=True)
     route: Mapped[str | None] = mapped_column(String(200), nullable=True)

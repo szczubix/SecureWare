@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from fastapi import Depends, Request
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from forvium.core.clock import clock
 from forvium.core.context import Ctx, DomainError, get_ctx
@@ -87,6 +87,9 @@ def get_app_principal(request: Request, ctx: Ctx = Depends(get_ctx)) -> AppPrinc
     if token and token.startswith(SUPPORT_TOKEN_PREFIX):
         validated = support.validate_support_token(ctx, token)
         s = validated.session
+        # Druga linia obrony: RLS w PostgreSQL ogranicza cala transakcje do organizacji sesji.
+        if ctx.db.get_bind().dialect.name == "postgresql":
+            ctx.db.execute(text("SELECT set_config('forvium.support_org', :org, true)"), {"org": s.organization_id})
         # Kontekst dla middleware audytu: kazda operacja API w trybie wsparcia.
         request.state.audit_actor = {
             "action": "support.api_call",

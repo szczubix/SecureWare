@@ -61,13 +61,14 @@ SUPPORT_FORBIDDEN_PERMISSIONS: frozenset[Permission] = frozenset(
 OPERATOR_SCOPE_CAP: dict[PlatformRole, frozenset[SupportScope]] = {
     PlatformRole.SUPPORT_L1: frozenset({SupportScope.DASHBOARD, SupportScope.UNITS, SupportScope.DIAGNOSTICS}),
     PlatformRole.SUPPORT_L2: frozenset(SupportScope),
+    PlatformRole.SUPPORT_LEAD: frozenset(SupportScope),
     PlatformRole.PLATFORM_ADMIN: frozenset(SupportScope),
 }
 
 
 def operator_scope_cap(platform_role: str | None) -> frozenset[SupportScope]:
     try:
-        return OPERATOR_SCOPE_CAP[PlatformRole(platform_role or "")]
+        return OPERATOR_SCOPE_CAP.get(PlatformRole(platform_role or ""), frozenset())
     except ValueError:
         return frozenset()
 

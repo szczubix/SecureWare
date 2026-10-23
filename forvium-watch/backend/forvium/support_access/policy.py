@@ -17,6 +17,9 @@ class SupportAccessPolicy:
     # Waznosc jednorazowego kodu przekazania sesji do app.forvium.com.
     launch_code_seconds: int = 60
     min_reason_length: int = 15
+    # Zgoda stala: maksymalna waznosc i waznosc pojedynczej zgody z niej wynikajacej.
+    max_standing_consent_days: int = 365
+    standing_grant_hours: int = 4
 
 
 DEFAULT_POLICY = SupportAccessPolicy()

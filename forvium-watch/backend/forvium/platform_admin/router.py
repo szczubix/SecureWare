@@ -53,20 +53,6 @@ def list_tickets(organization_id: str | None = None,
                          "subject": t.subject, "status": t.status} for t in ctx.db.scalars(stmt)]}
 
 
-@router.get("/audit")
-def audit(organization_id: str | None = None, support_session_id: str | None = None, action_prefix: str | None = None,
-          op: OperatorPrincipal = Depends(require_platform_permission(PP.AUDIT_READ)), ctx: Ctx = Depends(get_ctx)):
-    events = ctx.audit.query(ctx.db, organization_id=organization_id, support_session_id=support_session_id,
-                             action_prefix=action_prefix)
-    return {"events": [{
-        "id": e.id, "occurred_at": e.occurred_at.isoformat() + "Z", "action": e.action, "outcome": e.outcome,
-        "actor_user_id": e.actor_user_id, "actor_type": e.actor_type, "on_behalf_of_user_id": e.on_behalf_of_user_id,
-        "organization_id": e.organization_id, "support_session_id": e.support_session_id,
-        "support_request_id": e.support_request_id, "method": e.http_method, "route": e.route,
-        "status_code": e.status_code, "details": e.details,
-    } for e in events]}
-
-
 @router.get("/notifications")
 def notifications(op: OperatorPrincipal = Depends(get_operator), ctx: Ctx = Depends(get_ctx)):
     rows = ctx.db.scalars(select(Notification).where(Notification.user_id == op.user.id)

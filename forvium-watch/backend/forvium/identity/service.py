@@ -29,17 +29,23 @@ def consume_totp(user: User, code: str | None) -> bool:
 def login(ctx: Ctx, *, email: str, password: str, mfa_code: str | None, kind: str, ttl_minutes: int) -> str:
     """Logowanie haslem + TOTP. `kind`: "user" (app) albo "operator" (admin)."""
     action = "identity.login.operator" if kind == "operator" else "identity.login.user"
-    user = ctx.db.scalar(select(User).where(User.email == email.strip().lower()))
+    email = email.strip().lower()
+    ctx.throttle.check("login_ip", ctx.ip, actor_type="anonymous", ip_address=ctx.ip)
+    ctx.throttle.check("login_account", email, actor_type="anonymous", ip_address=ctx.ip)
+    user = ctx.db.scalar(select(User).where(User.email == email))
     ok = user is not None and user.is_active and verify_password(user.password_hash, password)
     if ok and kind == "operator" and not user.platform_role:
         ok = False
     if ok and (kind == "operator" or user.mfa_secret):
         ok = consume_totp(user, mfa_code)
     if not ok:
-        ctx.audit.record(action, outcome="denied", actor_user_id=user.id if user else None,
-                         actor_type="anonymous", ip_address=ctx.ip, details={"reason": "invalid_credentials"})
+        audit = {"actor_user_id": user.id if user else None, "actor_type": "anonymous", "ip_address": ctx.ip}
+        ctx.audit.record(action, outcome="denied", details={"reason": "invalid_credentials"}, **audit)
+        ctx.throttle.fail("login_account", email, **audit)
+        ctx.throttle.fail("login_ip", ctx.ip, **audit)
         raise DomainError(401, "invalid_credentials", "Nieprawidlowe dane logowania.")
 
+    ctx.throttle.reset("login_account", email)
     token = new_token(OPERATOR_TOKEN_PREFIX if kind == "operator" else USER_TOKEN_PREFIX)
     now = clock.now()
     ctx.db.add(UserSession(user_id=user.id, kind=kind, token_hash=token_digest(token), created_at=now,

@@ -1,0 +1,94 @@
+# Lokalne srodowisko Forvium Watch: docker compose up --build
+#   app   http://localhost:8001   admin http://localhost:8002
+#   API   http://localhost:8000   poczta (Mailpit) http://localhost:8025
+# Hasla ponizej sa wylacznie do uzytku lokalnego.
+
+x-backend-env: &backend-env
+  FORVIUM_APP_ORIGIN: http://localhost:8001
+  FORVIUM_ADMIN_ORIGIN: http://localhost:8002
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: forvium
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: local-postgres
+      FORVIUM_MIGRATOR_PASSWORD: local-migrator
+      FORVIUM_APP_PASSWORD: local-app
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./deploy/postgres/roles.sql:/forvium/roles.sql:ro
+      - ./deploy/postgres/init.sh:/docker-entrypoint-initdb.d/10-forvium-roles.sh:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "forvium"]
+      interval: 3s
+      retries: 20
+
+  # Migracje (konto wlasciciela schematu) + opcjonalnie dane demo. Konczy sie po wykonaniu.
+  migrate:
+    build: ./backend
+    command: ["sh", "-c", "alembic upgrade head && if [ \"$${SEED_DEMO}\" = true ]; then python -m forvium.seed; fi"]
+    environment:
+      <<: *backend-env
+      FORVIUM_DATABASE_URL: postgresql+psycopg://forvium_migrator:local-migrator@db:5432/forvium
+      SEED_DEMO: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: ./backend
+    environment:
+      <<: *backend-env
+      # API laczy sie jako forvium_app: bez superusera (RLS dziala), audyt tylko do dopisywania.
+      FORVIUM_DATABASE_URL: postgresql+psycopg://forvium_app:local-app@db:5432/forvium
+      FORVIUM_SMTP_HOST: mailpit
+      FORVIUM_SMTP_PORT: "1025"
+      FORVIUM_SMTP_STARTTLS: "false"
+      FORVIUM_SMTP_FROM: "Forvium Watch <no-reply@forvium.local>"
+      FORVIUM_SECURITY_TEAM_EMAILS: security@forvium.local
+      FORVIUM_BREAK_GLASS_ENABLED: ${FORVIUM_BREAK_GLASS_ENABLED:-false}
+      FORVIUM_BREAK_GLASS_AUDIT_PATH: /var/forvium/audit/break-glass.jsonl
+      FORVIUM_AUDIT_EXPORT_PATH: /var/forvium/audit/audit.jsonl
+      FORVIUM_AUDIT_EXPORT_HMAC_KEY: local-audit-key
+    volumes:
+      - audit-export:/var/forvium/audit
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_started
+
+  app:
+    image: nginx:1.27-alpine
+    environment:
+      API_ORIGIN: http://localhost:8000
+      NGINX_ENVSUBST_FILTER: "^API_ORIGIN$$"
+    volumes:
+      - ./frontend/app:/usr/share/nginx/html:ro
+      - ./deploy/nginx/frontend.conf:/etc/nginx/templates/default.conf.template:ro
+    ports:
+      - "8001:80"
+
+  admin:
+    image: nginx:1.27-alpine
+    environment:
+      API_ORIGIN: http://localhost:8000
+      NGINX_ENVSUBST_FILTER: "^API_ORIGIN$$"
+    volumes:
+      - ./frontend/admin:/usr/share/nginx/html:ro
+      - ./deploy/nginx/frontend.conf:/etc/nginx/templates/default.conf.template:ro
+    ports:
+      - "8002:80"
+
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "8025:8025"
+
+volumes:
+  db-data:
+  audit-export:

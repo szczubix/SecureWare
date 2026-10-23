@@ -21,6 +21,9 @@ TOTP = {
     "carol": "JBSWY3DPEHPK3PXPCAROLCCC",
     "ola": "JBSWY3DPEHPK3PXPOLAOOOOO",
     "piotr": "JBSWY3DPEHPK3PXPPIOTRPPP",
+    "marta": "JBSWY3DPEHPK3PXPMARTAMMM",
+    "ewa": "JBSWY3DPEHPK3PXPEWAEEEEE",
+    "tomasz": "JBSWY3DPEHPK3PXPTOMASZTT",
 }
 
 
@@ -39,6 +42,9 @@ def seed(db: Session) -> dict:
     carol = user("carol", "carol@beta.example", "Karolina Wisniewska")
     ola = user("ola", "ola@forvium.com", "Ola (Support L2)", platform_role="support_l2")
     piotr = user("piotr", "piotr@forvium.com", "Piotr (Support L1)", platform_role="support_l1")
+    marta = user("marta", "marta@forvium.com", "Marta (Kierownik supportu)", platform_role="support_lead")
+    ewa = user("ewa", "ewa@forvium.com", "Ewa (Oficer bezpieczenstwa)", platform_role="security_officer")
+    tomasz = user("tomasz", "tomasz@forvium.com", "Tomasz (Oficer bezpieczenstwa)", platform_role="security_officer")
 
     acme = Organization(name="Acme Sp. z o.o.", subscription_plan="business", created_at=now,
                         settings={"timezone": "Europe/Warsaw", "scan_interval_h": 6},
@@ -92,7 +98,8 @@ def seed(db: Session) -> dict:
     db.flush()
 
     return {
-        "users": {"alice": alice, "bob": bob, "carol": carol, "ola": ola, "piotr": piotr},
+        "users": {"alice": alice, "bob": bob, "carol": carol, "ola": ola, "piotr": piotr,
+                  "marta": marta, "ewa": ewa, "tomasz": tomasz},
         "orgs": {"acme": acme, "beta": beta},
         "units": {"hq": hq, "waw": waw, "krk": krk, "beta": beta_unit},
         "tickets": {"acme": t_acme, "acme_closed": t_closed, "beta": t_beta},
@@ -109,6 +116,11 @@ if __name__ == "__main__":  # pragma: no cover
     upgrade_head(url)
     database = Database(url)
     with database.sessionmaker() as session:
+        from sqlalchemy import select
+
+        if session.scalar(select(User.id).limit(1)) is not None:
+            print("Baza zawiera juz dane - pomijam seed.")
+            raise SystemExit(0)
         data = seed(session)
         session.commit()
         print("Zaladowano dane demo. Haslo dla wszystkich kont:", DEMO_PASSWORD)

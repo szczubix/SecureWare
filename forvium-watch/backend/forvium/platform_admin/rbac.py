@@ -11,34 +11,59 @@ class PlatformPermission(StrEnum):
     SUPPORT_ACCESS_REQUEST = "platform.support_access.request"
     SUPPORT_ACCESS_START = "platform.support_access.start"
     AUDIT_READ = "platform.audit.read"
-    # Zarezerwowane dla przyszlej procedury Break Glass; nie nadawane zadnej roli.
-    BREAK_GLASS = "platform.break_glass"
+    # Nadzor: podglad wszystkich sesji wsparcia i wymuszone zakonczenie.
+    SUPPORT_OVERSIGHT = "platform.support_access.oversight"
+    # Break Glass: wniosek (operator), zatwierdzenie i przeglad (oficer bezpieczenstwa).
+    BREAK_GLASS_REQUEST = "platform.break_glass.request"
+    BREAK_GLASS_APPROVE = "platform.break_glass.approve"
+    BREAK_GLASS_REVIEW = "platform.break_glass.review"
 
 
 class PlatformRole(StrEnum):
     SUPPORT_L1 = "support_l1"
     SUPPORT_L2 = "support_l2"
+    SUPPORT_LEAD = "support_lead"
+    SECURITY_OFFICER = "security_officer"
     PLATFORM_ADMIN = "platform_admin"
 
 
+_SUPPORT_BASE = frozenset(
+    {
+        PlatformPermission.USERS_READ,
+        PlatformPermission.TICKETS_READ,
+        PlatformPermission.SUPPORT_ACCESS_REQUEST,
+        PlatformPermission.SUPPORT_ACCESS_START,
+    }
+)
+
 PLATFORM_ROLE_PERMISSIONS: dict[PlatformRole, frozenset[PlatformPermission]] = {
-    PlatformRole.SUPPORT_L1: frozenset(
+    PlatformRole.SUPPORT_L1: _SUPPORT_BASE,
+    PlatformRole.SUPPORT_L2: _SUPPORT_BASE | {PlatformPermission.BREAK_GLASS_REQUEST},
+    PlatformRole.SUPPORT_LEAD: _SUPPORT_BASE | {
+        PlatformPermission.AUDIT_READ,
+        PlatformPermission.SUPPORT_OVERSIGHT,
+        PlatformPermission.BREAK_GLASS_REQUEST,
+    },
+    # Oficer bezpieczenstwa zatwierdza i przeglada Break Glass, ale sam nie otwiera sesji.
+    PlatformRole.SECURITY_OFFICER: frozenset(
         {
             PlatformPermission.USERS_READ,
             PlatformPermission.TICKETS_READ,
-            PlatformPermission.SUPPORT_ACCESS_REQUEST,
-            PlatformPermission.SUPPORT_ACCESS_START,
+            PlatformPermission.AUDIT_READ,
+            PlatformPermission.SUPPORT_OVERSIGHT,
+            PlatformPermission.BREAK_GLASS_APPROVE,
+            PlatformPermission.BREAK_GLASS_REVIEW,
         }
     ),
-    PlatformRole.SUPPORT_L2: frozenset(
-        {
-            PlatformPermission.USERS_READ,
-            PlatformPermission.TICKETS_READ,
-            PlatformPermission.SUPPORT_ACCESS_REQUEST,
-            PlatformPermission.SUPPORT_ACCESS_START,
+    # Administrator platformy nie uczestniczy w Break Glass (rozdzial obowiazkow).
+    PlatformRole.PLATFORM_ADMIN: frozenset(
+        set(PlatformPermission)
+        - {
+            PlatformPermission.BREAK_GLASS_REQUEST,
+            PlatformPermission.BREAK_GLASS_APPROVE,
+            PlatformPermission.BREAK_GLASS_REVIEW,
         }
     ),
-    PlatformRole.PLATFORM_ADMIN: frozenset(set(PlatformPermission) - {PlatformPermission.BREAK_GLASS}),
 }
 
 

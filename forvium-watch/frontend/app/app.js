@@ -110,18 +110,24 @@
   // --------------------------------------------------------------- organizacja
   function renderOrg(org, supportPermissions) {
     const content = el("div");
+    // Kazdy widok renderuje sie do wlasnego, swiezego kontenera - wynik wolniejszego,
+    // nieaktualnego widoku trafia do odpietego elementu i niczego nie nadpisuje.
+    const show = (fn) => { const pane = el("div"); content.replaceChildren(pane); fn(pane); };
     const views = {
-      "Dashboard": () => viewDashboard(org, content),
-      "Jednostki": () => viewList(org, content, "/units", "units", ["name"]),
-      "Technologie": () => viewList(org, content, "/technologies", "technologies", ["name", "version"]),
-      "CVE": () => viewList(org, content, "/cves", "cves", ["id", "severity", "technology"]),
-      "Diagnostyka": () => viewDiagnostics(org, content),
+      "Dashboard": (pane) => viewDashboard(org, pane),
+      "Jednostki": (pane) => viewList(org, pane, "/units", "units", ["name"]),
+      "Technologie": (pane) => viewList(org, pane, "/technologies", "technologies", ["name", "version"]),
+      "CVE": (pane) => viewList(org, pane, "/cves", "cves", ["id", "severity", "technology"]),
+      "Diagnostyka": (pane) => viewDiagnostics(org, pane),
     };
-    if (!supportPermissions) views["Dostep serwisowy"] = () => viewSupportAccess(org, content);
+    if (!supportPermissions) {
+      views["Dostep serwisowy"] = (pane) => viewSupportAccess(org, pane);
+      views["Powiadomienia"] = (pane) => viewNotifications(pane);
+    }
     const nav = el("nav", { class: "card" }, el("strong", {}, org.name, " "),
-      ...Object.entries(views).map(([label, fn]) => el("a", { onclick: fn }, label)));
+      ...Object.entries(views).map(([label, fn]) => el("a", { onclick: () => show(fn) }, label)));
     root.replaceChildren(nav, content);
-    views["Dashboard"]();
+    show(views["Dashboard"]);
   }
 
   async function guarded(content, fn) {
@@ -172,9 +178,9 @@
       const unitName = Object.fromEntries(units.map((u) => [u.id, u.name]));
 
       const pendingCards = pending.map((r) => {
-        const scopes = r.scopes.map((s) => el("label", {}, el("input", { type: "checkbox", value: s, checked: true, style: "width:auto" }), " ", SCOPE_LABELS[s] || s));
+        const scopes = r.scopes.map((s) => el("label", {}, el("input", { type: "checkbox", value: s, checked: true }), " ", SCOPE_LABELS[s] || s));
         // Pusty wybor = wszystkie jednostki; zaznaczenie obejmuje tez jednostki podrzedne.
-        const unitBoxes = units.map((u) => el("label", {}, el("input", { type: "checkbox", value: u.id, style: "width:auto" }), " ", u.name));
+        const unitBoxes = units.map((u) => el("label", {}, el("input", { type: "checkbox", value: u.id }), " ", u.name));
         const hours = el("input", { type: "number", min: 1, max: 168, value: 24 });
         const note = el("input", { placeholder: "Notatka (opcjonalnie)" });
         return el("div", { class: "card" },
@@ -186,7 +192,7 @@
           ...(unitBoxes.length ? [el("label", {}, "Ogranicz do jednostek (brak zaznaczenia = wszystkie)"), ...unitBoxes] : []),
           el("label", {}, "Zgoda wazna (godziny)"), hours,
           el("label", {}, "Notatka"), note,
-          el("div", { class: "row", style: "margin-top:10px" },
+          el("div", { class: "row spaced" },
             el("button", { onclick: async () => {
               const checked = (labels) => labels.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => i.value);
               const unitIds = checked(unitBoxes);
@@ -206,7 +212,9 @@
         const active = !c.revoked_at && new Date(c.valid_until) > new Date();
         const scopeText = c.scopes.map((s) => SCOPE_LABELS[s] || s).join(", ") +
           (c.unit_ids ? " · jednostki: " + c.unit_ids.map((id) => unitName[id] || id).join(", ") : "");
-        return el("tr", {}, el("td", {}, r.ticket_number), el("td", {}, r.operator_id), el("td", {}, scopeText),
+        const basis = { customer: "decyzja klienta", standing: "zgoda stala",
+          break_glass: el("span", { class: "danger-text" }, "BREAK GLASS") }[c.basis] || c.basis;
+        return el("tr", {}, el("td", {}, r.ticket_number), el("td", {}, r.operator_id), el("td", {}, basis), el("td", {}, scopeText),
           el("td", {}, fmt(c.valid_until)), el("td", {}, c.revoked_at ? "cofnieta " + fmt(c.revoked_at) : active ? "aktywna" : "wygasla"),
           el("td", {}, active ? el("button", { class: "danger", onclick: async () => {
             await api(`/api/app/orgs/${org.id}/support-access/consents/${c.id}/revoke`, { method: "POST" }).catch((e) => alert(e.message));
@@ -235,11 +243,69 @@
           el("p", { class: "muted" }, "Operator Forvium moze zobaczyc Twoja organizacje wylacznie w trybie tylko do odczytu, w zakresie i czasie, ktore zatwierdzisz. Zgode mozna cofnac w kazdej chwili.")),
         ...(pendingCards.length ? pendingCards : [el("div", { class: "card muted" }, "Brak oczekujacych prosb.")]),
         el("div", { class: "card" }, el("h3", {}, "Zgody"), el("table", {},
-          el("tr", {}, ...["Zgloszenie", "Operator", "Zakres", "Wazna do", "Status", ""].map((t) => el("th", {}, t))), ...consentRows)),
+          el("tr", {}, ...["Zgloszenie", "Operator", "Podstawa", "Zakres", "Wazna do", "Status", ""].map((t) => el("th", {}, t))), ...consentRows)),
+        standingSection(org, h.standing_consents || [], units, reload),
         el("div", { class: "card" }, el("h3", {}, "Historia sesji"), el("table", {},
           el("tr", {}, ...["Start", "Operator", "Zgloszenie", "Status", "Koniec", ""].map((t) => el("th", {}, t))), ...sessionRows)),
         activity);
     });
+  }
+
+  // ------------------------------------------------------ zgody stale (klient)
+  const ROLE_LABELS = { support_l1: "Support L1", support_l2: "Support L2", support_lead: "Kierownik supportu" };
+
+  function standingSection(org, standing, units, reload) {
+    const rows = standing.map((st) => el("tr", {},
+      el("td", {}, st.scopes.map((x) => SCOPE_LABELS[x] || x).join(", ")),
+      el("td", {}, st.max_session_minutes, " min"),
+      el("td", {}, st.allowed_platform_roles ? st.allowed_platform_roles.map((r) => ROLE_LABELS[r] || r).join(", ") : "kazda"),
+      el("td", {}, fmt(st.valid_until)),
+      el("td", {}, st.revoked_at ? "cofnieta" : st.active ? "aktywna" : "wygasla"),
+      el("td", {}, st.active ? el("button", { class: "danger", onclick: async () => {
+        await api(`/api/app/orgs/${org.id}/support-access/standing-consents/${st.id}/revoke`, { method: "POST" }).catch((e) => alert(e.message));
+        reload();
+      } }, "Cofnij") : "")));
+    const box = (value, label, checked = false) => el("label", {}, el("input", { type: "checkbox", value, checked }), " ", label);
+    const scopeBoxes = Object.entries(SCOPE_LABELS).map(([k, l]) => box(k, l, k === "dashboard" || k === "diagnostics"));
+    const roleBoxes = Object.entries(ROLE_LABELS).map(([k, l]) => box(k, l));
+    const unitBoxes = units.map((u) => box(u.id, u.name));
+    const checked = (labels) => labels.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => i.value);
+    const minutes = el("input", { type: "number", min: 1, max: 15, value: 15 });
+    const days = el("input", { type: "number", min: 1, max: 365, value: 90 });
+    const note = el("input", { placeholder: "Notatka (opcjonalnie)" });
+    const mfa = el("input", { inputmode: "numeric", autocomplete: "one-time-code", placeholder: "Kod MFA" });
+    const msg = el("p", { class: "error" });
+    return el("div", { class: "card" },
+      el("h3", {}, "Zgody stale"),
+      el("p", { class: "muted" }, "Zgoda stala pozwala supportowi Forvium otwierac sesje tylko do odczytu bez kazdorazowego pytania - w granicach ponizej. O kazdym takim dostepie dostaniesz powiadomienie, a zgode mozna cofnac w kazdej chwili (konczy to tez trwajace sesje)."),
+      el("table", {}, el("tr", {}, ...["Zakres", "Sesja do", "Role supportu", "Wazna do", "Status", ""].map((t) => el("th", {}, t))), ...rows),
+      el("details", { class: "spaced" }, el("summary", {}, "Dodaj zgode stala"),
+        el("label", {}, "Zakres"), ...scopeBoxes,
+        ...(unitBoxes.length ? [el("label", {}, "Ogranicz do jednostek (brak zaznaczenia = wszystkie)"), ...unitBoxes] : []),
+        el("label", {}, "Tylko dla rol supportu (brak zaznaczenia = kazda)"), ...roleBoxes,
+        el("label", {}, "Maksymalny czas sesji (min)"), minutes,
+        el("label", {}, "Wazna przez (dni)"), days,
+        el("label", {}, "Notatka"), note,
+        el("label", {}, "Potwierdz kodem MFA"), mfa, msg,
+        el("button", { onclick: async () => {
+          try {
+            const roles = checked(roleBoxes), unitIds = checked(unitBoxes);
+            await api(`/api/app/orgs/${org.id}/support-access/standing-consents`, { method: "POST", body: {
+              scopes: checked(scopeBoxes), unit_ids: unitIds.length ? unitIds : null,
+              allowed_platform_roles: roles.length ? roles : null, max_session_minutes: Number(minutes.value),
+              valid_days: Number(days.value), note: note.value, mfa_code: mfa.value } });
+            reload();
+          } catch (e) { msg.textContent = e.message; }
+        } }, "Udziel zgody stalej")));
+  }
+
+  // ---------------------------------------------------------- powiadomienia
+  async function viewNotifications(content) {
+    const { notifications } = await api("/api/app/notifications");
+    content.replaceChildren(el("div", { class: "card" }, el("h2", {}, "Powiadomienia")),
+      ...(notifications.length ? notifications.map((n) => el("div", { class: "card" }, el("h3", {}, n.title),
+        el("p", { class: "muted" }, fmt(n.created_at)), el("pre", { class: "body" }, n.body)))
+        : [el("div", { class: "card muted" }, "Brak powiadomien.")]));
   }
 
   if (supportToken) startSupportMode().catch(() => supportEnded());

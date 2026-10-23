@@ -412,3 +412,39 @@ def test_background_sweep_expires_idle_sessions(env):
     hist = env.client.get(env.org_url("/support-access"), headers=env.h(env.login_app("alice"))).json()
     assert hist["sessions"][0]["status"] == "expired"
     assert run_sweep(env.app) == 0
+
+
+def test_customer_gets_start_and_summary_notifications(env):
+    s = env.open_support_session()
+    h = env.h(s["support"])
+    env.client.get(env.org_url("/dashboard"), headers=h)
+    env.client.get(env.org_url("/cves"), headers=h)
+    env.client.get(env.org_url("/export"), headers=h)
+    env.client.post("/api/app/support/session/end", headers=h)
+
+    notes = env.client.get("/api/app/notifications", headers=env.h(s["alice"])).json()["notifications"]
+    events = [n["event"] for n in notes]
+    assert "support_access.session_started" in events
+    ended = next(n for n in notes if n["event"] == "support_access.session_ended")
+    summary = ended["data"]["summary"]
+    assert summary["views"] == ["Dashboard", "Lista CVE"]
+    assert summary["denied_calls"] == 1 and summary["end_reason"] == "ended_by_operator"
+    assert "Ogladane widoki: Dashboard, Lista CVE" in ended["body"]
+
+    from sqlalchemy import select
+
+    from forvium.notifications.models import EmailOutbox
+
+    with env.app.state.db.sessionmaker() as db:
+        subjects = [m.subject for m in db.scalars(select(EmailOutbox).where(EmailOutbox.to_address == "alice@acme.example"))]
+    assert any(sub.startswith("Rozpoczeto sesje") for sub in subjects)
+    assert any(sub.startswith("Zakonczono sesje") for sub in subjects)
+
+
+def test_summary_sent_on_expiry(env):
+    s = env.open_support_session()
+    clock.advance(timedelta(minutes=16))
+    env.client.get(env.org_url("/dashboard"), headers=env.h(s["support"]))
+    notes = env.client.get("/api/app/notifications", headers=env.h(env.login_app("alice"))).json()["notifications"]
+    ended = [n for n in notes if n["event"] == "support_access.session_ended"]
+    assert len(ended) == 1 and ended[0]["data"]["summary"]["end_reason"] == "session_expired"

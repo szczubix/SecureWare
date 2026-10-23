@@ -17,7 +17,7 @@ def run_sweep(app: FastAPI) -> int:
     state = app.state
     db = state.db.sessionmaker()
     try:
-        ctx = Ctx(db=db, audit=state.audit, notifications=state.notifications, policy=state.support_policy, ip=None)
+        ctx = Ctx.from_state(state, db, None)
         count = sweep_expired(ctx)
         db.commit()
         return count

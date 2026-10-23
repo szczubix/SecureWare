@@ -10,11 +10,18 @@ from forvium.audit.models import AuditEvent
 from forvium.core.context import Ctx, DomainError, get_ctx
 from forvium.organizations.rbac import Permission as P
 from forvium.support_access import service
-from forvium.support_access.models import SupportAccessRequest, SupportConsent, SupportSession
+from forvium.support_access import standing as standing_service
+from forvium.support_access.models import (
+    SupportAccessRequest,
+    SupportConsent,
+    SupportSession,
+    SupportStandingConsent,
+)
 from forvium.support_access.schemas import (
     ApproveIn,
     LaunchIn,
     RejectIn,
+    StandingConsentIn,
     consent_out,
     request_out,
     session_out,
@@ -44,7 +51,9 @@ def current_support_session(principal: AppPrincipal = Depends(_support_only)):
     """Dane do stalego banera trybu wsparcia."""
     s = principal.support
     return {
-        "banner": "TRYB WSPARCIA FORVIUM — TYLKO ODCZYT",
+        "banner": ("TRYB AWARYJNY FORVIUM (BREAK GLASS) — TYLKO ODCZYT" if s.mode == "break_glass"
+                   else "TRYB WSPARCIA FORVIUM — TYLKO ODCZYT"),
+        "mode": s.mode,
         "session_id": s.session.id,
         "organization": {"id": s.organization.id, "name": s.organization.name},
         "operator_id": s.operator.id,
@@ -77,10 +86,33 @@ def history(access: OrgAccess = Depends(require_org_permission(P.SUPPORT_ACCESS_
                                                         .where(SupportConsent.organization_id == org_id))}
     sessions = list(ctx.db.scalars(select(SupportSession).where(SupportSession.organization_id == org_id)
                                    .order_by(SupportSession.started_at.desc())))
+    standing = ctx.db.scalars(select(SupportStandingConsent).where(SupportStandingConsent.organization_id == org_id)
+                              .order_by(SupportStandingConsent.created_at.desc()))
     return {
         "requests": [{**request_out(r), "consent": consent_out(consents.get(r.id))} for r in requests],
         "sessions": [session_out(s) for s in sessions],
+        "standing_consents": [standing_service.standing_out(s) for s in standing],
     }
+
+
+@router.post("/orgs/{org_id}/support-access/standing-consents")
+def create_standing(body: StandingConsentIn,
+                    access: OrgAccess = Depends(require_org_permission(P.SUPPORT_ACCESS_APPROVE)),
+                    ctx: Ctx = Depends(get_ctx)):
+    st = standing_service.create_standing_consent(
+        ctx, access.principal.actor, organization_id=access.organization.id, scopes=body.scopes,
+        unit_ids=body.unit_ids, max_session_minutes=body.max_session_minutes, valid_days=body.valid_days,
+        allowed_platform_roles=body.allowed_platform_roles, note=body.note, mfa_code=body.mfa_code)
+    return {"standing_consent": standing_service.standing_out(st)}
+
+
+@router.post("/orgs/{org_id}/support-access/standing-consents/{standing_id}/revoke")
+def revoke_standing(standing_id: str,
+                    access: OrgAccess = Depends(require_org_permission(P.SUPPORT_ACCESS_APPROVE)),
+                    ctx: Ctx = Depends(get_ctx)):
+    st = standing_service.revoke_standing_consent(ctx, access.principal.actor,
+                                                  organization_id=access.organization.id, standing_id=standing_id)
+    return {"standing_consent": standing_service.standing_out(st)}
 
 
 @router.get("/orgs/{org_id}/support-access/sessions/{session_id}/activity")

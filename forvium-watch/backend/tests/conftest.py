@@ -125,17 +125,32 @@ def _database_url(tmp_path) -> str:
     return pg
 
 
-@pytest.fixture
-def env(tmp_path):
+def make_env(tmp_path, **settings_overrides) -> Env:
     clock.reset()
     url = _database_url(tmp_path)
     upgrade_head(url)  # schemat z migracji Alembic, tak jak w produkcji
     app = create_app(Settings(database_url=url, app_origin="https://app.forvium.test",
-                              admin_origin="https://admin.forvium.test"))
+                              admin_origin="https://admin.forvium.test", **settings_overrides))
     with app.state.db.sessionmaker() as s:
         data = seed(s)
         s.commit()
-        e = Env(app, data)
+        return Env(app, data)
+
+
+@pytest.fixture
+def env(tmp_path):
+    e = make_env(tmp_path)
     yield e
-    app.state.db.engine.dispose()
+    e.app.state.db.engine.dispose()
+    clock.reset()
+
+
+@pytest.fixture
+def bg_env(tmp_path):
+    """Srodowisko z wlaczonym Break Glass i niezaleznym strumieniem audytu."""
+    e = make_env(tmp_path, break_glass_enabled=True, security_team_emails=["security@forvium.com"],
+                 break_glass_audit_path=str(tmp_path / "break-glass-audit.jsonl"))
+    e.bg_audit_path = tmp_path / "break-glass-audit.jsonl"
+    yield e
+    e.app.state.db.engine.dispose()
     clock.reset()

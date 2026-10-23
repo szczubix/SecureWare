@@ -35,6 +35,22 @@ class Settings:
     smtp_from: str = field(default_factory=lambda: _env("SMTP_FROM", "Forvium Watch <no-reply@forvium.com>"))
     smtp_starttls: bool = field(default_factory=lambda: _env("SMTP_STARTTLS", "true") == "true")
 
+    # Break Glass (domyslnie wylaczony) - patrz support_access/break_glass.py
+    break_glass_enabled: bool = field(default_factory=lambda: _env("BREAK_GLASS_ENABLED", "false") == "true")
+    security_team_emails: list[str] = field(
+        default_factory=lambda: [e.strip() for e in _env("SECURITY_TEAM_EMAILS", "").split(",") if e.strip()]
+    )
+    # Niezalezny, lancuchowo podpisany strumien zdarzen Break Glass (JSONL).
+    break_glass_audit_path: str = field(default_factory=lambda: _env("BREAK_GLASS_AUDIT_PATH", ""))
+
+    # Eksport calego audytu do zewnetrznego magazynu (plik JSONL i/lub HTTP, np. SIEM).
+    audit_export_path: str = field(default_factory=lambda: _env("AUDIT_EXPORT_PATH", ""))
+    audit_export_url: str = field(default_factory=lambda: _env("AUDIT_EXPORT_URL", ""))
+    audit_export_hmac_key: str = field(default_factory=lambda: _env("AUDIT_EXPORT_HMAC_KEY", ""), repr=False)
+    audit_export_interval_seconds: int = field(
+        default_factory=lambda: int(_env("AUDIT_EXPORT_INTERVAL_SECONDS", "30"))
+    )
+
     # Zwykle sesje
     user_session_ttl_minutes: int = 12 * 60
     operator_session_ttl_minutes: int = 8 * 60

@@ -1,4 +1,6 @@
-// admin.forvium.com - Uzytkownicy -> Szczegoly uzytkownika -> Dostep serwisowy.
+// admin.forvium.com - panel operatorow Forvium.
+// Zakladki zaleza od uprawnien roli: Uzytkownicy / Moje prosby (support), Nadzor sesji i Audyt
+// (kierownik supportu, bezpieczenstwo), Break Glass (oficer bezpieczenstwa), Powiadomienia.
 (() => {
   const API = window.FORVIUM_API;
   const KEY = "fw_operator_token";
@@ -9,6 +11,20 @@
     technologies_cve: "Technologie i CVE",
     diagnostics: "Bledy i stan konfiguracji",
   };
+  const CATEGORY_LABELS = {
+    security_incident: "Incydent bezpieczenstwa",
+    critical_outage: "Krytyczna awaria",
+    data_integrity: "Integralnosc danych",
+  };
+  const P = {
+    request: "platform.support_access.request",
+    oversight: "platform.support_access.oversight",
+    audit: "platform.audit.read",
+    bgRequest: "platform.break_glass.request",
+    bgApprove: "platform.break_glass.approve",
+    bgReview: "platform.break_glass.review",
+  };
+  let me = null;
 
   function el(tag, attrs = {}, ...children) {
     const node = document.createElement(tag);
@@ -25,49 +41,95 @@
     const t = sessionStorage.getItem(KEY);
     if (t) headers.Authorization = "Bearer " + t;
     const r = await fetch(API + path, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+    if (opts.raw) {
+      if (!r.ok) throw new Error("Blad " + r.status);
+      return r;
+    }
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw Object.assign(new Error(data.message || "Blad " + r.status), { status: r.status, code: data.error });
     return data;
   }
   const fmt = (iso) => (iso ? new Date(iso).toLocaleString("pl-PL") : "—");
+  const can = (perm) => me && me.permissions.includes(perm);
   const askMfa = () => prompt("Ponowna weryfikacja MFA - podaj kod z aplikacji uwierzytelniajacej:");
+  const table = (headers, rows) => el("table", {}, el("tr", {}, ...headers.map((h) => el("th", {}, h))), ...rows);
+  const card = (...children) => el("div", { class: "card" }, ...children);
+  const errorCard = (e) => card(el("p", { class: "error" }, e.message));
 
+  // ---------------------------------------------------------------- logowanie
   function renderLogin(error) {
     const form = el("form", { class: "card", onsubmit: async (e) => {
       e.preventDefault();
       try {
         const r = await api("/api/admin/auth/login", { method: "POST", body: Object.fromEntries(new FormData(form)) });
         sessionStorage.setItem(KEY, r.token);
-        renderUsers();
+        start();
       } catch (err) { renderLogin(err.message); }
     } },
       el("h2", {}, "Logowanie operatora"),
-      el("label", {}, "E-mail"), el("input", { name: "email", type: "email", required: true }),
-      el("label", {}, "Haslo"), el("input", { name: "password", type: "password", required: true }),
-      el("label", {}, "Kod MFA"), el("input", { name: "mfa_code", required: true, inputmode: "numeric" }),
+      el("label", {}, "E-mail"), el("input", { name: "email", type: "email", required: true, autocomplete: "username" }),
+      el("label", {}, "Haslo"), el("input", { name: "password", type: "password", required: true, autocomplete: "current-password" }),
+      el("label", {}, "Kod MFA"), el("input", { name: "mfa_code", required: true, inputmode: "numeric", autocomplete: "one-time-code" }),
       el("p", { class: "error" }, error || ""),
       el("button", { type: "submit" }, "Zaloguj"));
     root.replaceChildren(form);
   }
 
-  // ---------------------------------------------------------------- uzytkownicy
-  async function renderUsers(q = "") {
-    let me;
+  // -------------------------------------------------------------- nawigacja
+  const content = el("div");
+  // Kazdy widok bierze "bilet"; wynik wolniejszego, nieaktualnego widoku nie nadpisze nowszego.
+  let viewSeq = 0;
+  const begin = () => {
+    const seq = ++viewSeq;
+    return (...nodes) => { if (seq === viewSeq) content.replaceChildren(...nodes); };
+  };
+  function tabs() {
+    const items = [];
+    if (can(P.request)) items.push(["Uzytkownicy", () => renderUsers()], ["Moje prosby", () => renderMyRequestsPage()]);
+    if (can(P.oversight)) items.push(["Nadzor sesji", () => renderOversight()]);
+    if (can(P.audit)) items.push(["Audyt", () => renderAudit()]);
+    if (can(P.bgApprove) || can(P.bgReview)) items.push(["Break Glass", () => renderBreakGlass()]);
+    items.push(["Powiadomienia", () => renderNotifications()]);
+    const nav = el("nav", { class: "card tabs" });
+    for (const [label, fn] of items) {
+      nav.append(el("a", { onclick: () => {
+        nav.querySelectorAll("a").forEach((a) => a.classList.remove("active"));
+        link.classList.add("active");
+        fn();
+      } }, label));
+      const link = nav.lastChild;
+    }
+    nav.append(el("a", { onclick: async () => {
+      await api("/api/admin/auth/logout", { method: "POST" }).catch(() => {});
+      sessionStorage.removeItem(KEY);
+      location.reload();
+    } }, "Wyloguj"));
+    return { nav, first: items[0][1] };
+  }
+
+  async function start() {
     try { me = await api("/api/admin/me"); } catch (_) { return renderLogin(); }
     document.getElementById("who").textContent = `${me.user.display_name} (${me.platform_role}) · ID ${me.user.id}`;
+    const { nav, first } = tabs();
+    root.replaceChildren(nav, content);
+    nav.querySelector("a").classList.add("active");
+    first();
+  }
+
+  // ---------------------------------------------------------------- uzytkownicy
+  async function renderUsers(q = "") {
+    const show = begin();
     const { users } = await api("/api/admin/users?q=" + encodeURIComponent(q));
     const search = el("input", { placeholder: "Szukaj po e-mailu lub nazwie", value: q });
     search.onchange = () => renderUsers(search.value);
-    root.replaceChildren(
-      el("div", { class: "card" }, el("h2", {}, "Uzytkownicy"), search),
-      el("div", { class: "card" }, el("table", {}, el("tr", {}, el("th", {}, "E-mail"), el("th", {}, "Nazwa"), el("th", {}, "")),
-        ...users.map((u) => el("tr", {}, el("td", {}, u.email), el("td", {}, u.display_name),
-          el("td", {}, el("button", { class: "secondary", onclick: () => renderUserDetail(u.id) }, "Szczegoly")))))),
-      el("div", { id: "my-requests" }));
-    renderMyRequests(document.getElementById("my-requests"));
+    show(
+      card(el("h2", {}, "Uzytkownicy"), search),
+      card(table(["E-mail", "Nazwa", ""], users.map((u) => el("tr", {}, el("td", {}, u.email), el("td", {}, u.display_name),
+        el("td", {}, el("button", { class: "secondary", onclick: () => renderUserDetail(u.id) }, "Szczegoly")))))));
   }
 
   async function renderUserDetail(userId) {
+    const show = begin();
     const [detail, policy] = await Promise.all([api("/api/admin/users/" + userId), api("/api/admin/support-access/policy")]);
     const u = detail.user;
     const orgSel = el("select", { name: "organization_id", required: true },
@@ -79,60 +141,87 @@
     };
     orgSel.onchange = loadTickets;
     const scopeBoxes = policy.operator_allowed_scopes.map((s) => el("label", {},
-      el("input", { type: "checkbox", value: s, checked: true, style: "width:auto" }), " ", SCOPE_LABELS[s] || s));
+      el("input", { type: "checkbox", value: s, checked: true }), " ", SCOPE_LABELS[s] || s));
     const msg = el("p");
+
+    // Tryb awaryjny widoczny tylko, gdy polityka go wlacza i rola ma uprawnienie.
+    const bgAvailable = policy.break_glass_enabled && can(P.bgRequest);
+    const modeSel = el("select", { name: "mode" }, el("option", { value: "standard" }, "Standardowy (zgoda klienta)"),
+      ...(bgAvailable ? [el("option", { value: "break_glass" }, "AWARYJNY – Break Glass (bez zgody klienta)")] : []));
+    const reason = el("textarea", { name: "reason", required: true, minlength: 15, rows: 3 });
+    const counter = el("span", { class: "muted" });
+    const duration = el("input", { name: "duration_minutes", type: "number", min: 1, max: policy.max_session_minutes, value: policy.default_session_minutes });
+    const bgFields = el("div", { hidden: true },
+      el("p", { class: "danger-text" }, "Procedura awaryjna: wymaga zatwierdzenia przez oficera bezpieczenstwa, klient i zespol bezpieczenstwa zostana powiadomieni, a sesja podlega obowiazkowemu przegladowi."),
+      el("label", {}, "Kategoria incydentu"),
+      el("select", { name: "incident_category" }, ...(policy.incident_categories || []).map((c) => el("option", { value: c }, CATEGORY_LABELS[c] || c))));
+    const updateMode = () => {
+      const bg = modeSel.value === "break_glass";
+      bgFields.hidden = !bg;
+      const min = bg ? policy.break_glass_min_justification : 15;
+      reason.setAttribute("minlength", min);
+      duration.max = bg ? policy.break_glass_max_session_minutes : policy.max_session_minutes;
+      counter.textContent = `${reason.value.length} / min. ${min} znakow`;
+    };
+    modeSel.onchange = updateMode;
+    reason.oninput = updateMode;
+    updateMode();
 
     const form = el("form", { class: "card", onsubmit: async (e) => {
       e.preventDefault();
       const f = Object.fromEntries(new FormData(form));
       try {
-        await api("/api/admin/support-access/requests", { method: "POST", body: {
+        const r = await api("/api/admin/support-access/requests", { method: "POST", body: {
           organization_id: f.organization_id, reference_user_id: u.id, reason: f.reason, ticket_number: f.ticket_number,
-          duration_minutes: Number(f.duration_minutes),
+          duration_minutes: Number(f.duration_minutes), mode: f.mode, incident_category: f.incident_category || null,
           scopes: scopeBoxes.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => i.value),
           mfa_code: f.mfa_code,
         } });
-        msg.className = ""; msg.textContent = "Prosba wyslana. Klient otrzymal powiadomienie w aplikacji i e-mail.";
+        msg.className = "";
+        msg.textContent = {
+          approved: "Prosba zatwierdzona automatycznie (zgoda stala klienta). Mozesz uruchomic sesje w zakladce Moje prosby.",
+          pending_second_approval: "Wniosek awaryjny wyslany do oficerow bezpieczenstwa.",
+        }[r.request.status] || "Prosba wyslana. Klient otrzymal powiadomienie w aplikacji i e-mail.";
         form.reset();
-        renderMyRequests(document.getElementById("my-requests"));
+        updateMode();
       } catch (err) { msg.className = "error"; msg.textContent = err.message; }
     } },
       el("h3", {}, "Dostep serwisowy"),
       el("p", { class: "muted" }, "Sesja w trybie READ_ONLY, wymaga zgody klienta. Maksymalny czas: ", policy.max_session_minutes, " min."),
+      el("label", {}, "Tryb"), modeSel, bgFields,
       el("label", {}, "Organizacja"), orgSel,
       el("label", {}, "Uzytkownik referencyjny"), el("input", { value: `${u.display_name} <${u.email}>`, disabled: true }),
-      el("label", {}, "Powod dostepu"), el("textarea", { name: "reason", required: true, minlength: 15, rows: 3 }),
+      el("label", {}, "Powod dostepu / uzasadnienie"), reason, counter,
       el("label", {}, "Numer zgloszenia"), ticketSel,
-      el("label", {}, "Czas dostepu (min)"), el("input", { name: "duration_minutes", type: "number", min: 1, max: policy.max_session_minutes, value: policy.default_session_minutes }),
+      el("label", {}, "Czas dostepu (min)"), duration,
       el("label", {}, "Zakres"), ...scopeBoxes,
       el("label", {}, "Ponowna weryfikacja MFA"), el("input", { name: "mfa_code", required: true, inputmode: "numeric", autocomplete: "one-time-code" }),
       msg,
       el("button", { type: "submit" }, "Wyslij prosbe o dostep"));
 
-    root.replaceChildren(
-      el("div", { class: "card" }, el("a", { onclick: () => renderUsers() }, "← Uzytkownicy"),
+    show(
+      card(el("a", { onclick: () => renderUsers() }, "← Uzytkownicy"),
         el("h2", {}, u.display_name), el("p", { class: "muted" }, u.email, " · ID ", u.id)),
-      detail.organizations.length ? form : el("div", { class: "card muted" }, "Uzytkownik nie nalezy do zadnej organizacji."),
-      el("div", { id: "my-requests" }));
+      detail.organizations.length ? form : el("div", { class: "card muted" }, "Uzytkownik nie nalezy do zadnej organizacji."));
     if (detail.organizations.length) await loadTickets();
-    renderMyRequests(document.getElementById("my-requests"));
   }
 
   // ------------------------------------------------------------ moje prosby
-  async function renderMyRequests(container) {
+  async function renderMyRequestsPage() {
+    const show = begin();
     const { requests } = await api("/api/admin/support-access/requests");
     const rows = requests.map((r) => {
       const actions = el("td", { class: "row" });
-      if (r.status === "pending") {
+      if (r.status === "pending" || r.status === "pending_second_approval") {
         actions.append(el("button", { class: "secondary", onclick: async () => {
           await api(`/api/admin/support-access/requests/${r.id}/cancel`, { method: "POST" }).catch((e) => alert(e.message));
-          renderMyRequests(container);
+          renderMyRequestsPage();
         } }, "Anuluj"));
       }
       if (r.active_session) {
         actions.append(el("button", { class: "danger", onclick: async () => {
           await api(`/api/admin/support-access/sessions/${r.active_session.id}/end`, { method: "POST" }).catch((e) => alert(e.message));
-          renderMyRequests(container);
+          renderMyRequestsPage();
         } }, "Zakoncz sesje"));
       } else if (r.status === "approved" && r.consent && !r.consent.revoked_at && new Date(r.consent.valid_until) > new Date()) {
         actions.append(el("button", { onclick: async () => {
@@ -143,17 +232,148 @@
             // Osobna karta app.forvium.com; noopener izoluje ja od sesji panelu admin.
             window.open(s.launch_url, "_blank", "noopener,noreferrer");
           } catch (e) { alert(e.message); }
-          renderMyRequests(container);
+          renderMyRequestsPage();
         } }, "Uruchom sesje"));
       }
-      return el("tr", {}, el("td", {}, fmt(r.created_at)), el("td", {}, r.ticket_number), el("td", {}, r.organization_id),
-        el("td", {}, el("span", { class: "pill" }, r.consent && r.consent.revoked_at ? "zgoda cofnieta" : r.status)),
-        el("td", {}, r.consent ? r.consent.scopes.join(", ") : r.scopes.join(", ")),
+      const status = r.consent && r.consent.revoked_at ? "zgoda cofnieta" : r.status;
+      return el("tr", {}, el("td", {}, fmt(r.created_at)), el("td", {}, r.ticket_number),
+        el("td", {}, r.mode === "break_glass" ? el("span", { class: "danger-text" }, "BREAK GLASS") : "standardowy"),
+        el("td", {}, el("span", { class: "pill" }, status)),
+        el("td", {}, (r.consent ? r.consent.scopes : r.scopes).map((s) => SCOPE_LABELS[s] || s).join(", ")),
         el("td", {}, r.consent ? fmt(r.consent.valid_until) : "—"), actions);
     });
-    container.replaceChildren(el("div", { class: "card" }, el("h3", {}, "Moje prosby o dostep"), el("table", {},
-      el("tr", {}, ...["Data", "Zgloszenie", "Organizacja", "Status", "Zakres", "Zgoda do", ""].map((t) => el("th", {}, t))), ...rows)));
+    show(card(el("h3", {}, "Moje prosby o dostep"),
+      table(["Data", "Zgloszenie", "Tryb", "Status", "Zakres", "Zgoda do", ""], rows)));
   }
 
-  renderUsers();
+  // ------------------------------------------------------------ nadzor sesji
+  async function renderOversight(status = "active") {
+    const show = begin();
+    const sel = el("select", {}, ...[["active", "Aktywne"], ["", "Wszystkie"], ["ended", "Zakonczone"], ["expired", "Wygasle"], ["revoked", "Cofniete"]]
+      .map(([v, l]) => el("option", { value: v, selected: v === status }, l)));
+    sel.onchange = () => renderOversight(sel.value);
+    try {
+      const { sessions } = await api("/api/admin/support-access/oversight/sessions" + (status ? "?status=" + status : ""));
+      const rows = sessions.map((s) => el("tr", {},
+        el("td", {}, fmt(s.started_at)), el("td", {}, s.operator_email), el("td", {}, s.organization_name),
+        el("td", {}, s.ticket_number), el("td", {}, s.mode === "break_glass" ? el("span", { class: "danger-text" }, "BREAK GLASS") : "standardowy"),
+        el("td", {}, el("span", { class: "pill" }, s.status)), el("td", {}, fmt(s.ended_at || s.expires_at)),
+        el("td", { class: "row" },
+          el("button", { class: "secondary", onclick: () => renderAudit({ support_session_id: s.id }) }, "Audyt"),
+          s.status === "active" ? el("button", { class: "danger", onclick: async () => {
+            if (!confirm("Zakonczyc te sesje wsparcia?")) return;
+            await api(`/api/admin/support-access/oversight/sessions/${s.id}/terminate`, { method: "POST" }).catch((e) => alert(e.message));
+            renderOversight(status);
+          } }, "Zakoncz") : "")));
+      show(card(el("h2", {}, "Nadzor sesji wsparcia"), el("label", {}, "Status"), sel),
+        card(table(["Start", "Operator", "Organizacja", "Zgloszenie", "Tryb", "Status", "Koniec", ""], rows)));
+    } catch (e) { show(errorCard(e)); }
+  }
+
+  // ------------------------------------------------------------------ audyt
+  async function renderAudit(initial = {}, offset = 0) {
+    const show = begin();
+    const fields = [["operator_id", "ID operatora"], ["organization_id", "ID organizacji"], ["ticket", "Zgloszenie"],
+      ["support_session_id", "ID sesji"], ["action_prefix", "Akcja (prefiks)"], ["since", "Od (RRRR-MM-DD)"], ["until", "Do (RRRR-MM-DD)"]];
+    const inputs = Object.fromEntries(fields.map(([k]) => [k, el("input", { value: initial[k] || "" })]));
+    const outcome = el("select", {}, ...[["", "Kazdy wynik"], ["success", "Sukces"], ["denied", "Odmowa"]].map(([v, l]) => el("option", { value: v, selected: v === (initial.outcome || "") }, l)));
+    const bg = el("select", {}, ...[["", "Wszystkie"], ["true", "Tylko Break Glass"]].map(([v, l]) => el("option", { value: v, selected: v === (initial.break_glass || "") }, l)));
+    const params = () => {
+      const p = new URLSearchParams();
+      for (const [k, i] of Object.entries(inputs)) if (i.value.trim()) p.set(k, i.value.trim());
+      if (outcome.value) p.set("outcome", outcome.value);
+      if (bg.value) p.set("break_glass", bg.value);
+      return p;
+    };
+    const current = () => Object.fromEntries([...params().entries()]);
+    const results = el("div");
+    const form = el("form", { class: "card", onsubmit: (e) => { e.preventDefault(); renderAudit(current(), 0); } },
+      el("h2", {}, "Audyt"),
+      el("div", { class: "filters" }, ...fields.map(([k, label]) => el("div", {}, el("label", {}, label), inputs[k])),
+        el("div", {}, el("label", {}, "Wynik"), outcome), el("div", {}, el("label", {}, "Tryb"), bg)),
+      el("div", { class: "row spaced" }, el("button", { type: "submit" }, "Szukaj"),
+        el("button", { type: "button", class: "secondary", onclick: async () => {
+          try {
+            const r = await api("/api/admin/audit/export.csv?" + params(), { raw: true });
+            const url = URL.createObjectURL(await r.blob());
+            el("a", { href: url, download: "forvium-audit.csv" }).click();
+            URL.revokeObjectURL(url);
+          } catch (e) { alert(e.message); }
+        } }, "Eksport CSV")));
+    show(form, results);
+    try {
+      const p = params();
+      p.set("limit", "50");
+      p.set("offset", String(offset));
+      const data = await api("/api/admin/audit?" + p);
+      const rows = data.events.map((e) => el("tr", {},
+        el("td", {}, fmt(e.occurred_at)), el("td", {}, e.is_break_glass ? el("span", { class: "danger-text" }, e.action) : e.action),
+        el("td", {}, el("span", { class: "pill" }, e.outcome)), el("td", {}, e.actor_type, " ", e.actor_user_id || ""),
+        el("td", {}, e.on_behalf_of_user_id || ""), el("td", {}, e.method ? `${e.method} ${e.route} → ${e.status_code}` : ""),
+        el("td", {}, e.details && e.details.reason ? e.details.reason : "")));
+      results.replaceChildren(card(
+        el("p", { class: "muted" }, `Wyniki ${data.total ? offset + 1 : 0}–${offset + data.events.length} z ${data.total}`),
+        table(["Czas", "Akcja", "Wynik", "Wykonawca", "W imieniu", "Operacja API", "Powod"], rows),
+        el("div", { class: "pager" },
+          el("button", { class: "secondary", disabled: offset === 0, onclick: () => renderAudit(current(), Math.max(0, offset - 50)) }, "← Poprzednie"),
+          el("button", { class: "secondary", disabled: offset + 50 >= data.total, onclick: () => renderAudit(current(), offset + 50) }, "Nastepne →"))));
+    } catch (e) { results.replaceChildren(errorCard(e)); }
+  }
+
+  // ------------------------------------------------------------ Break Glass
+  async function renderBreakGlass() {
+    const show = begin();
+    try {
+      const [pending, reviews] = await Promise.all([
+        can(P.bgApprove) ? api("/api/admin/break-glass/requests?status=pending_second_approval") : { requests: [] },
+        can(P.bgApprove) ? api("/api/admin/break-glass/requests?review_pending=true") : { requests: [] },
+      ]);
+      const pendingCards = pending.requests.map((r) => card(
+        el("h3", { class: "danger-text" }, "Wniosek Break Glass · ", r.ticket_number),
+        el("p", {}, "Operator: ", r.operator_id, " · Organizacja: ", r.organization_id),
+        el("p", {}, "Kategoria: ", CATEGORY_LABELS[r.incident_category] || r.incident_category, " · Czas: ", r.duration_minutes, " min · Wygasa: ", fmt(r.decision_deadline)),
+        el("p", {}, "Zakres: ", r.scopes.map((s) => SCOPE_LABELS[s] || s).join(", ")),
+        el("pre", { class: "body" }, r.reason),
+        el("div", { class: "row spaced" },
+          el("button", { class: "danger", onclick: async () => {
+            const code = askMfa();
+            if (!code) return;
+            await api(`/api/admin/break-glass/requests/${r.id}/approve`, { method: "POST", body: { mfa_code: code } }).catch((e) => alert(e.message));
+            renderBreakGlass();
+          } }, "Zatwierdz (4 oczy)"),
+          el("button", { class: "secondary", onclick: async () => {
+            const note = prompt("Powod odrzucenia:");
+            if (note === null) return;
+            await api(`/api/admin/break-glass/requests/${r.id}/reject`, { method: "POST", body: { note } }).catch((e) => alert(e.message));
+            renderBreakGlass();
+          } }, "Odrzuc"))));
+      const reviewCards = reviews.requests.map((r) => {
+        const notes = el("textarea", { rows: 3, placeholder: "Ustalenia przegladu (min. 50 znakow)" });
+        return card(
+          el("h3", {}, "Przeglad po incydencie · ", r.ticket_number),
+          el("p", {}, "Wnioskowal: ", r.operator_id, " · Zatwierdzil: ", r.decided_by_user_id || "—"),
+          el("p", {}, "Sesje: ", r.sessions.map((s) => `${fmt(s.started_at)} (${s.status})`).join(", ") || "brak"),
+          el("button", { class: "secondary", onclick: () => renderAudit({ break_glass: "true" }) }, "Zdarzenia Break Glass w audycie"),
+          ...(can(P.bgReview) ? [notes, el("button", { class: "spaced", onclick: async () => {
+            await api(`/api/admin/break-glass/requests/${r.id}/review`, { method: "POST", body: { notes: notes.value } })
+              .then(() => renderBreakGlass()).catch((e) => alert(e.message));
+          } }, "Zakoncz przeglad i wyslij raport klientowi")] : []));
+      });
+      show(
+        card(el("h2", {}, "Break Glass"), el("p", { class: "muted" }, "Wnioski awaryjne wymagaja zatwierdzenia przez innego oficera bezpieczenstwa niz wnioskujacy, a kazde uzycie - niezaleznego przegladu.")),
+        card(el("h3", {}, "Oczekujace na zatwierdzenie")), ...(pendingCards.length ? pendingCards : [card(el("p", { class: "muted" }, "Brak wnioskow."))]),
+        card(el("h3", {}, "Do przegladu")), ...(reviewCards.length ? reviewCards : [card(el("p", { class: "muted" }, "Brak."))]));
+    } catch (e) { show(errorCard(e)); }
+  }
+
+  // --------------------------------------------------------- powiadomienia
+  async function renderNotifications() {
+    const show = begin();
+    const { notifications } = await api("/api/admin/notifications");
+    show(card(el("h2", {}, "Powiadomienia")),
+      ...(notifications.length ? notifications.map((n) => card(el("h3", {}, n.title), el("p", { class: "muted" }, fmt(n.created_at)), el("pre", { class: "body" }, n.body)))
+        : [card(el("p", { class: "muted" }, "Brak powiadomien."))]));
+  }
+
+  start();
 })();
