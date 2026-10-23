@@ -12,6 +12,8 @@
 #   worker   - zadania w tle (wygaszanie, e-mail, anomalie, eksport audytu, raporty)
 #   migrate  - jednorazowo: migracje + szyfrowanie danych + dane demo
 #   db, mailpit
+#   prometheus, alertmanager, grafana - profil "monitoring":
+#     docker compose --profile monitoring up   (Grafana: http://localhost:3000, Prometheus: http://localhost:9090)
 # Sieci: "edge" (brama <-> api/panele) i "backend" (api/worker <-> baza/poczta) - brama nie widzi bazy.
 # Hasla i klucze ponizej sa wylacznie do uzytku lokalnego.
 
@@ -130,6 +132,37 @@ services:
     image: axllent/mailpit:v1.21
     ports:
       - "8025:8025"
+    networks: [backend]
+
+  # ------------------------------------------------ monitoring (opcjonalnie)
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: [monitoring]
+    volumes:
+      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks: [backend]
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    profiles: [monitoring]
+    volumes:
+      - ./deploy/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    networks: [backend]
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    profiles: [monitoring]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: local-grafana
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./deploy/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./deploy/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    ports:
+      - "127.0.0.1:3000:3000"
     networks: [backend]
 
 networks:

@@ -1,0 +1,6 @@
+apiVersion: 1
+providers:
+  - name: forvium
+    folder: Forvium Watch
+    type: file
+    options: { path: /etc/grafana/provisioning/dashboards }

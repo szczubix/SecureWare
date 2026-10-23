@@ -36,8 +36,11 @@ def configure_logging(settings) -> None:
         handler.setFormatter(JsonFormatter())
     else:
         handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    from forvium.monitoring import RequestIdFilter
+
+    handler.addFilter(RequestIdFilter())
     root = logging.getLogger()
     root.handlers[:] = [handler]
     root.setLevel(settings.log_level.upper())
     # Dostep HTTP logujemy sami (middleware z identyfikatorem zadania), bez duplikatu z uvicorn.
-    logging.getLogger("uvicorn.access").disabled = settings.log_format == "json"
+    logging.getLogger("uvicorn.access").disabled = True

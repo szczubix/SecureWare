@@ -132,7 +132,7 @@
       el("label", {}, "Hasło"), el("input", { name: "password", type: "password", required: true, autocomplete: "current-password" }),
       el("label", {}, "Kod MFA"), el("input", { name: "mfa_code", inputmode: "numeric", autocomplete: "one-time-code" }),
       el("p", { class: "error" }, error || ""),
-      el("div", { class: "actions" },
+      el("div", { class: "row" },
         el("button", { type: "submit" }, "Zaloguj kodem MFA"),
         el("button", { type: "button", class: "secondary", onclick: async () => {
           const base = credentials();
@@ -484,7 +484,7 @@
       .map(([v, l]) => el("option", { value: v, selected: v === status }, l)));
     sel.onchange = () => renderAlerts(sel.value);
     try {
-      const { alerts } = await api("/api/admin/security/alerts?status=" + status);
+      const [{ alerts }, jobs] = await Promise.all([api("/api/admin/security/alerts?status=" + status), api("/api/admin/security/jobs")]);
       const act = (a, action) => async () => {
         const notes = action === "resolve" ? prompt("Jak rozwiązano alert?") : "";
         if (notes === null) return;
@@ -499,8 +499,15 @@
           a.support_session_id && can(P.audit) ? el("button", { class: "secondary", onclick: () => renderAudit({ support_session_id: a.support_session_id }) }, "Audyt") : "",
           a.status === "open" ? el("button", { class: "secondary", onclick: act(a, "acknowledge") }, "Przyjmij") : "",
           a.status !== "resolved" ? el("button", { onclick: act(a, "resolve") }, "Rozwiąż") : "")));
+      // Zatrzymany worker = brak wygaszania sesji, e-maili i wykrywania anomalii.
+      const jobsCard = card(el("h3", {}, "Zadania w tle"),
+        jobs.stale.length ? el("p", { class: "danger-text" }, "Zadania nie działają: ", jobs.stale.join(", "), ". Sprawdź kontener worker.") : "",
+        table(["Zadanie", "Ostatni udany przebieg", "Przebiegi / błędy", "Ostatni błąd", "Stan"], jobs.jobs.map((j) => el("tr", {},
+          el("td", {}, j.job), el("td", {}, fmt(j.last_success_at)), el("td", {}, `${j.runs} / ${j.failures}`),
+          el("td", {}, j.last_error ? `${fmt(j.last_error_at)}: ${j.last_error}` : "—"),
+          el("td", {}, el("span", { class: "pill" + (j.stale ? " sev-high" : "") }, j.stale ? "zatrzymane" : "działa"))))));
       show(card(el("h2", {}, "Alerty bezpieczeństwa"), el("label", {}, "Status"), sel),
-        card(table(["Czas", "Waga", "Alert", "Operator", "Status", ""], rows)));
+        card(table(["Czas", "Waga", "Alert", "Operator", "Status", ""], rows)), jobsCard);
     } catch (e) { show(errorCard(e)); }
   }
 

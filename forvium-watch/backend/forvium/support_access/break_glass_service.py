@@ -114,7 +114,7 @@ def approve_break_glass(ctx: Ctx, officer: User, *, request_id: str, mfa_code: s
                   details={"consent_id": consent.id, "valid_until": consent.valid_until.isoformat()}, **base)
 
     org = ctx.db.get(Organization, req.organization_id)
-    body = (f"Forvium uruchomiło procedure awaryjna (Break Glass) dla organizacji {org.name}: "
+    body = (f"Forvium uruchomiło procedurę awaryjną (Break Glass) dla organizacji {org.name}: "
             f"operator {req.operator_user_id} może otworzyć sesję TYLKO DO ODCZYTU do "
             f"{req.requested_duration_minutes} min, zgłoszenie {req.ticket_number}.\n"
             f"Kategoria incydentu: {req.incident_category}\nUzasadnienie: {req.reason}\n"

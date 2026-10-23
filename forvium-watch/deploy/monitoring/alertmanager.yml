@@ -1,0 +1,12 @@
+# Lokalnie alerty trafiają e-mailem do Mailpit; w produkcji podmień odbiorcę (PagerDuty, Slack, SMTP).
+route:
+  receiver: security-team
+  group_by: [alertname]
+  repeat_interval: 4h
+receivers:
+  - name: security-team
+    email_configs:
+      - to: security@forvium.local
+        from: alertmanager@forvium.local
+        smarthost: mailpit:1025
+        require_tls: false

@@ -93,7 +93,7 @@ def create_standing_consent(
         body=(f"{user.display_name} udzielił(a) zgody stałej (zakres: {', '.join(standing.scopes)}, "
               f"do {max_session_minutes} min na sesje, ważna do {standing.valid_until.date()}). "
               + ("Zgoda zacznie obowiązywać po potwierdzeniu przez druga osobę. " if dual else "")
-              + "Można ja cofnąć w Ustawienia -> Dostęp serwisowy."),
+              + "Można ją cofnąć w Ustawienia -> Dostęp serwisowy."),
         organization_id=organization_id, data={"standing_consent_id": standing.id},
     )
     return standing

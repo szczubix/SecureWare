@@ -1,0 +1,42 @@
+groups:
+  - name: forvium-watch
+    rules:
+      - alert: ForviumBackgroundJobStopped
+        expr: max by (task) (forvium_job_stale) == 1
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "Zadanie w tle {{ $labels.task }} nie działa"
+          description: >-
+            Brak udanego przebiegu przez ponad 3 interwały. Zatrzymany worker oznacza brak
+            wygaszania sesji wsparcia, wysyłki e-maili i wykrywania anomalii.
+
+      - alert: ForviumApiDown
+        expr: up{job="forvium-api"} == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "Replika API {{ $labels.instance }} nie odpowiada"
+
+      - alert: ForviumApiErrors
+        expr: >-
+          sum(rate(forvium_http_requests_total{status=~"5.."}[5m]))
+          / clamp_min(sum(rate(forvium_http_requests_total[5m])), 1e-9) > 0.05
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Ponad 5% odpowiedzi API to błędy 5xx"
+
+      - alert: ForviumCriticalSecurityAlert
+        expr: max(forvium_security_alerts_open{severity=~"high|critical"}) > 0
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: "Otwarte alerty bezpieczeństwa o wysokiej wadze (zakładka Alerty w panelu admin)"
+
+      - alert: ForviumEmailDeliveryFailing
+        expr: max(forvium_email_outbox_failed) > 0 or max(forvium_email_outbox_queued) > 50
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "E-maile nie są wysyłane (powiadomienia klientów o dostępie serwisowym)"

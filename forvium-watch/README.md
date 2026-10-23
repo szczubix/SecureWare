@@ -20,12 +20,14 @@ forvium-watch/
 │   │   ├── security/          wykrywanie anomalii i alerty, sanityzacja zrzutów widoku
 │   │   ├── core/crypto.py     szyfrowanie danych w spoczynku (AES-256-GCM, klucze z KMS)
 │   │   ├── jobs.py, worker.py zadania w tle i ich heartbeat (osobny kontener `worker`)
+│   │   ├── monitoring.py      X-Request-ID, log dostępu, metryki Prometheus
 │   │   └── access.py          jedno miejsce uwierzytelniania i autoryzacji (RBAC + RLS)
 │   ├── migrations/            Alembic: 0001 schemat (+ trigger audytu), 0002 RLS i uprawnienia,
 │   │                          0003 szyfrowanie, WebAuthn, dwie osoby, przedłużenia, alerty, nagrania,
 │   │                          0004 heartbeat zadań w tle
 │   └── tests/
-├── deploy/             role PostgreSQL, gateway (routing po hoście, limity zapytań)
+├── deploy/             role PostgreSQL, gateway (routing po hoście, limity zapytań),
+│                       monitoring (Prometheus, reguły alertów, Alertmanager, Grafana)
 └── frontend/
     ├── admin/          admin.forvium.com – użytkownicy, prośby, nadzór, alerty, audyt, Break Glass, klucze
     └── app/            app.forvium.com – zgody, ustawienia, podgląd na żywo, nagrania, baner wsparcia
@@ -79,6 +81,27 @@ w aplikacji uwierzytelniającej są w `docker compose logs migrate`.
 
 Break Glass jest domyślnie wyłączony. Żeby go włączyć lokalnie, uruchom
 `FORVIUM_BREAK_GLASS_ENABLED=true docker compose up`.
+
+## Monitoring
+
+* **Identyfikator zadania**: gateway nadaje `X-Request-ID`, API go przyjmuje (albo generuje),
+  zwraca w odpowiedzi i dołącza do każdej linii logu.
+* **Logi JSON** (`FORVIUM_LOG_FORMAT=json`): log dostępu `forvium.access` z metodą, szablonem
+  trasy (bez identyfikatorów i query stringa), kodem, czasem i `request_id`; logi workera
+  z wynikiem każdego zadania.
+* **`/metrics`** (Prometheus): ruch i czasy odpowiedzi per trasa, stan zadań w tle
+  (`forvium_job_stale`, `forvium_job_last_success_age_seconds`, liczba przebiegów i błędów),
+  aktywne sesje wsparcia, czekające prośby, otwarte alerty, kolejka e-mail. Gateway zwraca
+  na `/metrics` 404; dodatkowo można wymagać `FORVIUM_METRICS_TOKEN`.
+* **Stan zadań w tle**: zakładka *Alerty* w panelu admin (`GET /api/admin/security/jobs`)
+  pokazuje ostatni udany przebieg i oznacza zatrzymane zadania; healthcheck kontenera
+  `worker` robi to samo.
+* **Profil `monitoring`**: `docker compose --profile monitoring up` dodaje Prometheus
+  (http://localhost:9090), Alertmanager i Grafanę (http://localhost:3000, `admin` /
+  `local-grafana`) z gotowym dashboardem. Reguły w `deploy/monitoring/alerts.yml`:
+  zatrzymane zadanie w tle, niedostępna replika API, błędy 5xx, alerty bezpieczeństwa
+  o wysokiej wadze, niewysyłane e-maile. Lokalnie Alertmanager wysyła alerty e-mailem
+  do Mailpit (`security@forvium.local`).
 
 ## Logowanie operatora
 
@@ -332,6 +355,7 @@ Dostęp awaryjny bez zgody klienta. Domyślnie jest **wyłączony**
 | `AUTO_CREATE_SCHEMA` | `false` | tylko eksperymenty; schemat tworzą migracje |
 | `RUN_BACKGROUND_JOBS` | `true` | `false` w replikach API, gdy zadania wykonuje osobny `worker` |
 | `LOG_FORMAT`, `LOG_LEVEL` | `text`, `INFO` | `json` = jeden obiekt JSON na linię (logi aplikacji i dostępu) |
+| `METRICS_TOKEN` | — | wymagany `Authorization: Bearer …` dla `/metrics` |
 
 ### Wdrożenie
 

@@ -162,7 +162,7 @@ def detect(ctx: Ctx, policy: AnomalyPolicy) -> list[Finding]:
     # 7. Uzycie Break Glass.
     for e in _events(ctx, now - policy.window, "break_glass.approved"):
         findings.append(Finding(
-            "break_glass_used", "high", "Zatwierdzono procedure Break Glass",
+            "break_glass_used", "high", "Zatwierdzono procedurę Break Glass",
             f"break_glass_used:{e.support_request_id}", None, e.organization_id,
             details={"request_id": e.support_request_id, "approved_by": e.actor_user_id}))
     return findings

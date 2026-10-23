@@ -42,3 +42,19 @@ def resolve(alert_id: str, body: AlertActionIn,
             op: OperatorPrincipal = Depends(require_platform_permission(PP.SUPPORT_OVERSIGHT)),
             ctx: Ctx = Depends(get_ctx)):
     return {"alert": alert_out(handle_alert(ctx, op.user, alert_id, "resolved", body.notes))}
+
+
+@router.get("/jobs")
+def background_job_status(op: OperatorPrincipal = Depends(require_platform_permission(PP.SUPPORT_OVERSIGHT)),
+                          ctx: Ctx = Depends(get_ctx)):
+    """Stan zadan w tle - zatrzymany worker oznacza m.in. brak wygaszania sesji i wykrywania anomalii."""
+    from forvium.core.clock import clock
+    from forvium.jobs import JobRun, stale_jobs
+
+    stale = set(stale_jobs(ctx.db, clock.now()))
+    iso = lambda d: d.isoformat() + "Z" if d else None  # noqa: E731
+    return {"stale": sorted(stale), "jobs": [
+        {"job": r.job, "interval_seconds": r.interval_seconds, "last_success_at": iso(r.last_success_at),
+         "last_error": r.last_error, "last_error_at": iso(r.last_error_at), "runs": r.runs,
+         "failures": r.failures, "stale": r.job in stale}
+        for r in ctx.db.scalars(select(JobRun).order_by(JobRun.job))]}

@@ -25,6 +25,8 @@ class Settings:
     # Logi: "json" (produkcja, zbieranie przez Loki/ELK) albo "text".
     log_format: str = field(default_factory=lambda: _env("LOG_FORMAT", "text"))
     log_level: str = field(default_factory=lambda: _env("LOG_LEVEL", "INFO"))
+    # Opcjonalny token dla /metrics (poza tym endpoint jest dostepny tylko w sieci wewnetrznej).
+    metrics_token: str = field(default_factory=lambda: _env("METRICS_TOKEN", ""))
 
     # Co ile sekund wygaszac sesje wsparcia w tle (0 = wylaczone).
     support_sweep_interval_seconds: int = field(

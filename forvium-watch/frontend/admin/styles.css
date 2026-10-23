@@ -46,4 +46,3 @@ input.slider { padding: 0; }
 .sev-medium { color: #b26a00; font-weight: 600; }
 .button-link { display: inline-block; padding: 8px 14px; border-radius: 6px; background: var(--accent); color: #fff; text-decoration: none; }
 .snapshot-body nav > span { margin-right: 12px; color: var(--accent); }
-.actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }

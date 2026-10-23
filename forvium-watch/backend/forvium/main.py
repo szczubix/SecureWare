@@ -32,6 +32,7 @@ from forvium.support_access.router_app import router as support_app
 from forvium.audit.chain import ChainedJsonlFile
 from forvium.audit.export import sinks_from_settings
 from forvium.jobs import start_jobs
+from forvium.monitoring import install as install_monitoring
 from forvium.notifications.mailer import sender_from_settings
 from forvium.security.anomalies import AnomalyPolicy
 from forvium.identity.throttle import Throttle
@@ -89,6 +90,9 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
                    identity_admin, platform_admin, support_admin, break_glass_admin,
                    audit_admin, security_admin):
         app.include_router(router)
+
+    # Na koncu, wiec jako najbardziej zewnetrzne: identyfikator zadania obejmuje tez audyt i CORS.
+    install_monitoring(app)
 
     @app.get("/healthz")
     def healthz():
