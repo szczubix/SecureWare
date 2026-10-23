@@ -1,0 +1,208 @@
+"""Organizations & RBAC - API klienta (app.forvium.com).
+
+Kazda trasa deklaruje wymagane `Permission` przez `require_org_permission`.
+Te same deklaracje obowiazuja klienta i sesje wsparcia.
+"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+from sqlalchemy import select
+
+from forvium.access import OrgAccess, require_org_permission
+from forvium.core.clock import clock
+from forvium.core.context import Ctx, DomainError, get_ctx
+from forvium.organizations.models import DiagnosticEvent, Membership, OrgUnit, Technology
+from forvium.organizations.rbac import OrgRole
+from forvium.organizations.rbac import Permission as P
+
+router = APIRouter(prefix="/api/app/orgs/{org_id}", tags=["organizations"])
+
+
+def _units(ctx: Ctx, access: OrgAccess) -> list[OrgUnit]:
+    units = list(ctx.db.scalars(select(OrgUnit).where(OrgUnit.organization_id == access.organization.id)))
+    if access.unit_ids is not None:
+        units = [u for u in units if u.id in access.unit_ids]
+    return units
+
+
+def _technologies(ctx: Ctx, access: OrgAccess) -> list[Technology]:
+    techs = list(ctx.db.scalars(select(Technology).where(Technology.organization_id == access.organization.id)))
+    if access.unit_ids is not None:
+        techs = [t for t in techs if t.unit_id in access.unit_ids]
+    return techs
+
+
+# ------------------------------------------------------------------ odczyt
+
+
+@router.get("/dashboard")
+def dashboard(access: OrgAccess = Depends(require_org_permission(P.DASHBOARD_READ)), ctx: Ctx = Depends(get_ctx)):
+    techs = _technologies(ctx, access)
+    cves = [c for t in techs for c in (t.cves or [])]
+    out = {
+        "organization": {"id": access.organization.id, "name": access.organization.name},
+        "units": len(_units(ctx, access)),
+        "technologies": len(techs),
+    }
+    # Liczby CVE tylko, gdy uprawnienia (lub zgoda) je obejmuja.
+    if P.CVES_READ in access.permissions:
+        out["cves"] = {
+            "total": len(cves),
+            "critical": sum(1 for c in cves if c.get("severity") == "critical"),
+            "high": sum(1 for c in cves if c.get("severity") == "high"),
+        }
+    return out
+
+
+@router.get("/units")
+def units(access: OrgAccess = Depends(require_org_permission(P.UNITS_READ)), ctx: Ctx = Depends(get_ctx)):
+    return {"units": [{"id": u.id, "name": u.name, "parent_id": u.parent_id} for u in _units(ctx, access)]}
+
+
+@router.get("/technologies")
+def technologies(access: OrgAccess = Depends(require_org_permission(P.TECHNOLOGIES_READ)),
+                 ctx: Ctx = Depends(get_ctx)):
+    return {"technologies": [{"id": t.id, "unit_id": t.unit_id, "name": t.name, "version": t.version}
+                             for t in _technologies(ctx, access)]}
+
+
+@router.get("/cves")
+def cves(access: OrgAccess = Depends(require_org_permission(P.CVES_READ)), ctx: Ctx = Depends(get_ctx)):
+    items = [{"technology_id": t.id, "technology": t.name, **c}
+             for t in _technologies(ctx, access) for c in (t.cves or [])]
+    return {"cves": items}
+
+
+@router.get("/config/status")
+def config_status(access: OrgAccess = Depends(require_org_permission(P.CONFIG_READ))):
+    org = access.organization
+    # Wylacznie stan konfiguracji - bez hostow, loginow, sekretow czy adresow webhookow.
+    return {
+        "smtp_configured": bool(org.smtp_config),
+        "webhooks_count": len(org.webhooks or []),
+        "secrets_count": len(org.secrets or {}),
+        "settings_keys": sorted((org.settings or {}).keys()),
+        "subscription_plan": org.subscription_plan,
+    }
+
+
+@router.get("/errors")
+def errors(access: OrgAccess = Depends(require_org_permission(P.ERRORS_READ)), ctx: Ctx = Depends(get_ctx)):
+    rows = ctx.db.scalars(
+        select(DiagnosticEvent).where(DiagnosticEvent.organization_id == access.organization.id)
+        .order_by(DiagnosticEvent.created_at.desc()).limit(200)
+    )
+    return {"errors": [{"id": e.id, "level": e.level, "component": e.component, "message": e.message,
+                        "created_at": e.created_at.isoformat()} for e in rows]}
+
+
+@router.get("/members")
+def members(access: OrgAccess = Depends(require_org_permission(P.MEMBERS_READ)), ctx: Ctx = Depends(get_ctx)):
+    from forvium.identity.models import User
+
+    rows = ctx.db.execute(
+        select(User, Membership.role).join(Membership, Membership.user_id == User.id)
+        .where(Membership.organization_id == access.organization.id)
+    ).all()
+    return {"members": [{"user_id": u.id, "email": u.email, "display_name": u.display_name, "role": r}
+                        for u, r in rows]}
+
+
+# ------------------------------------------------------- zapis i operacje wrazliwe
+
+
+class SettingsIn(BaseModel):
+    settings: dict
+
+
+@router.put("/settings")
+def update_settings(body: SettingsIn, access: OrgAccess = Depends(require_org_permission(P.SETTINGS_UPDATE))):
+    access.organization.settings = {**(access.organization.settings or {}), **body.settings}
+    return {"ok": True}
+
+
+class RoleIn(BaseModel):
+    role: OrgRole
+
+
+@router.put("/members/{user_id}/role")
+def change_role(user_id: str, body: RoleIn, access: OrgAccess = Depends(require_org_permission(P.MEMBERS_MANAGE)),
+                ctx: Ctx = Depends(get_ctx)):
+    m = ctx.db.scalar(select(Membership).where(Membership.organization_id == access.organization.id,
+                                               Membership.user_id == user_id))
+    if m is None:
+        raise DomainError(404, "member_not_found", "Nie znaleziono czlonka.")
+    m.role = body.role
+    return {"ok": True}
+
+
+@router.delete("/members/{user_id}")
+def remove_member(user_id: str, access: OrgAccess = Depends(require_org_permission(P.MEMBERS_MANAGE)),
+                  ctx: Ctx = Depends(get_ctx)):
+    m = ctx.db.scalar(select(Membership).where(Membership.organization_id == access.organization.id,
+                                               Membership.user_id == user_id))
+    if m is not None:
+        ctx.db.delete(m)
+    return {"ok": True}
+
+
+@router.delete("")
+def delete_organization(access: OrgAccess = Depends(require_org_permission(P.ORG_DELETE))):
+    access.organization.deleted_at = clock.now()
+    return {"ok": True}
+
+
+@router.get("/export")
+def export_data(access: OrgAccess = Depends(require_org_permission(P.DATA_EXPORT)), ctx: Ctx = Depends(get_ctx)):
+    return {"technologies": [{"name": t.name, "version": t.version, "cves": t.cves}
+                             for t in _technologies(ctx, access)]}
+
+
+@router.post("/billing/payments")
+def pay(access: OrgAccess = Depends(require_org_permission(P.BILLING_PAY))):
+    return {"ok": True}
+
+
+class SubscriptionIn(BaseModel):
+    plan: str
+
+
+@router.put("/subscription")
+def change_subscription(body: SubscriptionIn, access: OrgAccess = Depends(require_org_permission(P.SUBSCRIPTION_MANAGE))):
+    access.organization.subscription_plan = body.plan
+    return {"ok": True}
+
+
+class SmtpIn(BaseModel):
+    host: str
+    port: int
+    username: str
+    password: str
+
+
+@router.put("/smtp")
+def update_smtp(body: SmtpIn, access: OrgAccess = Depends(require_org_permission(P.SMTP_MANAGE))):
+    access.organization.smtp_config = body.model_dump()
+    return {"ok": True}
+
+
+class WebhookIn(BaseModel):
+    url: str
+
+
+@router.post("/webhooks")
+def add_webhook(body: WebhookIn, access: OrgAccess = Depends(require_org_permission(P.WEBHOOKS_MANAGE))):
+    access.organization.webhooks = [*(access.organization.webhooks or []), body.url]
+    return {"ok": True}
+
+
+@router.get("/secrets")
+def read_secrets(access: OrgAccess = Depends(require_org_permission(P.SECRETS_READ))):
+    return {"secrets": access.organization.secrets}
+
+
+@router.get("/api-tokens")
+def api_tokens(access: OrgAccess = Depends(require_org_permission(P.API_TOKENS_MANAGE))):
+    return {"tokens": []}
