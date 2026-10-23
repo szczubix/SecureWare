@@ -116,3 +116,66 @@ def admin_logout(op: OperatorPrincipal = Depends(get_operator), ctx: Ctx = Depen
 def admin_me(op: OperatorPrincipal = Depends(get_operator)):
     return {"user": _user_out(op.user), "platform_role": op.user.platform_role,
             "permissions": sorted(op.permissions)}
+
+
+# ------------------------------------------------------------- WebAuthn (admin)
+
+
+class StepUpIn(BaseModel):
+    mfa_code: str | None = None
+    webauthn: dict | None = None
+
+
+class RegisterVerifyIn(BaseModel):
+    credential: dict
+    name: str = "Klucz bezpieczenstwa"
+
+
+def _credential_out(c) -> dict:
+    return {"id": c.id, "name": c.name, "created_at": c.created_at.isoformat() + "Z",
+            "last_used_at": c.last_used_at.isoformat() + "Z" if c.last_used_at else None,
+            "transports": c.transports}
+
+
+@admin_router.get("/webauthn/credentials")
+def webauthn_credentials(op: OperatorPrincipal = Depends(get_operator), ctx: Ctx = Depends(get_ctx)):
+    from forvium.identity import webauthn
+
+    return {"credentials": [_credential_out(c) for c in webauthn.credentials_of(ctx, op.user)]}
+
+
+@admin_router.post("/webauthn/register/options")
+def webauthn_register_options(body: StepUpIn, op: OperatorPrincipal = Depends(get_operator),
+                              ctx: Ctx = Depends(get_ctx)):
+    """Dodanie klucza wymaga ponownej weryfikacji (TOTP albo juz zarejestrowanym kluczem)."""
+    from forvium.identity import webauthn
+    from forvium.support_access.service import _verify_operator_mfa
+
+    _verify_operator_mfa(ctx, op.user, body.mfa_code, "identity.webauthn.register", webauthn=body.webauthn)
+    return {"options": webauthn.registration_options(ctx, op.user)}
+
+
+@admin_router.post("/webauthn/register/verify")
+def webauthn_register_verify(body: RegisterVerifyIn, op: OperatorPrincipal = Depends(get_operator),
+                             ctx: Ctx = Depends(get_ctx)):
+    from forvium.identity import webauthn
+
+    return {"credential": _credential_out(webauthn.finish_registration(ctx, op.user, body.credential, body.name))}
+
+
+@admin_router.post("/webauthn/assertion/options")
+def webauthn_assertion_options(op: OperatorPrincipal = Depends(get_operator), ctx: Ctx = Depends(get_ctx)):
+    from forvium.identity import webauthn
+
+    return {"options": webauthn.assertion_options(ctx, op.user)}
+
+
+@admin_router.post("/webauthn/credentials/{credential_pk}/remove")
+def webauthn_remove(credential_pk: str, body: StepUpIn, op: OperatorPrincipal = Depends(get_operator),
+                    ctx: Ctx = Depends(get_ctx)):
+    from forvium.identity import webauthn
+    from forvium.support_access.service import _verify_operator_mfa
+
+    _verify_operator_mfa(ctx, op.user, body.mfa_code, "identity.webauthn.remove", webauthn=body.webauthn)
+    webauthn.remove_credential(ctx, op.user, credential_pk)
+    return {"ok": True}

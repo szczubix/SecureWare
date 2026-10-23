@@ -42,9 +42,9 @@ def test_email_outbox_delivered(env):
     env.create_request(op)
     sender = FakeSender()
     env.app.state.email_sender = sender
-    assert run_delivery(env.app) == 1
-    assert sender.sent[0][0] == "alice@acme.example"
-    assert "FW-1001" in sender.sent[0][1]
+    assert run_delivery(env.app) == 2  # dwie osoby z prawem zatwierdzania w Acme
+    assert sorted(to for to, _ in sender.sent) == ["alice@acme.example", "dorota@acme.example"]
+    assert all("FW-1001" in subject for _, subject in sender.sent)
     assert run_delivery(env.app) == 0  # nie wysyla drugi raz
 
 

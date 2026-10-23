@@ -18,6 +18,7 @@ DEMO_PASSWORD = "Forvium-demo-2026!"
 TOTP = {
     "alice": "JBSWY3DPEHPK3PXPALICEAAA",
     "bob": "JBSWY3DPEHPK3PXPBOBBBBBB",
+    "dorota": "JBSWY3DPEHPK3PXPDOROTADD",
     "carol": "JBSWY3DPEHPK3PXPCAROLCCC",
     "ola": "JBSWY3DPEHPK3PXPOLAOOOOO",
     "piotr": "JBSWY3DPEHPK3PXPPIOTRPPP",
@@ -39,6 +40,7 @@ def seed(db: Session) -> dict:
 
     alice = user("alice", "alice@acme.example", "Alicja Kowalska")
     bob = user("bob", "bob@acme.example", "Bartosz Nowak")
+    dorota = user("dorota", "dorota@acme.example", "Dorota Zielinska")
     carol = user("carol", "carol@beta.example", "Karolina Wisniewska")
     ola = user("ola", "ola@forvium.com", "Ola (Support L2)", platform_role="support_l2")
     piotr = user("piotr", "piotr@forvium.com", "Piotr (Support L1)", platform_role="support_l1")
@@ -82,6 +84,7 @@ def seed(db: Session) -> dict:
     db.add_all([
         Membership(organization_id=acme.id, user_id=alice.id, role="owner"),
         Membership(organization_id=acme.id, user_id=bob.id, role="member"),
+        Membership(organization_id=acme.id, user_id=dorota.id, role="admin"),
         Membership(organization_id=beta.id, user_id=carol.id, role="owner"),
         # Operator, ktory jest jednoczesnie administratorem organizacji klienta
         # (np. konto testowe) - nie moze zatwierdzic wlasnej prosby.
@@ -98,7 +101,7 @@ def seed(db: Session) -> dict:
     db.flush()
 
     return {
-        "users": {"alice": alice, "bob": bob, "carol": carol, "ola": ola, "piotr": piotr,
+        "users": {"alice": alice, "bob": bob, "dorota": dorota, "carol": carol, "ola": ola, "piotr": piotr,
                   "marta": marta, "ewa": ewa, "tomasz": tomasz},
         "orgs": {"acme": acme, "beta": beta},
         "units": {"hq": hq, "waw": waw, "krk": krk, "beta": beta_unit},
@@ -112,7 +115,11 @@ if __name__ == "__main__":  # pragma: no cover
 
     from forvium.core.migrations import upgrade_head
 
-    url = get_settings().database_url
+    from forvium.core.crypto import keyring_from_settings, set_keyring
+
+    settings = get_settings()
+    set_keyring(keyring_from_settings(settings))
+    url = settings.database_url
     upgrade_head(url)
     database = Database(url)
     with database.sessionmaker() as session:

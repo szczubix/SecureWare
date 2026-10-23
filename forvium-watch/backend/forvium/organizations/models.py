@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
+from forvium.core.crypto import EncryptedJSON
 from forvium.core.db import Base, new_id
 
 
@@ -18,9 +19,14 @@ class Organization(Base):
     subscription_plan: Mapped[str] = mapped_column(String(40), default="standard")
     # Konfiguracja i sekrety organizacji. Sekrety nigdy nie sa zwracane w trybie wsparcia.
     settings: Mapped[dict] = mapped_column(JSON, default=dict)
-    smtp_config: Mapped[dict] = mapped_column(JSON, default=dict)
-    webhooks: Mapped[list] = mapped_column(JSON, default=list)
-    secrets: Mapped[dict] = mapped_column(JSON, default=dict)
+    # Pola z sekretami sa szyfrowane w bazie (core/crypto.py).
+    smtp_config: Mapped[dict] = mapped_column(EncryptedJSON("organizations.smtp_config"), default=dict)
+    webhooks: Mapped[list] = mapped_column(EncryptedJSON("organizations.webhooks"), default=list)
+    secrets: Mapped[dict] = mapped_column(EncryptedJSON("organizations.secrets"), default=dict)
+    # Dostep serwisowy wymaga zatwierdzenia przez dwie rozne osoby z organizacji.
+    support_dual_approval: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Wylaczenie tej ochrony tez wymaga drugiej osoby: kto zainicjowal wylaczenie.
+    support_dual_approval_disable_requested_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime)
 

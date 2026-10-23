@@ -10,7 +10,7 @@ from forvium.core.clock import clock
 from forvium.core.context import Ctx, DomainError
 from forvium.identity.models import User
 from forvium.identity.service import consume_totp
-from forvium.organizations.models import OrgUnit
+from forvium.organizations.models import Organization, OrgUnit
 from forvium.platform_admin.rbac import PlatformRole
 from forvium.support_access.models import SupportConsent, SupportStandingConsent
 from forvium.support_access.scopes import parse_scopes
@@ -62,6 +62,8 @@ def create_standing_consent(
         raise _deny(ctx, action, "mfa_required", "Potwierdz zgode stala kodem MFA.", status=401, **base)
 
     now = clock.now()
+    org = ctx.db.get(Organization, organization_id)
+    dual = bool(org and org.support_dual_approval)
     standing = SupportStandingConsent(
         organization_id=organization_id,
         granted_by_user_id=user.id,
@@ -72,6 +74,9 @@ def create_standing_consent(
         note=(note or "").strip() or None,
         created_at=now,
         valid_until=now + timedelta(days=valid_days),
+        # Przy zatwierdzaniu przez dwie osoby zgoda stala czeka na potwierdzenie.
+        confirmed_by_user_id=None if dual else user.id,
+        confirmed_at=None if dual else now,
     )
     ctx.db.add(standing)
     ctx.db.flush()
@@ -83,12 +88,38 @@ def create_standing_consent(
     ctx.notifications.notify(
         ctx.db, _org_approvers(ctx, organization_id, exclude_user_id=user.id),
         event="support_access.standing_consent_created",
-        title="Utworzono zgode stala na dostep serwisowy Forvium",
+        title=("Potwierdz zgode stala na dostep serwisowy Forvium" if dual
+               else "Utworzono zgode stala na dostep serwisowy Forvium"),
         body=(f"{user.display_name} udzielil(a) zgody stalej (zakres: {', '.join(standing.scopes)}, "
               f"do {max_session_minutes} min na sesje, wazna do {standing.valid_until.date()}). "
-              "Mozna ja cofnac w Ustawienia -> Dostep serwisowy."),
+              + ("Zgoda zacznie obowiazywac po potwierdzeniu przez druga osobe. " if dual else "")
+              + "Mozna ja cofnac w Ustawienia -> Dostep serwisowy."),
         organization_id=organization_id, data={"standing_consent_id": standing.id},
     )
+    return standing
+
+
+def confirm_standing_consent(ctx: Ctx, user: User, *, organization_id: str, standing_id: str,
+                             mfa_code: str | None) -> SupportStandingConsent:
+    """Druga osoba potwierdza zgode stala (zatwierdzanie przez dwie osoby)."""
+    action = "support.standing_consent.confirm"
+    base = {"actor_user_id": user.id, "actor_type": "user", "organization_id": organization_id}
+    standing = ctx.db.get(SupportStandingConsent, standing_id)
+    if standing is None or standing.organization_id != organization_id:
+        raise DomainError(404, "standing_consent_not_found", "Nie znaleziono zgody stalej.")
+    if standing.confirmed_at is not None or standing.revoked_at is not None:
+        raise _deny(ctx, action, "not_pending", "Zgoda stala nie czeka na potwierdzenie.", status=409, **base)
+    if user.id == standing.granted_by_user_id:
+        raise _deny(ctx, action, "second_approver_required",
+                    "Zgode stala musi potwierdzic inna osoba niz tworzaca.", **base)
+    if user.platform_role is not None:
+        raise _deny(ctx, action, "operator_cannot_approve", "Konto operatora Forvium nie moze udzielac zgod.", **base)
+    if user.mfa_secret and not consume_totp(user, mfa_code):
+        raise _deny(ctx, action, "mfa_required", "Potwierdz zgode stala kodem MFA.", status=401, **base)
+    standing.confirmed_by_user_id = user.id
+    standing.confirmed_at = clock.now()
+    ctx.audit.log(ctx.db, "support.standing_consent.confirmed", ip_address=ctx.ip,
+                  details={"standing_consent_id": standing.id, "created_by": standing.granted_by_user_id}, **base)
     return standing
 
 
@@ -123,5 +154,7 @@ def standing_out(s: SupportStandingConsent) -> dict:
         "created_at": iso(s.created_at),
         "valid_until": iso(s.valid_until),
         "revoked_at": iso(s.revoked_at),
-        "active": s.revoked_at is None and clock.now() < s.valid_until,
+        "confirmed_by_user_id": s.confirmed_by_user_id,
+        "pending_confirmation": s.confirmed_at is None and s.revoked_at is None,
+        "active": s.revoked_at is None and s.confirmed_at is not None and clock.now() < s.valid_until,
     }

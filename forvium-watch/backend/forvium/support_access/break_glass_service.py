@@ -75,7 +75,7 @@ def _load(ctx: Ctx, request_id: str) -> SupportAccessRequest:
 
 
 def approve_break_glass(ctx: Ctx, officer: User, *, request_id: str, mfa_code: str | None,
-                        note: str | None) -> SupportConsent:
+                        note: str | None, webauthn: dict | None = None) -> SupportConsent:
     action = "break_glass.approve"
     req = _load(ctx, request_id)
     base = {"actor_user_id": officer.id, "actor_type": "operator", "organization_id": req.organization_id,
@@ -85,8 +85,9 @@ def approve_break_glass(ctx: Ctx, officer: User, *, request_id: str, mfa_code: s
         raise _deny(ctx, action, "self_approval", "Wniosek musi zatwierdzic inna osoba (zasada 4 oczu).", **base)
     if req.status != RequestStatus.PENDING_SECOND_APPROVAL:
         raise _deny(ctx, action, "request_not_pending", "Wniosek nie oczekuje na zatwierdzenie.", status=409, **base)
-    _verify_operator_mfa(ctx, officer, mfa_code, action, organization_id=req.organization_id,
-                         support_request_id=req.id)
+    _verify_operator_mfa(ctx, officer, mfa_code, action, webauthn=webauthn,
+                         require_hardware=ctx.break_glass.requires_hardware_mfa,
+                         organization_id=req.organization_id, support_request_id=req.id)
 
     now = clock.now()
     req.status = RequestStatus.APPROVED

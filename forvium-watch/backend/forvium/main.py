@@ -12,9 +12,13 @@ from fastapi.responses import JSONResponse
 
 from forvium.audit.middleware import SupportAuditMiddleware
 from forvium.audit.router import router as audit_admin
+from forvium.security.anomalies import AnomalyPolicy, run_anomaly_job
+from forvium.security.router import router as security_admin
+from forvium.support_access.recording import RecordingPolicy
 from forvium.audit.service import AuditLog
 from forvium.core.config import Settings, get_settings
 from forvium.core.context import DomainError
+from forvium.core.crypto import keyring_from_settings, set_keyring
 from forvium.core.db import Database
 from forvium.identity.router import admin_router as identity_admin
 from forvium.identity.router import app_router as identity_app
@@ -43,6 +47,7 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
         jobs = [
             ("support-sweep", settings.support_sweep_interval_seconds, lambda: run_sweep(app)),
             ("email-delivery", settings.email_interval_seconds, lambda: run_delivery(app)),
+            ("anomaly-detection", settings.anomaly_interval_seconds, lambda: run_anomaly_job(app)),
             ("audit-export", settings.audit_export_interval_seconds if app.state.audit_sinks else 0,
              lambda: run_audit_export(app)),
         ]
@@ -55,6 +60,8 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
 
     app = FastAPI(title="Forvium Watch API", version="1.0.0", lifespan=lifespan)
 
+    # Bez poprawnego klucza danych aplikacja nie startuje (patrz core/crypto.py).
+    set_keyring(keyring_from_settings(settings))
     db = Database(settings.database_url)
     if settings.auto_create_schema:
         db.create_all()
@@ -69,6 +76,8 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
     app.state.email_sender = sender_from_settings(settings)
     app.state.throttle = Throttle(db.sessionmaker, app.state.audit)
     app.state.audit_sinks = sinks_from_settings(settings)
+    app.state.anomaly_policy = AnomalyPolicy()
+    app.state.recording_policy = RecordingPolicy()
     app.state.support_policy = policy or DEFAULT_POLICY
 
     @app.exception_handler(DomainError)
@@ -86,7 +95,7 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
 
     for router in (identity_app, organizations_app, support_app, notifications_app,
                    identity_admin, platform_admin, support_admin, break_glass_admin,
-                   audit_admin):
+                   audit_admin, security_admin):
         app.include_router(router)
 
     @app.get("/healthz")

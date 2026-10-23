@@ -34,6 +34,7 @@ class ConsentBasis(StrEnum):
 class RequestStatus(StrEnum):
     PENDING = "pending"
     PENDING_SECOND_APPROVAL = "pending_second_approval"  # Break Glass
+    PENDING_CUSTOMER_CONFIRMATION = "pending_customer_confirmation"  # zatwierdzanie przez dwie osoby
     APPROVED = "approved"
     REJECTED = "rejected"
     CANCELLED = "cancelled"
@@ -67,6 +68,10 @@ class SupportAccessRequest(Base):
     decided_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     decision_note: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    # Zatwierdzanie przez dwie osoby po stronie klienta
+    first_approved_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    first_approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    pending_grant: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # Break Glass
     incident_category: Mapped[str | None] = mapped_column(String(40), nullable=True)
     review_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -95,6 +100,7 @@ class SupportConsent(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     revoked_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     basis: Mapped[str] = mapped_column(String(16), default=ConsentBasis.CUSTOMER)
+    second_approver_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     standing_consent_id: Mapped[str | None] = mapped_column(ForeignKey("support_standing_consents.id"),
                                                             nullable=True, index=True)
 
@@ -120,6 +126,9 @@ class SupportStandingConsent(Base):
     note: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime)
     valid_until: Mapped[datetime] = mapped_column(DateTime)
+    # Przy zatwierdzaniu przez dwie osoby zgoda stala dziala dopiero po potwierdzeniu.
+    confirmed_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     revoked_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
@@ -145,6 +154,9 @@ class SupportSession(Base):
     unit_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
     started_at: Mapped[datetime] = mapped_column(DateTime)
     expires_at: Mapped[datetime] = mapped_column(DateTime)
+    # Przedluzenia (ponowne MFA + powiadomienie klienta).
+    extensions_count: Mapped[int] = mapped_column(Integer, default=0)
+    original_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default=SessionStatus.ACTIVE, index=True)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ended_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import os
 from datetime import UTC, timedelta
 
@@ -105,8 +106,31 @@ class Env:
                 stmt = stmt.where(getattr(AuditEvent, k) == v)
             return list(s.scalars(stmt))
 
+    # ---------------------------------------------------------- WebAuthn
+    def register_key(self, op_token: str, who: str):
+        """Rejestruje programowy klucz FIDO2 dla operatora i zwraca autentykator."""
+        from webauthn_helper import SoftAuthenticator
+
+        auth = SoftAuthenticator("admin.forvium.test", "https://admin.forvium.test")
+        r = self.client.post("/api/admin/webauthn/register/options", headers=self.h(op_token),
+                             json={"mfa_code": self.otp(who)})
+        assert r.status_code == 200, r.text
+        r = self.client.post("/api/admin/webauthn/register/verify", headers=self.h(op_token),
+                             json={"credential": auth.register(r.json()["options"]), "name": f"klucz-{who}"})
+        assert r.status_code == 200, r.text
+        return auth
+
+    def assertion(self, op_token: str, auth, **kwargs) -> dict:
+        r = self.client.post("/api/admin/webauthn/assertion/options", headers=self.h(op_token))
+        assert r.status_code == 200, r.text
+        return auth.assert_(r.json()["options"], **kwargs)
+
     def org_url(self, path: str, org="acme") -> str:
         return f"/api/app/orgs/{self.ids['orgs'][org]}{path}"
+
+
+# Klucze danych tylko dla testow (32 bajty, base64).
+TEST_DATA_KEYS = "k1:" + base64.b64encode(b"k" * 32).decode() + ",k0:" + base64.b64encode(b"0" * 32).decode()
 
 
 def _database_url(tmp_path) -> str:
@@ -129,6 +153,8 @@ def make_env(tmp_path, **settings_overrides) -> Env:
     clock.reset()
     url = _database_url(tmp_path)
     upgrade_head(url)  # schemat z migracji Alembic, tak jak w produkcji
+    settings_overrides.setdefault("data_keys", TEST_DATA_KEYS)
+    settings_overrides.setdefault("data_key_id", "k1")
     app = create_app(Settings(database_url=url, app_origin="https://app.forvium.test",
                               admin_origin="https://admin.forvium.test", **settings_overrides))
     with app.state.db.sessionmaker() as s:

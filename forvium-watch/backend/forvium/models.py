@@ -4,6 +4,7 @@ from forvium.audit.export import AuditExport  # noqa: F401
 from forvium.audit.models import AuditEvent  # noqa: F401
 from forvium.identity.models import User, UserSession  # noqa: F401
 from forvium.identity.throttle import RateLimitBucket  # noqa: F401
+from forvium.identity.webauthn import WebAuthnChallenge, WebAuthnCredential  # noqa: F401
 from forvium.notifications.models import EmailOutbox, Notification  # noqa: F401
 from forvium.organizations.models import (  # noqa: F401
     DiagnosticEvent,
@@ -18,4 +19,6 @@ from forvium.support_access.models import (  # noqa: F401
     SupportSession,
     SupportStandingConsent,
 )
+from forvium.security.anomalies import SecurityAlert  # noqa: F401
+from forvium.support_access.recording import SupportSessionSnapshot  # noqa: F401
 from forvium.support_tickets.models import SupportTicket  # noqa: F401

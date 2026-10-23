@@ -51,10 +51,58 @@
   }
   const fmt = (iso) => (iso ? new Date(iso).toLocaleString("pl-PL") : "—");
   const can = (perm) => me && me.permissions.includes(perm);
-  const askMfa = () => prompt("Ponowna weryfikacja MFA - podaj kod z aplikacji uwierzytelniajacej:");
   const table = (headers, rows) => el("table", {}, el("tr", {}, ...headers.map((h) => el("th", {}, h))), ...rows);
   const card = (...children) => el("div", { class: "card" }, ...children);
   const errorCard = (e) => card(el("p", { class: "error" }, e.message));
+
+  // ---------------------------------------------------------------- WebAuthn
+  let myKeys = [];
+  const b64uToBuf = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0)).buffer;
+  const bufToB64u = (b) => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+  async function createKey(options) {
+    const pk = { ...options, challenge: b64uToBuf(options.challenge),
+      user: { ...options.user, id: b64uToBuf(options.user.id) },
+      excludeCredentials: (options.excludeCredentials || []).map((c) => ({ ...c, id: b64uToBuf(c.id) })) };
+    const cred = await navigator.credentials.create({ publicKey: pk });
+    return { id: cred.id, rawId: bufToB64u(cred.rawId), type: cred.type, clientExtensionResults: {},
+      response: { clientDataJSON: bufToB64u(cred.response.clientDataJSON),
+        attestationObject: bufToB64u(cred.response.attestationObject),
+        transports: cred.response.getTransports ? cred.response.getTransports() : [] } };
+  }
+
+  async function getAssertion(options) {
+    const pk = { ...options, challenge: b64uToBuf(options.challenge),
+      allowCredentials: (options.allowCredentials || []).map((c) => ({ ...c, id: b64uToBuf(c.id) })) };
+    const cred = await navigator.credentials.get({ publicKey: pk });
+    return { id: cred.id, rawId: bufToB64u(cred.rawId), type: cred.type, clientExtensionResults: {},
+      response: { clientDataJSON: bufToB64u(cred.response.clientDataJSON),
+        authenticatorData: bufToB64u(cred.response.authenticatorData),
+        signature: bufToB64u(cred.response.signature),
+        userHandle: cred.response.userHandle ? bufToB64u(cred.response.userHandle) : null } };
+  }
+
+  // Ponowna weryfikacja: klucz bezpieczenstwa (jesli zarejestrowany) albo kod TOTP.
+  // Zwraca fragment body zadania albo null, gdy uzytkownik zrezygnowal.
+  async function stepUp(what, { requireKey = false } = {}) {
+    if (myKeys.length) {
+      const { options } = await api("/api/admin/webauthn/assertion/options", { method: "POST" });
+      return { webauthn: await getAssertion(options) };
+    }
+    if (requireKey) throw new Error("Ta operacja wymaga klucza bezpieczenstwa (WebAuthn). Dodaj klucz w zakladce Konto.");
+    const code = prompt(`${what}\nPonowna weryfikacja MFA - podaj kod z aplikacji uwierzytelniajacej:`);
+    return code ? { mfa_code: code } : null;
+  }
+
+  // Podglad/nagranie widoku operatora: iframe w piaskownicy bez skryptow.
+  function snapshotFrame() {
+    const frame = el("iframe", { class: "snapshot", sandbox: "", title: "Zrzut widoku sesji", referrerpolicy: "no-referrer" });
+    frame.show = (html) => {
+      frame.srcdoc = `<!doctype html><html><head><link rel="stylesheet" href="${location.origin}/styles.css"></head>` +
+        `<body class="snapshot-body"><main>${html}</main></body></html>`;
+    };
+    return frame;
+  }
 
   // ---------------------------------------------------------------- logowanie
   function renderLogin(error) {
@@ -86,10 +134,10 @@
   function tabs() {
     const items = [];
     if (can(P.request)) items.push(["Uzytkownicy", () => renderUsers()], ["Moje prosby", () => renderMyRequestsPage()]);
-    if (can(P.oversight)) items.push(["Nadzor sesji", () => renderOversight()]);
+    if (can(P.oversight)) items.push(["Nadzor sesji", () => renderOversight()], ["Alerty", () => renderAlerts()]);
     if (can(P.audit)) items.push(["Audyt", () => renderAudit()]);
     if (can(P.bgApprove) || can(P.bgReview)) items.push(["Break Glass", () => renderBreakGlass()]);
-    items.push(["Powiadomienia", () => renderNotifications()]);
+    items.push(["Powiadomienia", () => renderNotifications()], ["Konto", () => renderAccount()]);
     const nav = el("nav", { class: "card tabs" });
     for (const [label, fn] of items) {
       nav.append(el("a", { onclick: () => {
@@ -110,6 +158,7 @@
   async function start() {
     try { me = await api("/api/admin/me"); } catch (_) { return renderLogin(); }
     document.getElementById("who").textContent = `${me.user.display_name} (${me.platform_role}) · ID ${me.user.id}`;
+    myKeys = (await api("/api/admin/webauthn/credentials")).credentials;
     const { nav, first } = tabs();
     root.replaceChildren(nav, content);
     nav.querySelector("a").classList.add("active");
@@ -171,11 +220,13 @@
       e.preventDefault();
       const f = Object.fromEntries(new FormData(form));
       try {
+        const proof = await stepUp("Wyslanie prosby o dostep.", { requireKey: f.mode === "break_glass" && policy.break_glass_requires_webauthn });
+        if (!proof) return;
         const r = await api("/api/admin/support-access/requests", { method: "POST", body: {
+          ...proof,
           organization_id: f.organization_id, reference_user_id: u.id, reason: f.reason, ticket_number: f.ticket_number,
           duration_minutes: Number(f.duration_minutes), mode: f.mode, incident_category: f.incident_category || null,
           scopes: scopeBoxes.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => i.value),
-          mfa_code: f.mfa_code,
         } });
         msg.className = "";
         msg.textContent = {
@@ -195,7 +246,7 @@
       el("label", {}, "Numer zgloszenia"), ticketSel,
       el("label", {}, "Czas dostepu (min)"), duration,
       el("label", {}, "Zakres"), ...scopeBoxes,
-      el("label", {}, "Ponowna weryfikacja MFA"), el("input", { name: "mfa_code", required: true, inputmode: "numeric", autocomplete: "one-time-code" }),
+      el("p", { class: "muted" }, myKeys.length ? "Wyslanie potwierdzisz kluczem bezpieczenstwa." : "Wyslanie potwierdzisz kodem MFA."),
       msg,
       el("button", { type: "submit" }, "Wyslij prosbe o dostep"));
 
@@ -219,20 +270,34 @@
         } }, "Anuluj"));
       }
       if (r.active_session) {
+        actions.append(el("button", { class: "secondary", onclick: async () => {
+          const minutes = prompt("O ile minut przedluzyc sesje? (max 15)", "15");
+          if (!minutes) return;
+          const reason = prompt("Powod przedluzenia (klient zobaczy go w powiadomieniu):");
+          if (!reason) return;
+          try {
+            const proof = await stepUp("Przedluzenie sesji.", { requireKey: r.mode === "break_glass" });
+            if (!proof) return;
+            await api(`/api/admin/support-access/sessions/${r.active_session.id}/extend`, { method: "POST",
+              body: { minutes: Number(minutes), reason, ...proof } });
+          } catch (e) { alert(e.message); }
+          renderMyRequestsPage();
+        } }, "Przedluz"));
         actions.append(el("button", { class: "danger", onclick: async () => {
           await api(`/api/admin/support-access/sessions/${r.active_session.id}/end`, { method: "POST" }).catch((e) => alert(e.message));
           renderMyRequestsPage();
         } }, "Zakoncz sesje"));
       } else if (r.status === "approved" && r.consent && !r.consent.revoked_at && new Date(r.consent.valid_until) > new Date()) {
         actions.append(el("button", { onclick: async () => {
-          const code = askMfa();
-          if (!code) return;
           try {
-            const s = await api(`/api/admin/support-access/requests/${r.id}/sessions`, { method: "POST", body: { mfa_code: code } });
-            // Osobna karta app.forvium.com; noopener izoluje ja od sesji panelu admin.
-            window.open(s.launch_url, "_blank", "noopener,noreferrer");
-          } catch (e) { alert(e.message); }
-          renderMyRequestsPage();
+            const proof = await stepUp("Uruchomienie sesji wsparcia.", { requireKey: r.mode === "break_glass" });
+            if (!proof) return;
+            const s = await api(`/api/admin/support-access/requests/${r.id}/sessions`, { method: "POST", body: proof });
+            // Osobna karta app.forvium.com (noopener izoluje ja od panelu admin). Link zamiast window.open,
+            // bo po ceremonii WebAuthn przegladarka zablokowalaby automatycznie otwierane okno.
+            actions.replaceChildren(el("a", { class: "button-link", href: s.launch_url, target: "_blank",
+              rel: "noopener noreferrer" }, "Otworz sesje wsparcia (kod wazny 60 s)"));
+          } catch (e) { alert(e.message); renderMyRequestsPage(); }
         } }, "Uruchom sesje"));
       }
       const status = r.consent && r.consent.revoked_at ? "zgoda cofnieta" : r.status;
@@ -260,6 +325,7 @@
         el("td", {}, el("span", { class: "pill" }, s.status)), el("td", {}, fmt(s.ended_at || s.expires_at)),
         el("td", { class: "row" },
           el("button", { class: "secondary", onclick: () => renderAudit({ support_session_id: s.id }) }, "Audyt"),
+          can(P.audit) ? el("button", { class: "secondary", onclick: () => renderRecording(s) }, "Nagranie") : "",
           s.status === "active" ? el("button", { class: "danger", onclick: async () => {
             if (!confirm("Zakonczyc te sesje wsparcia?")) return;
             await api(`/api/admin/support-access/oversight/sessions/${s.id}/terminate`, { method: "POST" }).catch((e) => alert(e.message));
@@ -336,9 +402,11 @@
         el("pre", { class: "body" }, r.reason),
         el("div", { class: "row spaced" },
           el("button", { class: "danger", onclick: async () => {
-            const code = askMfa();
-            if (!code) return;
-            await api(`/api/admin/break-glass/requests/${r.id}/approve`, { method: "POST", body: { mfa_code: code } }).catch((e) => alert(e.message));
+            try {
+              const proof = await stepUp("Zatwierdzenie Break Glass.", { requireKey: true });
+              if (!proof) return;
+              await api(`/api/admin/break-glass/requests/${r.id}/approve`, { method: "POST", body: proof });
+            } catch (e) { alert(e.message); }
             renderBreakGlass();
           } }, "Zatwierdz (4 oczy)"),
           el("button", { class: "secondary", onclick: async () => {
@@ -364,6 +432,86 @@
         card(el("h3", {}, "Oczekujace na zatwierdzenie")), ...(pendingCards.length ? pendingCards : [card(el("p", { class: "muted" }, "Brak wnioskow."))]),
         card(el("h3", {}, "Do przegladu")), ...(reviewCards.length ? reviewCards : [card(el("p", { class: "muted" }, "Brak."))]));
     } catch (e) { show(errorCard(e)); }
+  }
+
+  // ------------------------------------------------------------ nagrania
+  async function renderRecording(sess) {
+    const show = begin();
+    const base = `/api/admin/support-access/sessions/${sess.id}/recording`;
+    const { frames } = await api(base);
+    if (!frames.length) return show(card(el("p", { class: "muted" }, "Brak nagrania tej sesji.")));
+    const frame = snapshotFrame();
+    const caption = el("p", { class: "muted" });
+    const slider = el("input", { type: "range", min: 1, max: frames.length, value: 1, class: "slider" });
+    const load = async () => {
+      const f = frames[Number(slider.value) - 1];
+      frame.show((await api(`${base}/${f.seq}`)).html);  // kazde otwarcie klatki trafia do audytu
+      caption.textContent = `Klatka ${slider.value}/${frames.length} · ${fmt(f.captured_at)} · widok: ${f.view}`;
+    };
+    slider.onchange = load;
+    show(card(el("h2", {}, "Nagranie sesji ", sess.ticket_number),
+      el("p", { class: "danger-text" }, "Nagranie zawiera dane klienta. Otwarcie kazdej klatki jest rejestrowane w audycie."),
+      caption, slider, frame));
+    load();
+  }
+
+  // -------------------------------------------------------------- alerty
+  async function renderAlerts(status = "open") {
+    const show = begin();
+    const sel = el("select", {}, ...[["open", "Otwarte"], ["acknowledged", "Przyjete"], ["resolved", "Rozwiazane"], ["", "Wszystkie"]]
+      .map(([v, l]) => el("option", { value: v, selected: v === status }, l)));
+    sel.onchange = () => renderAlerts(sel.value);
+    try {
+      const { alerts } = await api("/api/admin/security/alerts?status=" + status);
+      const act = (a, action) => async () => {
+        const notes = action === "resolve" ? prompt("Jak rozwiazano alert?") : "";
+        if (notes === null) return;
+        await api(`/api/admin/security/alerts/${a.id}/${action}`, { method: "POST", body: { notes } }).catch((e) => alert(e.message));
+        renderAlerts(status);
+      };
+      const rows = alerts.map((a) => el("tr", {},
+        el("td", {}, fmt(a.created_at)), el("td", { class: "sev-" + a.severity }, a.severity),
+        el("td", {}, a.title, a.auto_action ? el("div", { class: "muted" }, "akcja automatyczna: ", a.auto_action) : ""),
+        el("td", {}, a.operator_user_id || "—"), el("td", {}, el("span", { class: "pill" }, a.status)),
+        el("td", { class: "row" },
+          a.support_session_id && can(P.audit) ? el("button", { class: "secondary", onclick: () => renderAudit({ support_session_id: a.support_session_id }) }, "Audyt") : "",
+          a.status === "open" ? el("button", { class: "secondary", onclick: act(a, "acknowledge") }, "Przyjmij") : "",
+          a.status !== "resolved" ? el("button", { onclick: act(a, "resolve") }, "Rozwiaz") : "")));
+      show(card(el("h2", {}, "Alerty bezpieczenstwa"), el("label", {}, "Status"), sel),
+        card(table(["Czas", "Waga", "Alert", "Operator", "Status", ""], rows)));
+    } catch (e) { show(errorCard(e)); }
+  }
+
+  // ------------------------------------------------------- konto (klucze)
+  async function renderAccount() {
+    const show = begin();
+    myKeys = (await api("/api/admin/webauthn/credentials")).credentials;
+    const msg = el("p");
+    const rows = myKeys.map((k) => el("tr", {}, el("td", {}, k.name), el("td", {}, fmt(k.created_at)), el("td", {}, fmt(k.last_used_at)),
+      el("td", {}, el("button", { class: "danger", onclick: async () => {
+        if (!confirm(`Usunac klucz "${k.name}"?`)) return;
+        try {
+          const proof = await stepUp("Usuniecie klucza.");
+          if (!proof) return;
+          await api(`/api/admin/webauthn/credentials/${k.id}/remove`, { method: "POST", body: proof });
+        } catch (e) { alert(e.message); }
+        renderAccount();
+      } }, "Usun"))));
+    const name = el("input", { value: "Klucz bezpieczenstwa", maxlength: 100 });
+    show(card(el("h2", {}, "Klucze bezpieczenstwa (WebAuthn / passkeys)"),
+      el("p", { class: "muted" }, "Klucz sprzetowy FIDO2 lub passkey z weryfikacja (PIN / biometria). Zastepuje kod TOTP przy ponownej weryfikacji i jest wymagany w procedurze Break Glass."),
+      table(["Nazwa", "Dodany", "Ostatnio uzyty", ""], rows),
+      el("label", {}, "Nazwa nowego klucza"), name, msg,
+      el("button", { class: "spaced", onclick: async () => {
+        try {
+          const proof = await stepUp("Dodanie klucza bezpieczenstwa.");
+          if (!proof) return;
+          const { options } = await api("/api/admin/webauthn/register/options", { method: "POST", body: proof });
+          const credential = await createKey(options);
+          await api("/api/admin/webauthn/register/verify", { method: "POST", body: { credential, name: name.value } });
+          renderAccount();
+        } catch (e) { msg.className = "error"; msg.textContent = e.message; }
+      } }, "Dodaj klucz")));
   }
 
   // --------------------------------------------------------- powiadomienia

@@ -10,6 +10,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from forvium.core.context import Ctx
+from forvium.support_access.recording import purge_expired
 from forvium.support_access.service import sweep_expired
 
 
@@ -19,6 +20,7 @@ def run_sweep(app: FastAPI) -> int:
     try:
         ctx = Ctx.from_state(state, db, None)
         count = sweep_expired(ctx)
+        purge_expired(ctx, state.recording_policy)
         db.commit()
         return count
     except Exception:

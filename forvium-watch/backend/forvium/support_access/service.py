@@ -71,15 +71,31 @@ def _org_approvers(ctx: Ctx, organization_id: str, exclude_user_id: str | None =
     ]
 
 
-def _verify_operator_mfa(ctx: Ctx, operator: User, mfa_code: str | None, action: str, **audit_kwargs) -> None:
+def _verify_operator_mfa(ctx: Ctx, operator: User, mfa_code: str | None, action: str, *,
+                         webauthn: dict | None = None, require_hardware: bool = False, **audit_kwargs) -> None:
+    """Ponowna weryfikacja operatora: klucz WebAuthn (preferowany) albo jednorazowy kod TOTP.
+
+    `require_hardware=True` (np. Break Glass) akceptuje wylacznie WebAuthn.
+    """
+    from forvium.identity.webauthn import verify_assertion
+
     who = {"actor_user_id": operator.id, "actor_type": "operator", "ip_address": ctx.ip}
     ctx.throttle.check("mfa_stepup", operator.id, **who)
-    if consume_totp(operator, mfa_code):
+    if webauthn is not None:
+        ok, method = verify_assertion(ctx, operator, webauthn), "webauthn"
+    elif require_hardware:
+        raise _deny(ctx, action, "hardware_mfa_required",
+                    "Ta operacja wymaga potwierdzenia kluczem bezpieczenstwa (WebAuthn).",
+                    status=401, actor_user_id=operator.id, actor_type="operator", **audit_kwargs)
+    else:
+        ok, method = consume_totp(operator, mfa_code), "totp"
+    if ok:
         ctx.throttle.reset("mfa_stepup", operator.id)
         return
     ctx.throttle.fail("mfa_stepup", operator.id, **who)
     raise _deny(ctx, action, "mfa_reverification_failed", "Wymagana ponowna weryfikacja MFA operatora.",
-                status=401, actor_user_id=operator.id, actor_type="operator", **audit_kwargs)
+                status=401, actor_user_id=operator.id, actor_type="operator",
+                details={"method": method}, **audit_kwargs)
 
 
 def _require_platform(ctx: Ctx, operator: User, permission: PlatformPermission, action: str) -> None:
@@ -104,6 +120,7 @@ def create_request(
     mfa_code: str | None,
     mode: str = AccessMode.STANDARD,
     incident_category: str | None = None,
+    webauthn: dict | None = None,
 ) -> SupportAccessRequest:
     break_glass = mode == AccessMode.BREAK_GLASS
     action = "break_glass.request.create" if break_glass else "support.request.create"
@@ -166,7 +183,9 @@ def create_request(
                     f"Czas dostepu musi miescic sie w 1-{max_minutes} min.", status=422, **base)
 
     # Ponowna weryfikacja MFA jako ostatni krok przed zapisem (kod jest jednorazowy).
-    _verify_operator_mfa(ctx, operator, mfa_code, action, organization_id=organization_id)
+    _verify_operator_mfa(ctx, operator, mfa_code, action, webauthn=webauthn,
+                         require_hardware=break_glass and ctx.break_glass.requires_hardware_mfa,
+                         organization_id=organization_id)
 
     now = clock.now()
     req = SupportAccessRequest(
@@ -248,6 +267,7 @@ def find_matching_standing_consent(
         select(SupportStandingConsent).where(
             SupportStandingConsent.organization_id == organization_id,
             SupportStandingConsent.revoked_at.is_(None),
+            SupportStandingConsent.confirmed_at.is_not(None),
             SupportStandingConsent.valid_until > now,
         ).order_by(SupportStandingConsent.created_at)
     )
@@ -294,7 +314,8 @@ def _auto_approve_from_standing(ctx: Ctx, req: SupportAccessRequest, standing: S
 
 
 def _expire_stale_request(ctx: Ctx, req: SupportAccessRequest) -> None:
-    if req.status in (RequestStatus.PENDING, RequestStatus.PENDING_SECOND_APPROVAL) \
+    if req.status in (RequestStatus.PENDING, RequestStatus.PENDING_SECOND_APPROVAL,
+                      RequestStatus.PENDING_CUSTOMER_CONFIRMATION) \
             and clock.now() >= req.decision_deadline:
         req.status = RequestStatus.EXPIRED
         ctx.audit.log(ctx.db, "support.request.expired", actor_type="system", organization_id=req.organization_id,
@@ -319,11 +340,17 @@ def approve_request(
     unit_ids: list[str] | None,
     valid_hours: int | None,
     note: str | None,
-) -> SupportConsent:
+) -> SupportConsent | None:
     """Zatwierdzenie przez uprawnionego przedstawiciela organizacji.
 
     Uprawnienie `SUPPORT_ACCESS_APPROVE` jest sprawdzane wczesniej przez RBAC
     (zaleznosc trasy); tutaj dodatkowo blokujemy samozatwierdzenie.
+
+    Gdy organizacja wlaczyla zatwierdzanie przez dwie osoby, pierwsze
+    zatwierdzenie tylko zapisuje parametry zgody (status
+    `pending_customer_confirmation`), a zgoda powstaje dopiero po potwierdzeniu
+    przez INNEGO uprawnionego przedstawiciela (moze on jeszcze zawezic zakres).
+    Zwraca zgode albo None, gdy czeka ona na drugie zatwierdzenie.
     """
     action = "support.request.approve"
     req = _load_request_for_org(ctx, request_id, organization_id)
@@ -336,10 +363,16 @@ def approve_request(
         # Zgode wydaje wylacznie przedstawiciel klienta, nigdy konto operatorskie Forvium.
         raise _deny(ctx, action, "operator_cannot_approve",
                     "Konto operatora Forvium nie moze zatwierdzac dostepu serwisowego.", **base)
-    if req.status != RequestStatus.PENDING:
+    confirming = req.status == RequestStatus.PENDING_CUSTOMER_CONFIRMATION
+    if req.status != RequestStatus.PENDING and not confirming:
         raise _deny(ctx, action, "request_not_pending", "Prosba nie oczekuje na decyzje.", status=409, **base)
+    if confirming and approver.id == req.first_approved_by_user_id:
+        raise _deny(ctx, action, "second_approver_required",
+                    "Zgode musi potwierdzic inna osoba niz pierwsza zatwierdzajaca.", **base)
 
-    requested = parse_scopes(req.requested_scopes)
+    # Przy potwierdzeniu punktem odniesienia sa parametry z pierwszego zatwierdzenia.
+    grant = (req.pending_grant or {}) if confirming else {}
+    requested = parse_scopes(grant.get("scopes") or req.requested_scopes)
     try:
         granted = parse_scopes(scopes) if scopes is not None else requested
     except ValueError:
@@ -348,6 +381,14 @@ def approve_request(
         raise _deny(ctx, action, "scope_exceeds_request",
                     "Zgoda moze obejmowac tylko zakresy, o ktore wnioskowano.", status=422, **base)
 
+    if confirming:
+        first_units = grant.get("unit_ids")
+        if unit_ids is None:
+            unit_ids = first_units
+        elif first_units and not set(unit_ids) <= set(first_units):
+            raise _deny(ctx, action, "unit_exceeds_first_approval",
+                        "Potwierdzenie moze tylko zawezic jednostki.", status=422, **base)
+        valid_hours = min(valid_hours or grant["valid_hours"], grant["valid_hours"])
     if unit_ids:
         from forvium.organizations.models import OrgUnit
 
@@ -365,6 +406,27 @@ def approve_request(
                     f"Waznosc zgody: 1-{ctx.policy.max_consent_hours} h.", status=422, **base)
 
     now = clock.now()
+    org = ctx.db.get(Organization, organization_id)
+    if org.support_dual_approval and not confirming:
+        req.status = RequestStatus.PENDING_CUSTOMER_CONFIRMATION
+        req.first_approved_by_user_id = approver.id
+        req.first_approved_at = now
+        req.pending_grant = {"scopes": sorted(s.value for s in granted),
+                             "unit_ids": sorted(unit_ids) if unit_ids else None, "valid_hours": hours,
+                             "note": (note or "").strip() or None}
+        ctx.audit.log(ctx.db, "support.request.first_approval", ip_address=ctx.ip,
+                      details={"grant": req.pending_grant}, **base)
+        ctx.notifications.notify(
+            ctx.db, _org_approvers(ctx, organization_id, exclude_user_id=approver.id),
+            event="support_access.confirmation_required",
+            title=f"Potwierdz dostep serwisowy Forvium ({req.ticket_number})",
+            body=(f"{approver.display_name} zatwierdzil(a) dostep serwisowy (zakres: "
+                  f"{', '.join(req.pending_grant['scopes'])}). Wasza organizacja wymaga drugiego potwierdzenia: "
+                  "Ustawienia -> Dostep serwisowy."),
+            organization_id=organization_id, data={"request_id": req.id},
+        )
+        return None
+
     req.status = RequestStatus.APPROVED
     req.decided_by_user_id = approver.id
     req.decided_at = now
@@ -382,6 +444,9 @@ def approve_request(
         granted_at=now,
         valid_until=now + timedelta(hours=hours),
     )
+    if confirming:
+        consent.granted_by_user_id = req.first_approved_by_user_id
+        consent.second_approver_user_id = approver.id
     ctx.db.add(consent)
     ctx.db.flush()
 
@@ -398,7 +463,9 @@ def approve_request(
         "support.request.approved",
         ip_address=ctx.ip,
         details={"consent_id": consent.id, "scopes": consent.scopes, "unit_ids": consent.unit_ids,
-                 "valid_until": consent.valid_until.isoformat()},
+                 "valid_until": consent.valid_until.isoformat(),
+                 "first_approver": req.first_approved_by_user_id if confirming else approver.id,
+                 "second_approver": approver.id if confirming else None},
         **base,
     )
     return consent
@@ -411,7 +478,7 @@ def reject_request(ctx: Ctx, user: User, *, organization_id: str, request_id: st
             "support_request_id": req.id}
     if user.id == req.operator_user_id:
         raise _deny(ctx, action, "self_decision", "Nie mozna decydowac o wlasnej prosbie.", **base)
-    if req.status != RequestStatus.PENDING:
+    if req.status not in (RequestStatus.PENDING, RequestStatus.PENDING_CUSTOMER_CONFIRMATION):
         raise _deny(ctx, action, "request_not_pending", "Prosba nie oczekuje na decyzje.", status=409, **base)
     req.status = RequestStatus.REJECTED
     req.decided_by_user_id = user.id
@@ -518,7 +585,8 @@ def revoke_consent(ctx: Ctx, user: User, *, organization_id: str, consent_id: st
 
 
 def start_session(
-    ctx: Ctx, operator: User, *, request_id: str, mfa_code: str | None, duration_minutes: int | None
+    ctx: Ctx, operator: User, *, request_id: str, mfa_code: str | None, duration_minutes: int | None,
+    webauthn: dict | None = None,
 ) -> tuple[SupportSession, str]:
     action = "support.session.start"
     req = ctx.db.get(SupportAccessRequest, request_id)
@@ -569,8 +637,9 @@ def start_session(
     expires_at = min(now + timedelta(minutes=minutes), consent.valid_until)
 
     # Zapisy dopiero po wszystkich sprawdzeniach (odmowy sa audytowane w osobnej transakcji).
-    _verify_operator_mfa(ctx, operator, mfa_code, action, organization_id=req.organization_id,
-                         support_request_id=req.id)
+    _verify_operator_mfa(ctx, operator, mfa_code, action, webauthn=webauthn,
+                         require_hardware=req.mode == AccessMode.BREAK_GLASS and ctx.break_glass.requires_hardware_mfa,
+                         organization_id=req.organization_id, support_request_id=req.id)
     if active is not None:
         _terminate_session(ctx, active, SessionStatus.EXPIRED, "session_expired", None)
 
@@ -730,6 +799,68 @@ def validate_support_token(ctx: Ctx, token: str) -> ValidatedSupportSession:
     return ValidatedSupportSession(session, operator, reference, org, current & frozen, req.mode)
 
 
+def extend_session(ctx: Ctx, operator: User, *, session_id: str, minutes: int, reason: str,
+                   mfa_code: str | None, webauthn: dict | None = None) -> SupportSession:
+    """Przedluzenie trwajacej sesji zamiast otwierania nowej: ponowne MFA, uzasadnienie,
+    limity liczby i lacznego czasu, nigdy poza waznosc zgody; klient dostaje powiadomienie."""
+    action = "support.session.extend"
+    session = ctx.db.get(SupportSession, session_id)
+    if session is None or session.operator_user_id != operator.id:
+        raise DomainError(404, "session_not_found", "Nie znaleziono sesji.")
+    req = ctx.db.get(SupportAccessRequest, session.request_id)
+    break_glass = req.mode == AccessMode.BREAK_GLASS
+    base = {"actor_user_id": operator.id, "actor_type": "operator", "organization_id": session.organization_id,
+            "on_behalf_of_user_id": session.reference_user_id, "support_session_id": session.id,
+            "support_request_id": session.request_id}
+    now = clock.now()
+    _require_platform(ctx, operator, PlatformPermission.SUPPORT_ACCESS_START, action)
+    if session.status != SessionStatus.ACTIVE or now >= session.expires_at:
+        raise _deny(ctx, action, "session_not_active", "Sesja nie jest juz aktywna.", status=409, **base)
+    consent = ctx.db.get(SupportConsent, session.consent_id)
+    if consent is None or consent.revoked_at is not None or now >= consent.valid_until:
+        raise _deny(ctx, action, "consent_inactive", "Zgoda klienta zostala cofnieta lub wygasla.", **base)
+    if session.extensions_count >= ctx.policy.max_extensions:
+        raise _deny(ctx, action, "extension_limit", "Wykorzystano limit przedluzen tej sesji.", status=409, **base)
+    if not 1 <= minutes <= ctx.policy.max_extension_minutes:
+        raise _deny(ctx, action, "duration_invalid",
+                    f"Przedluzenie: 1-{ctx.policy.max_extension_minutes} min.", status=422, **base)
+    if len((reason or "").strip()) < ctx.policy.min_reason_length:
+        raise _deny(ctx, action, "reason_too_short", "Podaj powod przedluzenia.", status=422, **base)
+    total_max = ctx.break_glass.max_total_session_minutes if break_glass else ctx.policy.max_total_session_minutes
+    new_expires = min(session.expires_at + timedelta(minutes=minutes),
+                      session.started_at + timedelta(minutes=total_max), consent.valid_until)
+    if new_expires <= session.expires_at:
+        raise _deny(ctx, action, "extension_window_exhausted",
+                    "Nie mozna przedluzyc: osiagnieto limit czasu sesji lub waznosci zgody.", status=409, **base)
+    _verify_operator_mfa(ctx, operator, mfa_code, action, webauthn=webauthn,
+                         require_hardware=break_glass and ctx.break_glass.requires_hardware_mfa,
+                         organization_id=session.organization_id, support_request_id=session.request_id)
+
+    previous = session.expires_at
+    session.original_expires_at = session.original_expires_at or previous
+    session.expires_at = new_expires
+    session.extensions_count += 1
+    added = int((new_expires - previous).total_seconds() // 60)
+    ctx.audit.log(ctx.db, "support.session.extended", ip_address=ctx.ip,
+                  details={"previous_expires_at": previous.isoformat(), "expires_at": new_expires.isoformat(),
+                           "extension": session.extensions_count, "reason": reason.strip()}, **base)
+    ctx.notifications.notify(
+        ctx.db, _org_approvers(ctx, session.organization_id, exclude_user_id=operator.id),
+        event="support_access.session_extended",
+        title=f"Przedluzono sesje wsparcia Forvium ({session.ticket_number})",
+        body=(f"Operator {operator.id} przedluzyl sesje tylko do odczytu o {added} min (do "
+              f"{new_expires.isoformat()} UTC). Powod: {reason.strip()}. Mozesz ja zakonczyc w kazdej chwili: "
+              "Ustawienia -> Dostep serwisowy."),
+        organization_id=session.organization_id, data={"session_id": session.id},
+    )
+    if break_glass:
+        from forvium.support_access.break_glass_service import notify_security_team
+
+        notify_security_team(ctx, f"Break Glass: przedluzenie sesji ({session.ticket_number})",
+                             f"Sesja {session.id} przedluzona do {new_expires.isoformat()} UTC. Powod: {reason.strip()}")
+    return session
+
+
 def end_session(ctx: Ctx, session: SupportSession, by_user_id: str, reason: str,
                 actor_type: str | None = None) -> None:
     _terminate_session(ctx, session, SessionStatus.ENDED, reason, by_user_id, actor_type)
@@ -746,7 +877,8 @@ def sweep_expired(ctx: Ctx) -> int:
         count += 1
     for req in ctx.db.scalars(
         select(SupportAccessRequest).where(SupportAccessRequest.status.in_(
-            [RequestStatus.PENDING, RequestStatus.PENDING_SECOND_APPROVAL]),
+            [RequestStatus.PENDING, RequestStatus.PENDING_SECOND_APPROVAL,
+             RequestStatus.PENDING_CUSTOMER_CONFIRMATION]),
                                            SupportAccessRequest.decision_deadline <= now)
     ):
         _expire_stale_request(ctx, req)

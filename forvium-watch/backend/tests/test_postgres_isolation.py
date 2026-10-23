@@ -85,7 +85,10 @@ def test_rls_limits_support_transaction_to_its_organization(app_role_env):
 
 def test_full_flow_works_under_app_role_with_rls(app_role_env):
     env = app_role_env
-    app = create_app(Settings(database_url=env.app_url, app_origin="https://app.forvium.test",
+    from conftest import TEST_DATA_KEYS
+
+    app = create_app(Settings(database_url=env.app_url, data_keys=TEST_DATA_KEYS, data_key_id="k1",
+                              app_origin="https://app.forvium.test",
                               admin_origin="https://admin.forvium.test"))
     env2 = copy.copy(env)
     env2.app = app

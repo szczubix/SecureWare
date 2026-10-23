@@ -10,12 +10,14 @@ from forvium.core.context import Ctx, DomainError, get_ctx
 from forvium.platform_admin.rbac import PlatformPermission as PP
 from forvium.support_access import service
 from forvium.support_access import break_glass_service as bg
+from forvium.support_access import recording
 from forvium.support_access.break_glass import IncidentCategory
 from forvium.support_access.models import SessionStatus, SupportAccessRequest, SupportConsent, SupportSession
 from forvium.support_access.schemas import (
     BreakGlassDecisionIn,
     BreakGlassReviewIn,
     CreateRequestIn,
+    ExtendSessionIn,
     StartSessionIn,
     consent_out,
     request_out,
@@ -36,6 +38,7 @@ def policy(request: Request, op: OperatorPrincipal = Depends(require_platform_pe
         "scopes": [s.value for s in SupportScope],
         "operator_allowed_scopes": sorted(s.value for s in operator_scope_cap(op.user.platform_role)),
         "break_glass_enabled": request.app.state.break_glass_policy.enabled,
+        "break_glass_requires_webauthn": request.app.state.break_glass_policy.requires_hardware_mfa,
         "break_glass_max_session_minutes": request.app.state.break_glass_policy.max_session_minutes,
         "break_glass_min_justification": request.app.state.break_glass_policy.min_justification_length,
         "incident_categories": [c.value for c in IncidentCategory],
@@ -49,6 +52,7 @@ def create(body: CreateRequestIn, op: OperatorPrincipal = Depends(require_platfo
         ctx, op.user, organization_id=body.organization_id, reference_user_id=body.reference_user_id,
         reason=body.reason, ticket_number=body.ticket_number, duration_minutes=body.duration_minutes,
         scopes=body.scopes, mfa_code=body.mfa_code, mode=body.mode, incident_category=body.incident_category,
+        webauthn=body.webauthn,
     )
     return {"request": request_out(req)}
 
@@ -80,10 +84,19 @@ def start(request_id: str, body: StartSessionIn, request: Request,
           op: OperatorPrincipal = Depends(require_platform_permission(PP.SUPPORT_ACCESS_START)),
           ctx: Ctx = Depends(get_ctx)):
     session, code = service.start_session(ctx, op.user, request_id=request_id, mfa_code=body.mfa_code,
-                                          duration_minutes=body.duration_minutes)
+                                          duration_minutes=body.duration_minutes, webauthn=body.webauthn)
     app_origin = request.app.state.settings.app_origin
     # Kod jest przekazywany we fragmencie URL (#), wiec nie trafia do logow serwera.
     return {"session": session_out(session), "launch_url": f"{app_origin}/support-launch.html#code={code}"}
+
+
+@router.post("/sessions/{session_id}/extend")
+def extend(session_id: str, body: ExtendSessionIn,
+           op: OperatorPrincipal = Depends(require_platform_permission(PP.SUPPORT_ACCESS_START)),
+           ctx: Ctx = Depends(get_ctx)):
+    session = service.extend_session(ctx, op.user, session_id=session_id, minutes=body.minutes, reason=body.reason,
+                                     mfa_code=body.mfa_code, webauthn=body.webauthn)
+    return {"session": session_out(session)}
 
 
 @router.post("/sessions/{session_id}/end")
@@ -120,7 +133,8 @@ def bg_requests(status: str | None = None, review_pending: bool = False,
 def bg_approve(request_id: str, body: BreakGlassDecisionIn,
                op: OperatorPrincipal = Depends(require_platform_permission(PP.BREAK_GLASS_APPROVE)),
                ctx: Ctx = Depends(get_ctx)):
-    consent = bg.approve_break_glass(ctx, op.user, request_id=request_id, mfa_code=body.mfa_code, note=body.note)
+    consent = bg.approve_break_glass(ctx, op.user, request_id=request_id, mfa_code=body.mfa_code, note=body.note,
+                                     webauthn=body.webauthn)
     return {"consent": consent_out(consent)}
 
 
@@ -175,3 +189,25 @@ def oversight_terminate(session_id: str,
         raise DomainError(404, "session_not_found", "Nie znaleziono sesji.")
     service.end_session(ctx, session, op.user.id, "terminated_by_supervisor", actor_type="operator")
     return {"session": session_out(session)}
+
+
+
+# ------------------------------------------------------------- nagrania sesji
+
+@router.get("/sessions/{session_id}/recording")
+def admin_recording_list(session_id: str, op: OperatorPrincipal = Depends(require_platform_permission(PP.AUDIT_READ)),
+                         ctx: Ctx = Depends(get_ctx)):
+    return {"frames": recording.recording_index(ctx, None, session_id)}
+
+
+@router.get("/sessions/{session_id}/recording/{seq}")
+def admin_recording_get(session_id: str, seq: int,
+                        op: OperatorPrincipal = Depends(require_platform_permission(PP.AUDIT_READ)),
+                        ctx: Ctx = Depends(get_ctx)):
+    """Nagranie zawiera dane klienta - kazde otwarcie klatki przez Forvium trafia do audytu."""
+    frame = recording.recording_frame(ctx, None, session_id, seq)
+    session = ctx.db.get(SupportSession, session_id)
+    ctx.audit.log(ctx.db, "support.recording.viewed", actor_user_id=op.user.id, actor_type="operator",
+                  organization_id=session.organization_id, support_session_id=session_id, ip_address=ctx.ip,
+                  details={"seq": seq})
+    return frame

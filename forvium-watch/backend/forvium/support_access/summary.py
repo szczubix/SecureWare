@@ -26,6 +26,7 @@ END_REASON_LABELS = {
     "consent_expired": "zgoda wygasla",
     "session_expired": "uplynal czas sesji",
     "ticket_closed": "zgloszenie zostalo zamkniete",
+    "terminated_by_anomaly": "zakonczona automatycznie przez system bezpieczenstwa Forvium",
 }
 
 

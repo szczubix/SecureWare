@@ -34,8 +34,8 @@ from forvium.support_access import service as support
 from forvium.support_access.models import SupportSession
 
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
-# Jedyne trasy zapisu dostepne w trybie wsparcia (zakonczenie wlasnej sesji).
-SUPPORT_WRITE_ALLOWLIST = frozenset({"/api/app/support/session/end"})
+# Jedyne trasy zapisu w trybie wsparcia: zakonczenie wlasnej sesji i zrzut widoku dla klienta.
+SUPPORT_WRITE_ALLOWLIST = frozenset({"/api/app/support/session/end", "/api/app/support/session/snapshot"})
 
 
 def _bearer(request: Request) -> str | None:

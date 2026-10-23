@@ -18,7 +18,7 @@
   function el(tag, attrs = {}, ...children) {
     const node = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs)) {
-      if (k === "onclick" || k === "onsubmit" || k === "onchange") node[k] = v;
+      if (k.startsWith("on")) node[k] = v;
       else if (v !== false && v != null) node.setAttribute(k, v === true ? "" : v);
     }
     for (const c of children.flat()) node.append(c instanceof Node ? c : document.createTextNode(String(c ?? "")));
@@ -36,6 +36,19 @@
   }
 
   const fmt = (iso) => (iso ? new Date(iso).toLocaleString("pl-PL") : "—");
+  const card = (...children) => el("div", { class: "card" }, ...children);
+  const checkedValues = (labels) => labels.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => i.value);
+  const askMfa = (what) => prompt(`${what}\nPotwierdz kodem MFA z aplikacji uwierzytelniajacej:`);
+
+  // Podglad zrzutu widoku operatora: iframe w piaskownicy BEZ skryptow (tresc i tak jest sanityzowana na serwerze).
+  function snapshotFrame() {
+    const frame = el("iframe", { class: "snapshot", sandbox: "", title: "Widok operatora Forvium", referrerpolicy: "no-referrer" });
+    frame.show = (html) => {
+      frame.srcdoc = `<!doctype html><html><head><link rel="stylesheet" href="${location.origin}/styles.css"></head>` +
+        `<body class="snapshot-body"><main>${html}</main></body></html>`;
+    };
+    return frame;
+  }
 
   // ------------------------------------------------------------- tryb wsparcia
   let bannerTimer;
@@ -44,7 +57,17 @@
     clearInterval(bannerTimer);
     banner.hidden = false;
     banner.replaceChildren(el("span", { class: "title" }, "Sesja wsparcia Forvium zakonczona"));
-    root.replaceChildren(el("div", { class: "card" }, "Dostep serwisowy wygasl lub zostal zakonczony. Mozesz zamknac te karte."));
+    root.replaceChildren(card("Dostep serwisowy wygasl lub zostal zakonczony. Mozesz zamknac te karte."));
+  }
+
+  // Zrzut biezacego widoku dla klienta (podglad na zywo i nagranie). Pola formularzy nie sa wysylane.
+  async function captureView(label) {
+    if (!supportToken) return;
+    const clone = root.cloneNode(true);
+    clone.querySelectorAll("input:not([type=checkbox]):not([type=radio]), textarea, select").forEach((n) => n.remove());
+    try {
+      await api("/api/app/support/session/snapshot", { method: "POST", body: { view: label, html: clone.innerHTML } });
+    } catch (_) { /* zrzut nie moze blokowac pracy - np. limit czestotliwosci */ }
   }
 
   async function startSupportMode() {
@@ -64,6 +87,7 @@
         el("span", {}, "Organizacja: ", info.organization.name),
         el("span", {}, "Operator: ", info.operator_id),
         el("span", {}, "Zgloszenie: ", info.ticket_number),
+        el("span", {}, "Klient widzi ten ekran na zywo"),
         timeEl),
       el("button", { onclick: async () => {
         try { await api("/api/app/support/session/end", { method: "POST" }); } catch (_) {}
@@ -72,8 +96,8 @@
     );
     tick();
     bannerTimer = setInterval(tick, 1000);
-    // Okresowa rewalidacja (cofniecie zgody po stronie klienta konczy sesje natychmiast w API).
-    setInterval(() => api("/api/app/support/session").then((i) => { remaining = i.remaining_seconds; }).catch(() => {}), 30000);
+    // Rewalidacja co 15 s: przedluzenie sesji, cofniecie zgody, zakonczenie przez klienta.
+    setInterval(() => api("/api/app/support/session").then((i) => { remaining = i.remaining_seconds; }).catch(() => {}), 15000);
     document.getElementById("who").textContent = "Widok uzytkownika: " + info.reference_user.display_name;
     renderOrg(info.organization, info.permissions);
   }
@@ -82,16 +106,15 @@
   function renderLogin(error) {
     const form = el("form", { class: "card", onsubmit: async (e) => {
       e.preventDefault();
-      const f = new FormData(form);
       try {
-        const r = await api("/api/app/auth/login", { method: "POST", body: Object.fromEntries(f) });
+        const r = await api("/api/app/auth/login", { method: "POST", body: Object.fromEntries(new FormData(form)) });
         sessionStorage.setItem(USER_KEY, r.token);
         renderHome();
       } catch (err) { renderLogin(err.message); }
     } },
       el("h2", {}, "Logowanie"),
-      el("label", {}, "E-mail"), el("input", { name: "email", type: "email", required: true }),
-      el("label", {}, "Haslo"), el("input", { name: "password", type: "password", required: true }),
+      el("label", {}, "E-mail"), el("input", { name: "email", type: "email", required: true, autocomplete: "username" }),
+      el("label", {}, "Haslo"), el("input", { name: "password", type: "password", required: true, autocomplete: "current-password" }),
       el("label", {}, "Kod MFA"), el("input", { name: "mfa_code", inputmode: "numeric", autocomplete: "one-time-code" }),
       el("p", { class: "error" }, error || ""),
       el("button", { type: "submit" }, "Zaloguj"));
@@ -103,7 +126,7 @@
     try { me = await api("/api/app/me"); } catch (_) { return renderLogin(); }
     document.getElementById("who").textContent = me.user.display_name;
     if (me.organizations.length === 1) return renderOrg(me.organizations[0]);
-    root.replaceChildren(el("div", { class: "card" }, el("h2", {}, "Organizacje"),
+    root.replaceChildren(card(el("h2", {}, "Organizacje"),
       ...me.organizations.map((o) => el("p", {}, el("a", { href: "#", onclick: (e) => { e.preventDefault(); renderOrg(o); } }, o.name)))));
   }
 
@@ -112,7 +135,14 @@
     const content = el("div");
     // Kazdy widok renderuje sie do wlasnego, swiezego kontenera - wynik wolniejszego,
     // nieaktualnego widoku trafia do odpietego elementu i niczego nie nadpisuje.
-    const show = (fn) => { const pane = el("div"); content.replaceChildren(pane); fn(pane); };
+    let current = null;
+    const show = async (label, fn) => {
+      const pane = el("div");
+      current = pane;
+      content.replaceChildren(pane);
+      await fn(pane);
+      if (pane === current) captureView(label);
+    };
     const views = {
       "Dashboard": (pane) => viewDashboard(org, pane),
       "Jednostki": (pane) => viewList(org, pane, "/units", "units", ["name"]),
@@ -125,9 +155,9 @@
       views["Powiadomienia"] = (pane) => viewNotifications(pane);
     }
     const nav = el("nav", { class: "card" }, el("strong", {}, org.name, " "),
-      ...Object.entries(views).map(([label, fn]) => el("a", { onclick: () => show(fn) }, label)));
+      ...Object.entries(views).map(([label, fn]) => el("a", { onclick: () => show(label, fn) }, label)));
     root.replaceChildren(nav, content);
-    show(views["Dashboard"]);
+    show("Dashboard", views["Dashboard"]);
   }
 
   async function guarded(content, fn) {
@@ -138,82 +168,54 @@
   }
 
   function viewDashboard(org, content) {
-    guarded(content, async () => {
+    return guarded(content, async () => {
       const d = await api(`/api/app/orgs/${org.id}/dashboard`);
       const tiles = [["Jednostki", d.units], ["Technologie", d.technologies]];
       if (d.cves) tiles.push(["CVE", d.cves.total], ["Krytyczne", d.cves.critical], ["Wysokie", d.cves.high]);
-      content.replaceChildren(el("div", { class: "card" }, el("h2", {}, "Dashboard"),
-        el("div", { class: "grid" }, ...tiles.map(([k, v]) => el("div", { class: "card" }, el("div", { class: "muted" }, k), el("h2", {}, v))))));
+      content.replaceChildren(card(el("h2", {}, "Dashboard"),
+        el("div", { class: "grid" }, ...tiles.map(([k, v]) => card(el("div", { class: "muted" }, k), el("h2", {}, v))))));
     });
   }
 
   function viewList(org, content, path, key, cols) {
-    guarded(content, async () => {
+    return guarded(content, async () => {
       const d = await api(`/api/app/orgs/${org.id}${path}`);
-      content.replaceChildren(el("div", { class: "card" }, el("table", {},
+      content.replaceChildren(card(el("table", {},
         el("tr", {}, ...cols.map((c) => el("th", {}, c))),
         ...d[key].map((row) => el("tr", {}, ...cols.map((c) => el("td", {}, row[c])))))));
     });
   }
 
   function viewDiagnostics(org, content) {
-    guarded(content, async () => {
+    return guarded(content, async () => {
       const [cfg, errs] = await Promise.all([api(`/api/app/orgs/${org.id}/config/status`), api(`/api/app/orgs/${org.id}/errors`)]);
       content.replaceChildren(
-        el("div", { class: "card" }, el("h3", {}, "Stan konfiguracji"),
+        card(el("h3", {}, "Stan konfiguracji"),
           el("p", {}, "SMTP skonfigurowany: ", cfg.smtp_configured ? "tak" : "nie"),
           el("p", {}, "Webhooki: ", cfg.webhooks_count, " · Sekrety: ", cfg.secrets_count, " · Plan: ", cfg.subscription_plan)),
-        el("div", { class: "card" }, el("h3", {}, "Bledy"), el("table", {},
+        card(el("h3", {}, "Bledy"), el("table", {},
           ...errs.errors.map((e) => el("tr", {}, el("td", {}, fmt(e.created_at)), el("td", {}, e.level), el("td", {}, e.component), el("td", {}, e.message))))));
     });
   }
 
   // ------------------------------------------------- dostep serwisowy (klient)
   function viewSupportAccess(org, content) {
-    guarded(content, async () => {
-      const h = await api(`/api/app/orgs/${org.id}/support-access`);
-      const pending = h.requests.filter((r) => r.status === "pending");
+    return guarded(content, async () => {
+      const [h, settings] = await Promise.all([api(`/api/app/orgs/${org.id}/support-access`),
+        api(`/api/app/orgs/${org.id}/support-access/settings`)]);
       const reload = () => viewSupportAccess(org, content);
       const { units } = await api(`/api/app/orgs/${org.id}/units`).catch(() => ({ units: [] }));
       const unitName = Object.fromEntries(units.map((u) => [u.id, u.name]));
-
-      const pendingCards = pending.map((r) => {
-        const scopes = r.scopes.map((s) => el("label", {}, el("input", { type: "checkbox", value: s, checked: true }), " ", SCOPE_LABELS[s] || s));
-        // Pusty wybor = wszystkie jednostki; zaznaczenie obejmuje tez jednostki podrzedne.
-        const unitBoxes = units.map((u) => el("label", {}, el("input", { type: "checkbox", value: u.id }), " ", u.name));
-        const hours = el("input", { type: "number", min: 1, max: 168, value: 24 });
-        const note = el("input", { placeholder: "Notatka (opcjonalnie)" });
-        return el("div", { class: "card" },
-          el("h3", {}, "Prosba o dostep · ", r.ticket_number),
-          el("p", {}, "Operator Forvium: ", r.operator_id),
-          el("p", {}, "Powod: ", r.reason),
-          el("p", {}, "Tryb: ", el("span", { class: "pill" }, r.access_level), " · Czas sesji: ", r.duration_minutes, " min"),
-          el("label", {}, "Zakres zgody"), ...scopes,
-          ...(unitBoxes.length ? [el("label", {}, "Ogranicz do jednostek (brak zaznaczenia = wszystkie)"), ...unitBoxes] : []),
-          el("label", {}, "Zgoda wazna (godziny)"), hours,
-          el("label", {}, "Notatka"), note,
-          el("div", { class: "row spaced" },
-            el("button", { onclick: async () => {
-              const checked = (labels) => labels.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => i.value);
-              const unitIds = checked(unitBoxes);
-              await api(`/api/app/orgs/${org.id}/support-access/requests/${r.id}/approve`, { method: "POST",
-                body: { scopes: checked(scopes), unit_ids: unitIds.length ? unitIds : null,
-                        valid_hours: Number(hours.value), note: note.value } }).catch((e) => alert(e.message));
-              reload();
-            } }, "Zatwierdz"),
-            el("button", { class: "danger", onclick: async () => {
-              await api(`/api/app/orgs/${org.id}/support-access/requests/${r.id}/reject`, { method: "POST", body: { note: note.value } }).catch((e) => alert(e.message));
-              reload();
-            } }, "Odrzuc")));
-      });
+      const decisionCards = h.requests.filter((r) => r.status === "pending" || r.status === "pending_customer_confirmation")
+        .map((r) => decisionCard(org, r, units, reload));
 
       const consentRows = h.requests.filter((r) => r.consent).map((r) => {
         const c = r.consent;
         const active = !c.revoked_at && new Date(c.valid_until) > new Date();
         const scopeText = c.scopes.map((s) => SCOPE_LABELS[s] || s).join(", ") +
           (c.unit_ids ? " · jednostki: " + c.unit_ids.map((id) => unitName[id] || id).join(", ") : "");
-        const basis = { customer: "decyzja klienta", standing: "zgoda stala",
-          break_glass: el("span", { class: "danger-text" }, "BREAK GLASS") }[c.basis] || c.basis;
+        const basis = { customer: c.second_approver_user_id ? "decyzja klienta (2 osoby)" : "decyzja klienta",
+          standing: "zgoda stala", break_glass: el("span", { class: "danger-text" }, "BREAK GLASS") }[c.basis] || c.basis;
         return el("tr", {}, el("td", {}, r.ticket_number), el("td", {}, r.operator_id), el("td", {}, basis), el("td", {}, scopeText),
           el("td", {}, fmt(c.valid_until)), el("td", {}, c.revoked_at ? "cofnieta " + fmt(c.revoked_at) : active ? "aktywna" : "wygasla"),
           el("td", {}, active ? el("button", { class: "danger", onclick: async () => {
@@ -222,14 +224,17 @@
           } }, "Cofnij zgode") : ""));
       });
 
-      const activity = el("div");
+      const panel = el("div");
       const sessionRows = h.sessions.map((s) => el("tr", {},
         el("td", {}, fmt(s.started_at)), el("td", {}, s.operator_id), el("td", {}, s.ticket_number),
-        el("td", {}, el("span", { class: "pill" }, s.status)), el("td", {}, fmt(s.ended_at || s.expires_at)),
+        el("td", {}, el("span", { class: "pill" }, s.status), s.extensions_count ? ` (przedluzona ${s.extensions_count}x)` : ""),
+        el("td", {}, fmt(s.ended_at || s.expires_at)),
         el("td", { class: "row" },
+          s.status === "active" ? el("button", { onclick: () => livePanel(org, s, panel, reload) }, "Podglad na zywo") : "",
+          el("button", { class: "secondary", onclick: () => replayPanel(org, s, panel) }, "Nagranie"),
           el("button", { class: "secondary", onclick: async () => {
             const a = await api(`/api/app/orgs/${org.id}/support-access/sessions/${s.id}/activity`);
-            activity.replaceChildren(el("div", { class: "card" }, el("h3", {}, "Aktywnosc sesji ", s.id), el("table", {},
+            panel.replaceChildren(card(el("h3", {}, "Aktywnosc sesji ", s.id), el("table", {},
               ...a.events.map((e) => el("tr", {}, el("td", {}, fmt(e.occurred_at)), el("td", {}, e.action),
                 el("td", {}, e.method || ""), el("td", {}, e.route || ""), el("td", {}, e.outcome))))));
           } }, "Aktywnosc"),
@@ -239,45 +244,161 @@
           } }, "Zakoncz") : "")));
 
       content.replaceChildren(
-        el("div", { class: "card" }, el("h2", {}, "Dostep serwisowy Forvium"),
-          el("p", { class: "muted" }, "Operator Forvium moze zobaczyc Twoja organizacje wylacznie w trybie tylko do odczytu, w zakresie i czasie, ktore zatwierdzisz. Zgode mozna cofnac w kazdej chwili.")),
-        ...(pendingCards.length ? pendingCards : [el("div", { class: "card muted" }, "Brak oczekujacych prosb.")]),
-        el("div", { class: "card" }, el("h3", {}, "Zgody"), el("table", {},
+        card(el("h2", {}, "Dostep serwisowy Forvium"),
+          el("p", { class: "muted" }, "Operator Forvium moze zobaczyc Twoja organizacje wylacznie w trybie tylko do odczytu, w zakresie i czasie, ktore zatwierdzisz. Trwajaca sesje mozesz ogladac na zywo i przerwac w kazdej chwili.")),
+        settingsCard(org, settings, reload),
+        ...(decisionCards.length ? decisionCards : [el("div", { class: "card muted" }, "Brak oczekujacych prosb.")]),
+        card(el("h3", {}, "Zgody"), el("table", {},
           el("tr", {}, ...["Zgloszenie", "Operator", "Podstawa", "Zakres", "Wazna do", "Status", ""].map((t) => el("th", {}, t))), ...consentRows)),
-        standingSection(org, h.standing_consents || [], units, reload),
-        el("div", { class: "card" }, el("h3", {}, "Historia sesji"), el("table", {},
+        standingSection(org, h.standing_consents || [], units, reload, settings.dual_approval),
+        card(el("h3", {}, "Historia sesji"), el("table", {},
           el("tr", {}, ...["Start", "Operator", "Zgloszenie", "Status", "Koniec", ""].map((t) => el("th", {}, t))), ...sessionRows)),
-        activity);
+        panel);
     });
+  }
+
+  // Zatwierdzanie prosby - pierwsze albo (przy zatwierdzaniu przez dwie osoby) potwierdzenie przez druga osobe.
+  function decisionCard(org, r, units, reload) {
+    const confirming = r.status === "pending_customer_confirmation";
+    const grant = r.pending_grant || {};
+    const scopeList = confirming ? grant.scopes : r.scopes;
+    const scopes = scopeList.map((s) => el("label", {}, el("input", { type: "checkbox", value: s, checked: true }), " ", SCOPE_LABELS[s] || s));
+    const allowedUnits = confirming && grant.unit_ids ? units.filter((u) => grant.unit_ids.includes(u.id)) : units;
+    // Pusty wybor = wszystkie dozwolone jednostki; zaznaczenie obejmuje tez jednostki podrzedne.
+    const unitBoxes = allowedUnits.map((u) => el("label", {}, el("input", { type: "checkbox", value: u.id, checked: confirming && !!grant.unit_ids }), " ", u.name));
+    const hours = el("input", { type: "number", min: 1, max: confirming ? grant.valid_hours : 168, value: confirming ? grant.valid_hours : 24 });
+    const note = el("input", { placeholder: "Notatka (opcjonalnie)" });
+    return el("div", { class: "card" + (confirming ? " highlight" : "") },
+      el("h3", {}, confirming ? "Potwierdz dostep (druga osoba) · " : "Prosba o dostep · ", r.ticket_number),
+      confirming ? el("p", { class: "danger-text" }, "Pierwsze zatwierdzenie: ", r.first_approved_by_user_id, ". Twoja organizacja wymaga drugiej osoby - mozesz tylko potwierdzic lub zawezic zakres.") : "",
+      el("p", {}, "Operator Forvium: ", r.operator_id),
+      el("p", {}, "Powod: ", r.reason),
+      el("p", {}, "Tryb: ", el("span", { class: "pill" }, r.access_level), " · Czas sesji: ", r.duration_minutes, " min"),
+      el("label", {}, "Zakres zgody"), ...scopes,
+      ...(unitBoxes.length ? [el("label", {}, "Ogranicz do jednostek (brak zaznaczenia = wszystkie dozwolone)"), ...unitBoxes] : []),
+      el("label", {}, "Zgoda wazna (godziny)"), hours,
+      el("label", {}, "Notatka"), note,
+      el("div", { class: "row spaced" },
+        el("button", { onclick: async () => {
+          const unitIds = checkedValues(unitBoxes);
+          try {
+            const res = await api(`/api/app/orgs/${org.id}/support-access/requests/${r.id}/approve`, { method: "POST",
+              body: { scopes: checkedValues(scopes), unit_ids: unitIds.length ? unitIds : null,
+                      valid_hours: Number(hours.value), note: note.value } });
+            if (res.status === "pending_customer_confirmation") alert("Zapisano. Dostep zacznie obowiazywac po potwierdzeniu przez druga osobe.");
+          } catch (e) { alert(e.message); }
+          reload();
+        } }, confirming ? "Potwierdz" : "Zatwierdz"),
+        el("button", { class: "danger", onclick: async () => {
+          await api(`/api/app/orgs/${org.id}/support-access/requests/${r.id}/reject`, { method: "POST", body: { note: note.value } }).catch((e) => alert(e.message));
+          reload();
+        } }, "Odrzuc")));
+  }
+
+  function settingsCard(org, settings, reload) {
+    const put = async (enabled) => {
+      const code = askMfa(enabled ? "Wlaczenie zatwierdzania przez dwie osoby." : "Wylaczenie zatwierdzania przez dwie osoby.");
+      if (code === null) return;
+      await api(`/api/app/orgs/${org.id}/support-access/settings`, { method: "PUT", body: { dual_approval: enabled, mfa_code: code } })
+        .catch((e) => alert(e.message));
+      reload();
+    };
+    return card(el("h3", {}, "Zatwierdzanie przez dwie osoby"),
+      el("p", { class: "muted" }, "Gdy wlaczone, kazdy dostep serwisowy (i kazda zgoda stala) wymaga zatwierdzenia przez dwie rozne osoby z Twojej organizacji. Wylaczenie tez wymaga drugiej osoby."),
+      el("p", {}, "Status: ", el("strong", {}, settings.dual_approval ? "wlaczone" : "wylaczone"),
+        settings.dual_approval_disable_requested_by ? el("span", { class: "danger-text" }, " · zgloszono wylaczenie (", settings.dual_approval_disable_requested_by, ") - czeka na druga osobe") : ""),
+      settings.dual_approval
+        ? el("button", { class: "secondary", onclick: () => put(false) }, settings.dual_approval_disable_requested_by ? "Potwierdz wylaczenie" : "Wylacz")
+        : el("button", { onclick: () => put(true) }, "Wlacz"));
+  }
+
+  // ---------------------------------------------------- podglad na zywo / nagranie
+  function livePanel(org, s, panel, reload) {
+    const frame = snapshotFrame();
+    const status = el("p", { class: "muted" }, "Laczenie…");
+    const feed = el("table");
+    let latest = 0;
+    let timer;
+    const poll = async () => {
+      if (!panel.contains(frame)) return clearInterval(timer);
+      try {
+        const live = await api(`/api/app/orgs/${org.id}/support-access/sessions/${s.id}/live?after=${latest}`);
+        if (live.snapshot) { frame.show(live.snapshot.html); latest = live.snapshot.seq; }
+        status.textContent = live.active
+          ? `Operator ${live.operator_id} oglada teraz: ${live.current_view || "—"} · pozostalo ${Math.ceil(live.remaining_seconds / 60)} min`
+          : "Sesja zakonczona.";
+        feed.replaceChildren(...live.activity.map((e) => el("tr", {}, el("td", {}, fmt(e.occurred_at)),
+          el("td", {}, e.method, " ", e.route), el("td", {}, el("span", { class: "pill" }, e.outcome)))));
+        if (!live.active) clearInterval(timer);
+      } catch (e) { status.textContent = e.message; }
+    };
+    panel.replaceChildren(card(
+      el("h3", {}, "Podglad na zywo · sesja ", s.ticket_number),
+      status,
+      el("div", { class: "row" }, el("button", { class: "danger", onclick: async () => {
+        await api(`/api/app/orgs/${org.id}/support-access/sessions/${s.id}/terminate`, { method: "POST" }).catch((e) => alert(e.message));
+        clearInterval(timer);
+        reload();
+      } }, "Przerwij sesje")),
+      frame,
+      el("h3", { class: "spaced" }, "Ostatnie operacje operatora"), feed));
+    poll();
+    timer = setInterval(poll, 2000);
+  }
+
+  async function replayPanel(org, s, panel) {
+    const base = `/api/app/orgs/${org.id}/support-access/sessions/${s.id}/recording`;
+    const { frames } = await api(base);
+    if (!frames.length) return panel.replaceChildren(card(el("p", { class: "muted" }, "Brak nagrania tej sesji.")));
+    const frame = snapshotFrame();
+    const caption = el("p", { class: "muted" });
+    const slider = el("input", { type: "range", min: 1, max: frames.length, value: 1, class: "slider" });
+    const load = async () => {
+      const f = frames[Number(slider.value) - 1];
+      const data = await api(`${base}/${f.seq}`);
+      frame.show(data.html);
+      caption.textContent = `Klatka ${slider.value}/${frames.length} · ${fmt(f.captured_at)} · widok: ${f.view}`;
+    };
+    slider.oninput = load;
+    panel.replaceChildren(card(el("h3", {}, "Nagranie sesji · ", s.ticket_number), caption, slider, frame));
+    load();
   }
 
   // ------------------------------------------------------ zgody stale (klient)
   const ROLE_LABELS = { support_l1: "Support L1", support_l2: "Support L2", support_lead: "Kierownik supportu" };
 
-  function standingSection(org, standing, units, reload) {
+  function standingSection(org, standing, units, reload, dual) {
     const rows = standing.map((st) => el("tr", {},
       el("td", {}, st.scopes.map((x) => SCOPE_LABELS[x] || x).join(", ")),
       el("td", {}, st.max_session_minutes, " min"),
       el("td", {}, st.allowed_platform_roles ? st.allowed_platform_roles.map((r) => ROLE_LABELS[r] || r).join(", ") : "kazda"),
       el("td", {}, fmt(st.valid_until)),
-      el("td", {}, st.revoked_at ? "cofnieta" : st.active ? "aktywna" : "wygasla"),
-      el("td", {}, st.active ? el("button", { class: "danger", onclick: async () => {
-        await api(`/api/app/orgs/${org.id}/support-access/standing-consents/${st.id}/revoke`, { method: "POST" }).catch((e) => alert(e.message));
-        reload();
-      } }, "Cofnij") : "")));
+      el("td", {}, st.revoked_at ? "cofnieta" : st.pending_confirmation ? "czeka na druga osobe" : st.active ? "aktywna" : "wygasla"),
+      el("td", { class: "row" },
+        st.pending_confirmation ? el("button", { onclick: async () => {
+          const code = askMfa("Potwierdzenie zgody stalej.");
+          if (code === null) return;
+          await api(`/api/app/orgs/${org.id}/support-access/standing-consents/${st.id}/confirm`, { method: "POST", body: { mfa_code: code } })
+            .catch((e) => alert(e.message));
+          reload();
+        } }, "Potwierdz") : "",
+        st.active || st.pending_confirmation ? el("button", { class: "danger", onclick: async () => {
+          await api(`/api/app/orgs/${org.id}/support-access/standing-consents/${st.id}/revoke`, { method: "POST" }).catch((e) => alert(e.message));
+          reload();
+        } }, "Cofnij") : "")));
     const box = (value, label, checked = false) => el("label", {}, el("input", { type: "checkbox", value, checked }), " ", label);
     const scopeBoxes = Object.entries(SCOPE_LABELS).map(([k, l]) => box(k, l, k === "dashboard" || k === "diagnostics"));
     const roleBoxes = Object.entries(ROLE_LABELS).map(([k, l]) => box(k, l));
     const unitBoxes = units.map((u) => box(u.id, u.name));
-    const checked = (labels) => labels.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => i.value);
     const minutes = el("input", { type: "number", min: 1, max: 15, value: 15 });
     const days = el("input", { type: "number", min: 1, max: 365, value: 90 });
     const note = el("input", { placeholder: "Notatka (opcjonalnie)" });
     const mfa = el("input", { inputmode: "numeric", autocomplete: "one-time-code", placeholder: "Kod MFA" });
     const msg = el("p", { class: "error" });
-    return el("div", { class: "card" },
+    return card(
       el("h3", {}, "Zgody stale"),
-      el("p", { class: "muted" }, "Zgoda stala pozwala supportowi Forvium otwierac sesje tylko do odczytu bez kazdorazowego pytania - w granicach ponizej. O kazdym takim dostepie dostaniesz powiadomienie, a zgode mozna cofnac w kazdej chwili (konczy to tez trwajace sesje)."),
+      el("p", { class: "muted" }, "Zgoda stala pozwala supportowi Forvium otwierac sesje tylko do odczytu bez kazdorazowego pytania - w granicach ponizej. O kazdym takim dostepie dostaniesz powiadomienie, a zgode mozna cofnac w kazdej chwili (konczy to tez trwajace sesje).",
+        dual ? " Przy zatwierdzaniu przez dwie osoby nowa zgoda stala zacznie dzialac po potwierdzeniu przez druga osobe." : ""),
       el("table", {}, el("tr", {}, ...["Zakres", "Sesja do", "Role supportu", "Wazna do", "Status", ""].map((t) => el("th", {}, t))), ...rows),
       el("details", { class: "spaced" }, el("summary", {}, "Dodaj zgode stala"),
         el("label", {}, "Zakres"), ...scopeBoxes,
@@ -289,9 +410,9 @@
         el("label", {}, "Potwierdz kodem MFA"), mfa, msg,
         el("button", { onclick: async () => {
           try {
-            const roles = checked(roleBoxes), unitIds = checked(unitBoxes);
+            const roles = checkedValues(roleBoxes), unitIds = checkedValues(unitBoxes);
             await api(`/api/app/orgs/${org.id}/support-access/standing-consents`, { method: "POST", body: {
-              scopes: checked(scopeBoxes), unit_ids: unitIds.length ? unitIds : null,
+              scopes: checkedValues(scopeBoxes), unit_ids: unitIds.length ? unitIds : null,
               allowed_platform_roles: roles.length ? roles : null, max_session_minutes: Number(minutes.value),
               valid_days: Number(days.value), note: note.value, mfa_code: mfa.value } });
             reload();
@@ -302,8 +423,8 @@
   // ---------------------------------------------------------- powiadomienia
   async function viewNotifications(content) {
     const { notifications } = await api("/api/app/notifications");
-    content.replaceChildren(el("div", { class: "card" }, el("h2", {}, "Powiadomienia")),
-      ...(notifications.length ? notifications.map((n) => el("div", { class: "card" }, el("h3", {}, n.title),
+    content.replaceChildren(card(el("h2", {}, "Powiadomienia")),
+      ...(notifications.length ? notifications.map((n) => card(el("h3", {}, n.title),
         el("p", { class: "muted" }, fmt(n.created_at)), el("pre", { class: "body" }, n.body)))
         : [el("div", { class: "card muted" }, "Brak powiadomien.")]));
   }

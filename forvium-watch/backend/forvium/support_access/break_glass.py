@@ -4,8 +4,8 @@ Domyslnie WYLACZONY (`FORVIUM_BREAK_GLASS_ENABLED=false`). Po wlaczeniu:
 
 * osobna polityka (`BreakGlassPolicy`) - wlasne limity czasu i wymagania,
 * szczegolowe uzasadnienie (min. 200 znakow) i kategoria incydentu,
-* silna autoryzacja: MFA wnioskujacego operatora (SUPPORT_L2 / SUPPORT_LEAD)
-  ORAZ zatwierdzenie drugiej osoby - oficera bezpieczenstwa - z jego MFA
+* silna autoryzacja: klucz WebAuthn wnioskujacego operatora (SUPPORT_L2 / SUPPORT_LEAD)
+  ORAZ zatwierdzenie drugiej osoby - oficera bezpieczenstwa - jego kluczem WebAuthn
   (zasada czterech oczu; nikt nie zatwierdza wlasnego wniosku),
 * krotki czas: sesja do 30 min, zgoda awaryjna wazna 2 h, wniosek bez
   zatwierdzenia wygasa po 1 h,
@@ -22,8 +22,9 @@ Domyslnie WYLACZONY (`FORVIUM_BREAK_GLASS_ENABLED=false`). Po wlaczeniu:
 Sesja awaryjna pozostaje READ_ONLY i podlega tym samym kontrolom RBAC, co
 standardowa.
 
-Ograniczenie: MFA to TOTP. Klucze sprzetowe (WebAuthn) wymagaja osobnej
-implementacji - `requires_hardware_mfa=True` blokuje procedure, dopoki jej nie ma.
+Silna autoryzacja: przy `requires_hardware_mfa=True` (domyslnie) wniosek,
+zatwierdzenie i start sesji awaryjnej wymagaja asercji WebAuthn (klucz FIDO2 /
+passkey z weryfikacja uzytkownika) - kod TOTP nie wystarcza.
 """
 
 from __future__ import annotations
@@ -42,11 +43,13 @@ class IncidentCategory(StrEnum):
 class BreakGlassPolicy:
     enabled: bool = False
     max_session_minutes: int = 30
+    max_total_session_minutes: int = 60
     consent_hours: int = 2
     approval_window_minutes: int = 60
     min_justification_length: int = 200
     requires_second_approver: bool = True
-    requires_hardware_mfa: bool = False
+    # Wnioskujacy, zatwierdzajacy i otwierajacy sesje musza potwierdzic operacje kluczem WebAuthn.
+    requires_hardware_mfa: bool = True
     security_team_emails: tuple[str, ...] = field(default_factory=tuple)
     independent_audit_path: str | None = None
 
@@ -66,5 +69,3 @@ class BreakGlassDisabled(Exception):
 def ensure_break_glass_allowed(policy: BreakGlassPolicy) -> None:
     if not policy.enabled:
         raise BreakGlassDisabled("Procedura Break Glass nie jest aktywna.")
-    if policy.requires_hardware_mfa:
-        raise BreakGlassDisabled("Polityka wymaga kluczy sprzetowych, ktore nie sa jeszcze obslugiwane.")

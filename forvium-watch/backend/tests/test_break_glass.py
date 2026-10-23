@@ -15,6 +15,14 @@ JUSTIFICATION = (
 )
 
 
+def _key(env, op_token, who):
+    """Klucz WebAuthn operatora (rejestrowany przy pierwszym uzyciu)."""
+    keys = env.__dict__.setdefault("_keys", {})
+    if who not in keys:
+        keys[who] = env.register_key(op_token, who)
+    return keys[who]
+
+
 def bg_request(env, op_token, operator="ola", **overrides):
     body = {
         "organization_id": env.ids["orgs"]["acme"],
@@ -27,19 +35,28 @@ def bg_request(env, op_token, operator="ola", **overrides):
         "incident_category": "security_incident",
         **overrides,
     }
-    body.setdefault("mfa_code", env.otp(operator))
+    if "mfa_code" not in body and "webauthn" not in body:
+        body["webauthn"] = env.assertion(op_token, _key(env, op_token, operator))
     return env.client.post("/api/admin/support-access/requests", headers=env.h(op_token), json=body)
 
 
 def bg_decide(env, officer_token, request_id, officer="ewa", decision="approve", **body):
-    payload = {"mfa_code": env.otp(officer), **body}
+    payload = dict(body)
+    if decision == "approve" and "mfa_code" not in payload:
+        payload["webauthn"] = env.assertion(officer_token, _key(env, officer_token, officer))
     return env.client.post(f"/api/admin/break-glass/requests/{request_id}/{decision}",
                            headers=env.h(officer_token), json=payload)
 
 
+def bg_start(env, op_token, request_id, operator="ola", duration=None):
+    return env.client.post(f"/api/admin/support-access/requests/{request_id}/sessions", headers=env.h(op_token),
+                           json={"webauthn": env.assertion(op_token, _key(env, op_token, operator)),
+                                 "duration_minutes": duration})
+
+
 def test_break_glass_disabled_by_default(env):
     op = env.login_admin("ola")
-    r = bg_request(env, op)
+    r = bg_request(env, op, mfa_code=env.otp("ola"))
     assert r.status_code == 403 and r.json()["error"] == "break_glass_disabled"
 
 
@@ -62,7 +79,7 @@ def test_full_break_glass_flow(bg_env):
     assert a.status_code == 200, a.text
     assert a.json()["consent"]["basis"] == "break_glass"
 
-    st = env.start(op, req["id"], duration=30)
+    st = bg_start(env, op, req["id"], duration=30)
     assert st.status_code == 200
     expires = st.json()["session"]["expires_at"]
     assert expires  # do 30 min (polityka awaryjna)
@@ -161,7 +178,7 @@ def test_customer_can_revoke_break_glass_consent(bg_env):
     op = env.login_admin("ola")
     req = bg_request(env, op).json()["request"]
     consent_id = bg_decide(env, env.login_admin("ewa"), req["id"]).json()["consent"]["id"]
-    token = env.launch(env.start(op, req["id"]).json()["launch_url"])
+    token = env.launch(bg_start(env, op, req["id"]).json()["launch_url"])
     alice = env.login_app("alice")
     r = env.client.post(env.org_url(f"/support-access/consents/{consent_id}/revoke"), headers=env.h(alice))
     assert r.status_code == 200

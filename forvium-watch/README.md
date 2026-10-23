@@ -9,20 +9,23 @@ forvium-watch/
 ├── compose.yaml        całe środowisko lokalne: PostgreSQL, migracje, API, oba frontendy, Mailpit
 ├── backend/            wspólny backend FastAPI (api.forvium.com)
 │   ├── forvium/
-│   │   ├── identity/          Identity & Access – konta, sesje, MFA, limity prób
+│   │   ├── identity/          Identity & Access – konta, sesje, MFA (TOTP + WebAuthn), limity prób
 │   │   ├── organizations/     Organizations & RBAC – Permission, role, dane organizacji
 │   │   ├── platform_admin/    Platform Administration – role operatorów, użytkownicy, zgłoszenia
 │   │   ├── support_tickets/   Support Tickets – zgłoszenia, do których przypinany jest dostęp
 │   │   ├── audit/             Audit Log – zdarzenia, middleware API, eksport, łańcuch skrótów
 │   │   ├── notifications/     Notification Engine – powiadomienia w aplikacji + wysyłka e-mail
-│   │   ├── support_access/    prośby, zgody (też stałe), sesje, zakresy, Break Glass, nadzór
+│   │   ├── support_access/    prośby, zgody (też stałe), sesje, przedłużenia, nagrania, Break Glass
+│   │   ├── security/          wykrywanie anomalii i alerty, sanityzacja zrzutów widoku
+│   │   ├── core/crypto.py     szyfrowanie danych w spoczynku (AES-256-GCM, klucze z KMS)
 │   │   └── access.py          jedno miejsce uwierzytelniania i autoryzacji (RBAC + RLS)
-│   ├── migrations/            Alembic: 0001 schemat (+ trigger audytu), 0002 RLS i uprawnienia
+│   ├── migrations/            Alembic: 0001 schemat (+ trigger audytu), 0002 RLS i uprawnienia,
+│   │                          0003 szyfrowanie, WebAuthn, dwie osoby, przedłużenia, alerty, nagrania
 │   └── tests/
 ├── deploy/             role PostgreSQL, konfiguracja nginx (nagłówki bezpieczeństwa, CSP)
 └── frontend/
-    ├── admin/          admin.forvium.com – użytkownicy, prośby, nadzór, audyt, Break Glass
-    └── app/            app.forvium.com – zgody (też stałe), historia, powiadomienia, baner wsparcia
+    ├── admin/          admin.forvium.com – użytkownicy, prośby, nadzór, alerty, audyt, Break Glass, klucze
+    └── app/            app.forvium.com – zgody, ustawienia, podgląd na żywo, nagrania, baner wsparcia
 ```
 
 ## Szybki start
@@ -46,6 +49,7 @@ w aplikacji uwierzytelniającej są w `docker compose logs migrate`.
 | Konto | Rola |
 |---|---|
 | `alice@acme.example` | właścicielka organizacji Acme (zatwierdza dostęp) |
+| `dorota@acme.example` | administratorka Acme (druga osoba przy zatwierdzaniu przez dwie osoby) |
 | `bob@acme.example` | członek Acme (użytkownik referencyjny) |
 | `carol@beta.example` | właścicielka organizacji Beta |
 | `ola@forvium.com` | Support L2 (prośby, Break Glass) |
@@ -134,19 +138,104 @@ Prośba mieszcząca się w tych granicach jest zatwierdzana automatycznie (`basi
 Zgoda z niej wynikająca jest ważna 4 h, a klient i tak dostaje powiadomienie. Cofnięcie
 zgody stałej natychmiast cofa wszystkie wynikające z niej zgody i kończy ich sesje.
 
+## Szyfrowanie danych w spoczynku
+
+Sekrety TOTP, sekrety i konfiguracja SMTP/webhooków organizacji oraz nagrania sesji są w
+bazie szyfrowane (AES-256-GCM, `core/crypto.py`). Każdy szyfrogram jest związany z kolumną
+(AAD) i oznaczony identyfikatorem klucza, co pozwala rotować klucze bez przestojów.
+
+* **Źródło kluczy:** HashiCorp Vault Transit (`FORVIUM_DATA_KEYS_WRAPPED`, `FORVIUM_VAULT_*`).
+  Klucze danych są odszyfrowywane w Vault przy starcie i trzymane tylko w pamięci. Alternatywnie
+  `FORVIUM_DATA_KEYS` (np. z menedżera sekretów). Bez klucza API **nie wystartuje**.
+* **Rotacja:** dodaj nowy klucz, ustaw go jako `FORVIUM_DATA_KEY_ID`, a potem uruchom
+  `python -m forvium.core.crypto reencrypt`. Ta sama komenda szyfruje dane zapisane przed
+  migracją 0003 (Compose robi to automatycznie w kontenerze `migrate`).
+* Nowy klucz: `python -m forvium.core.crypto generate-key`.
+
+## WebAuthn (klucze bezpieczeństwa / passkeys)
+
+Operator dodaje klucz FIDO2 albo passkey w zakładce `Konto`, potwierdzając to kodem TOTP.
+Od tej chwili każda ponowna weryfikacja odbywa się kluczem, z weryfikacją użytkownika (PIN lub
+biometria):
+* prośba o dostęp,
+* start i przedłużenie sesji,
+* zatwierdzenie Break Glass.
+
+Ochrona:
+* wyzwania są jednorazowe (zużywane atomowo), ważne 2 minuty i przypięte do osoby i celu;
+* sprawdzane są origin i RP ID (ochrona przed phishingiem);
+* licznik podpisów wykrywa sklonowane klucze;
+* dodanie i usunięcie klucza są audytowane, a właściciel konta dostaje powiadomienie.
+
+**Break Glass wymaga klucza:** sam kod TOTP nie wystarcza do wniosku, zatwierdzenia ani startu
+sesji awaryjnej.
+
+## Zatwierdzanie przez dwie osoby
+
+Organizacja może włączyć wymóg dwóch zatwierdzeń (`Dostęp serwisowy` → `Zatwierdzanie przez dwie
+osoby`, potwierdzenie kodem MFA).
+* Pierwsze zatwierdzenie tylko zapisuje parametry zgody.
+* Druga, **inna** osoba może je potwierdzić albo zawęzić (nigdy rozszerzyć). Dopiero wtedy
+  powstaje zgoda z obiema tożsamościami w audycie.
+* Zgody stałe w tym trybie też wymagają potwierdzenia przez drugą osobę.
+* Wyłączenie ochrony również wymaga drugiej osoby: jedna je zgłasza, druga potwierdza.
+
+## Przedłużanie sesji
+
+Zakładka `Moje prośby` → `Przedłuż`:
+* wymaga ponownej weryfikacji i powodu, który klient widzi w powiadomieniu;
+* jedno przedłużenie to maksymalnie 15 min, maksymalnie 2 przedłużenia;
+* łącznie sesja trwa najwyżej 45 min (Break Glass: 60 min) i nigdy nie dłużej niż ważność zgody.
+
+Baner w trybie wsparcia odświeża pozostały czas co 15 s.
+
+## Podgląd na żywo i nagrania sesji
+
+W trybie wsparcia frontend po każdym widoku wysyła zrzut DOM. Pola tekstowe formularzy nie są
+wysyłane. Backend:
+* sanityzuje zrzut białą listą (bez skryptów, stylów, linków i obrazów),
+* szyfruje go,
+* ogranicza rozmiar i częstotliwość zrzutów,
+* usuwa zrzuty po 30 dniach.
+
+Klient w `Historii sesji`:
+* **Podgląd na żywo** – co operator ogląda teraz (odświeżane co 2 s, iframe w piaskownicy
+  bez skryptów), ostatnie operacje i przycisk `Przerwij sesję`;
+* **Nagranie** – odtwarzanie klatka po klatce.
+
+Po stronie Forvium nagrania widzą tylko role z `platform.audit.read`, a otwarcie każdej klatki
+trafia do audytu (`support.recording.viewed`). Operator widzi na banerze, że klient może go
+obserwować.
+
+## Wykrywanie anomalii
+
+Proces w tle (co `FORVIUM_ANOMALY_INTERVAL_SECONDS`) przegląda audyt i tworzy alerty
+(zakładka `Alerty`, deduplikacja po kluczu):
+
+| Reguła | Waga | Akcja |
+|---|---|---|
+| seria ≥5 odmów w sesji w ciągu 10 min | wysoka | **automatyczne zakończenie sesji** |
+| ≥3 próby użycia tokenu zakończonej sesji | wysoka | – |
+| ≥5 sesji operatora / sesje w ≥3 organizacjach w ciągu godziny | średnia | – |
+| blokada operatora po nieudanych próbach MFA/logowania | średnia | – |
+| sesja poza godzinami pracy (pn–pt 7–19, Europe/Warsaw) | niska | – |
+| każde zatwierdzenie Break Glass | wysoka | – |
+
+Alerty średnie i wyższe trafiają do kierownika supportu i oficerów bezpieczeństwa, a wysokie
+dodatkowo e-mailem do zespołu bezpieczeństwa. Alertu nie może obsłużyć osoba, której dotyczy.
+
 ## Break Glass
 
 Dostęp awaryjny bez zgody klienta. Domyślnie jest **wyłączony**
 (`FORVIUM_BREAK_GLASS_ENABLED=false`).
 
 1. Operator z uprawnieniem `platform.break_glass.request` (Support L2 lub kierownik)
-   składa wniosek. Wymagane są:
+   składa wniosek, potwierdzając go **kluczem WebAuthn**. Wymagane są:
    * kategoria incydentu,
    * uzasadnienie (min. 200 znaków),
    * otwarte zgłoszenie,
-   * czas sesji do 30 min,
-   * kod MFA.
-2. **Inny** oficer bezpieczeństwa zatwierdza wniosek własnym kodem MFA (4 oczy). Wniosek
+   * czas sesji do 30 min.
+2. **Inny** oficer bezpieczeństwa zatwierdza wniosek własnym kluczem WebAuthn (4 oczy). Wniosek
    wygasa po 1 h, zgoda awaryjna po 2 h. Administrator platformy nie uczestniczy w
    procedurze (rozdział obowiązków).
 3. Powiadomienia trafiają do:
@@ -162,8 +251,6 @@ Dostęp awaryjny bez zgody klienta. Domyślnie jest **wyłączony**
    łańcuchem skrótów (`FORVIUM_BREAK_GLASS_AUDIT_PATH`).
 6. **Przegląd po incydencie** wykonuje oficer niezależny od wnioskującego i zatwierdzającego.
    Klient dostaje z niego raport.
-
-Ograniczenie: MFA to TOTP. Klucze sprzętowe (WebAuthn) wymagają osobnej implementacji.
 
 ## Audyt
 
@@ -206,12 +293,18 @@ Ograniczenie: MFA to TOTP. Klucze sprzętowe (WebAuthn) wymagają osobnej implem
 | `SECURITY_TEAM_EMAILS` | — | adresy zespołu bezpieczeństwa (po przecinku) |
 | `BREAK_GLASS_AUDIT_PATH` | — | niezależny strumień zdarzeń Break Glass |
 | `AUDIT_EXPORT_PATH`, `AUDIT_EXPORT_URL`, `AUDIT_EXPORT_HMAC_KEY`, `AUDIT_EXPORT_INTERVAL_SECONDS` | —, —, —, 30 | eksport audytu |
+| `DATA_KEYS_WRAPPED`, `VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_TRANSIT_KEY` | —, —, —, `forvium-data` | klucze danych z Vault Transit |
+| `DATA_KEYS`, `DATA_KEY_ID` | — | klucze danych wprost (`kid:base64,...`) i aktywny klucz |
+| `ALLOW_INSECURE_DEV_KEY` | `false` | tylko lokalnie: stały klucz deweloperski |
+| `WEBAUTHN_RP_ID` | host `ADMIN_ORIGIN` | identyfikator RP dla kluczy (np. `forvium.com`) |
+| `ANOMALY_INTERVAL_SECONDS` | 60 | wykrywanie anomalii |
 | `AUTO_CREATE_SCHEMA` | `false` | tylko eksperymenty; schemat tworzą migracje |
 
 ### Wdrożenie
 
 1. Raz uruchom `deploy/postgres/roles.sql` jako superuser.
-2. Przy każdym wdrożeniu, przed startem API, uruchom `alembic upgrade head` jako `forvium_migrator`.
+2. Przy każdym wdrożeniu, przed startem API, uruchom `alembic upgrade head` i
+   `python -m forvium.core.crypto reencrypt` jako `forvium_migrator`.
 3. Uruchom API jako `forvium_app`, za reverse proxy z TLS.
 4. Frontendy serwuj przez nginx z `deploy/nginx/frontend.conf`.
 
@@ -248,6 +341,12 @@ FORVIUM_TEST_DATABASE_URL=postgresql+psycopg://postgres@host/forvium_test pytest
 | `test_throttle.py` | limity prób logowania, MFA i kodów startowych |
 | `test_infrastructure.py` | migracje ↔ modele, e-mail z ponawianiem, eksport audytu, commit przed odpowiedzią |
 | `test_postgres_isolation.py` | RLS, uprawnienia `forvium_app`, pełny przepływ jako konto bez superusera |
+| `test_crypto.py` | szyfrogramy w bazie, wiązanie z kolumną, rotacja, Vault Transit, CLI `reencrypt` |
+| `test_webauthn.py` | rejestracja i step-up kluczem, powtórzenie asercji, zły origin/RP/brak UV, klon klucza, Break Glass |
+| `test_dual_approval.py` | dwie osoby: prośby, zgody stałe, wyłączenie ochrony |
+| `test_session_extension.py` | przedłużenia: MFA, limity, granica 45 min i ważności zgody, powiadomienia |
+| `test_anomalies.py` | reguły, automatyczne zakończenie sesji, deduplikacja, obsługa alertów |
+| `test_recording.py` | podgląd na żywo, nagrania, sanityzacja, szyfrowanie, limity, retencja, audyt otwarć |
 
 Workflow `.github/workflows/forvium-watch.yml` uruchamia:
 * testy na SQLite (Python 3.12 i 3.13),

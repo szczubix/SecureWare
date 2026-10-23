@@ -346,7 +346,9 @@ def test_notifications_sent_to_customer_approvers(env):
 
         from forvium.notifications.models import EmailOutbox
 
-        assert [m.to_address for m in db.scalars(select(EmailOutbox))] == ["alice@acme.example"]
+        # Zatwierdzajacy klienta (wlascicielka i administratorka), bez operatora-wnioskodawcy.
+        assert sorted(m.to_address for m in db.scalars(select(EmailOutbox))) == [
+            "alice@acme.example", "dorota@acme.example"]
 
 
 def test_banner_info_and_history_visible_to_customer(env):

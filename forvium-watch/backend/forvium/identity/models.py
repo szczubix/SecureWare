@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
+from forvium.core.crypto import EncryptedString
 from forvium.core.db import Base, new_id
 
 
@@ -24,7 +25,8 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(200))
     password_hash: Mapped[str] = mapped_column(String(255))
-    mfa_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Sekret TOTP - szyfrowany w bazie (core/crypto.py).
+    mfa_secret: Mapped[str | None] = mapped_column(EncryptedString("users.mfa_secret"), nullable=True)
     # Ostatnio wykorzystany krok TOTP - ten sam kod nie zadziala drugi raz.
     mfa_last_step: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

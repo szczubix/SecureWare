@@ -20,6 +20,10 @@ class SupportAccessPolicy:
     # Zgoda stala: maksymalna waznosc i waznosc pojedynczej zgody z niej wynikajacej.
     max_standing_consent_days: int = 365
     standing_grant_hours: int = 4
+    # Przedluzanie sesji: maks. liczba przedluzen, dlugosc jednego i laczny limit czasu sesji.
+    max_extensions: int = 2
+    max_extension_minutes: int = 15
+    max_total_session_minutes: int = 45
 
 
 DEFAULT_POLICY = SupportAccessPolicy()

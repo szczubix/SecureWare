@@ -12,13 +12,15 @@ class CreateRequestIn(BaseModel):
     ticket_number: str = Field(max_length=32)
     duration_minutes: int | None = None
     scopes: list[str]
-    mfa_code: str
+    mfa_code: str | None = None
+    webauthn: dict | None = None  # asercja WebAuthn (alternatywa dla mfa_code)
     mode: str = "standard"
     incident_category: str | None = None  # wymagane dla mode="break_glass"
 
 
 class BreakGlassDecisionIn(BaseModel):
     mfa_code: str | None = None
+    webauthn: dict | None = None
     note: str | None = Field(default=None, max_length=1000)
 
 
@@ -27,8 +29,16 @@ class BreakGlassReviewIn(BaseModel):
 
 
 class StartSessionIn(BaseModel):
-    mfa_code: str
+    mfa_code: str | None = None
+    webauthn: dict | None = None
     duration_minutes: int | None = None
+
+
+class ExtendSessionIn(BaseModel):
+    minutes: int = 15
+    reason: str = Field(max_length=1000)
+    mfa_code: str | None = None
+    webauthn: dict | None = None
 
 
 class ApproveIn(BaseModel):
@@ -49,6 +59,20 @@ class StandingConsentIn(BaseModel):
     valid_days: int = 90
     allowed_platform_roles: list[str] | None = None
     note: str | None = Field(default=None, max_length=1000)
+    mfa_code: str | None = None
+
+
+class SnapshotIn(BaseModel):
+    view: str = Field(max_length=100)
+    html: str = Field(max_length=1_000_000)
+
+
+class MfaIn(BaseModel):
+    mfa_code: str | None = None
+
+
+class SupportSettingsIn(BaseModel):
+    dual_approval: bool
     mfa_code: str | None = None
 
 
@@ -79,6 +103,8 @@ def request_out(r: SupportAccessRequest) -> dict:
         "decided_at": _iso(r.decided_at),
         "decision_note": r.decision_note,
         "incident_category": r.incident_category,
+        "first_approved_by_user_id": r.first_approved_by_user_id,
+        "pending_grant": r.pending_grant,
         "review_completed_at": _iso(r.review_completed_at),
     }
 
@@ -99,6 +125,7 @@ def consent_out(c: SupportConsent | None) -> dict | None:
         "revoked_by_user_id": c.revoked_by_user_id,
         "basis": c.basis,
         "standing_consent_id": c.standing_consent_id,
+        "second_approver_user_id": c.second_approver_user_id,
     }
 
 
@@ -117,6 +144,8 @@ def session_out(s: SupportSession) -> dict:
         "unit_ids": s.unit_ids,
         "started_at": _iso(s.started_at),
         "expires_at": _iso(s.expires_at),
+        "extensions_count": s.extensions_count,
+        "original_expires_at": _iso(s.original_expires_at),
         "status": s.status,
         "ended_at": _iso(s.ended_at),
         "end_reason": s.end_reason,

@@ -24,6 +24,8 @@ class Settings:
     support_sweep_interval_seconds: int = field(
         default_factory=lambda: int(_env("SUPPORT_SWEEP_INTERVAL_SECONDS", "60"))
     )
+    # Co ile sekund uruchamiac wykrywanie anomalii (0 = wylaczone).
+    anomaly_interval_seconds: int = field(default_factory=lambda: int(_env("ANOMALY_INTERVAL_SECONDS", "60")))
     # Co ile sekund wysylac kolejke e-mail (0 = wylaczone).
     email_interval_seconds: int = field(default_factory=lambda: int(_env("EMAIL_INTERVAL_SECONDS", "15")))
 
@@ -50,6 +52,19 @@ class Settings:
     audit_export_interval_seconds: int = field(
         default_factory=lambda: int(_env("AUDIT_EXPORT_INTERVAL_SECONDS", "30"))
     )
+
+    # Szyfrowanie danych w spoczynku - patrz core/crypto.py
+    data_keys: str = field(default_factory=lambda: _env("DATA_KEYS", ""), repr=False)
+    data_key_id: str = field(default_factory=lambda: _env("DATA_KEY_ID", ""))
+    data_keys_wrapped: str = field(default_factory=lambda: _env("DATA_KEYS_WRAPPED", ""))
+    vault_addr: str = field(default_factory=lambda: _env("VAULT_ADDR", ""))
+    vault_token: str = field(default_factory=lambda: _env("VAULT_TOKEN", ""), repr=False)
+    vault_transit_key: str = field(default_factory=lambda: _env("VAULT_TRANSIT_KEY", "forvium-data"))
+    allow_insecure_dev_key: bool = field(
+        default_factory=lambda: _env("ALLOW_INSECURE_DEV_KEY", "false") == "true")
+
+    # WebAuthn: identyfikator RP (domyslnie host panelu admin); origin = ADMIN_ORIGIN.
+    webauthn_rp_id: str = field(default_factory=lambda: _env("WEBAUTHN_RP_ID", ""))
 
     # Zwykle sesje
     user_session_ttl_minutes: int = 12 * 60
