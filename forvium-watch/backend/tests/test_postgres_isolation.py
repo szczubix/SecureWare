@@ -30,7 +30,9 @@ def app_role_env(tmp_path):
     with admin.begin() as conn:
         conn.execute(text(
             "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'forvium_app') THEN "
-            f"CREATE ROLE forvium_app LOGIN PASSWORD '{APP_PASSWORD}' NOBYPASSRLS; END IF; END $$"))
+            "CREATE ROLE forvium_app; END IF; END $$"))
+        # Rola mogla powstac wczesniej (np. z deploy/postgres/roles.sql) - ustalamy znany stan.
+        conn.execute(text(f"ALTER ROLE forvium_app LOGIN NOSUPERUSER NOBYPASSRLS PASSWORD '{APP_PASSWORD}'"))
     admin.dispose()
     from conftest import make_env  # migracje uruchamiane po utworzeniu roli -> 0002 nadaje uprawnienia
 

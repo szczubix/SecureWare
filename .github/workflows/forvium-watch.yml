@@ -55,6 +55,9 @@ jobs:
       - name: Migracje jako konto bez superusera (deploy/postgres/roles.sql)
         run: |
           export PGPASSWORD=ci
+          # Rola forvium_app zostala utworzona przez testy RLS - sprawdzamy skrypt na czystym klastrze.
+          psql -h localhost -U postgres -d forvium_test -c "DROP OWNED BY forvium_app"
+          psql -h localhost -U postgres -c "DROP ROLE IF EXISTS forvium_app"
           psql -h localhost -U postgres -c "CREATE DATABASE forvium_roles"
           psql -h localhost -U postgres -d forvium_roles -v ON_ERROR_STOP=1 \
                -v migrator_password="'m'" -v app_password="'a'" -f ../deploy/postgres/roles.sql
