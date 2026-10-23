@@ -26,7 +26,8 @@ forvium-watch/
 
 1. **Prośba** (`admin`) – operator wybiera organizację i użytkownika referencyjnego, podaje
    powód, numer otwartego zgłoszenia tej organizacji, czas (1–15 min, domyślnie 15) i zakres.
-   Wymagana **ponowna weryfikacja MFA** (TOTP). Zatwierdzający po stronie klienta
+   Wymagana **ponowna weryfikacja MFA** (TOTP, każdy kod jednorazowy – ponowne użycie
+   jest odrzucane). Zatwierdzający po stronie klienta
    dostają powiadomienie w aplikacji i e-mail.
 2. **Zgoda** (`app`) – właściciel lub administrator organizacji zatwierdza prośbę (może
    zawęzić zakres i jednostki oraz ustawić ważność zgody) albo ją odrzuca. Zgoda
@@ -116,15 +117,17 @@ export FORVIUM_DATABASE_URL=sqlite:///./forvium.db \
        FORVIUM_APP_ORIGIN=http://localhost:8001 FORVIUM_ADMIN_ORIGIN=http://localhost:8002
 python -m forvium.seed                 # konta demo i sekrety TOTP
 uvicorn forvium.asgi:app --port 8000
-# w osobnych terminalach (ustaw window.FORVIUM_API w config.js na http://localhost:8000):
+# w osobnych terminalach (config.js sam wskaże http://<host>:8000 poza domeną forvium.com):
 python -m http.server 8001 -d ../frontend/app
 python -m http.server 8002 -d ../frontend/admin
 ```
 
-W produkcji `FORVIUM_DATABASE_URL` wskazuje PostgreSQL
-(`postgresql+psycopg://…`). Funkcję `support_access.service.sweep_expired` należy
-uruchamiać cyklicznie, np. co minutę, żeby wygasłe sesje zmieniały status także wtedy,
-gdy nikt ich nie używa. Dostęp i tak jest blokowany przy każdym żądaniu.
+W produkcji `FORVIUM_DATABASE_URL` wskazuje PostgreSQL (`postgresql+psycopg://…`).
+Proces w tle (`support_access/scheduler.py`) co `FORVIUM_SUPPORT_SWEEP_INTERVAL_SECONDS`
+sekund (domyślnie 60, `0` wyłącza) oznacza wygasłe sesje i prośby oraz zapisuje
+`support.session.expired`, także gdy nikt już z sesji nie korzysta. Dostęp i tak jest
+blokowany przy każdym żądaniu. Przy kilku instancjach API pętla jest bezpieczna
+(operacja idempotentna), ale wystarczy ją włączyć na jednej.
 
 ## Testy
 
@@ -135,7 +138,8 @@ cd backend && pytest
 `tests/test_support_access.py` pokrywa 10 obowiązkowych scenariuszy (`test_01` … `test_10`)
 oraz przypadki dodatkowe:
 
-* wymóg MFA,
+* wymóg MFA i jednorazowość kodu MFA,
+* wygaszanie sesji w tle,
 * limit 15 min,
 * jednorazowy kod startowy,
 * zawężenie jednostek,

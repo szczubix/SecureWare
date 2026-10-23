@@ -48,6 +48,15 @@ def test_01b_mfa_reverification_required(env):
     assert len(env.audit(outcome="denied", actor_user_id=env.ids["users"]["ola"])) >= 2
 
 
+def test_01c_mfa_code_cannot_be_reused(env):
+    op = env.login_admin("ola")
+    code = env.otp("ola")
+    assert env.create_request(op, mfa_code=code).status_code == 200
+    r = env.create_request(op, mfa_code=code)
+    assert r.status_code == 401
+    assert r.json()["error"] == "mfa_reverification_failed"
+
+
 # --------------------------------------------------------------------- 2
 
 
@@ -390,3 +399,16 @@ def test_only_requesting_operator_can_start_session(env):
     piotr = env.login_admin("piotr")
     r = env.start(piotr, request_id, operator="piotr")
     assert r.status_code == 403 and r.json()["error"] == "not_request_owner"
+
+
+def test_background_sweep_expires_idle_sessions(env):
+    from forvium.support_access.scheduler import run_sweep
+
+    s = env.open_support_session()
+    clock.advance(timedelta(minutes=16))
+    assert run_sweep(env.app) == 1
+    expired = env.audit(action="support.session.expired", support_session_id=s["session_id"])
+    assert len(expired) == 1 and expired[0].actor_type == "system"
+    hist = env.client.get(env.org_url("/support-access"), headers=env.h(env.login_app("alice"))).json()
+    assert hist["sessions"][0]["status"] == "expired"
+    assert run_sweep(env.app) == 0

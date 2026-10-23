@@ -14,9 +14,9 @@ from forvium.core.security import (
     SUPPORT_TOKEN_PREFIX,
     new_token,
     token_digest,
-    verify_totp,
 )
 from forvium.identity.models import User
+from forvium.identity.service import consume_totp
 from forvium.organizations.models import Membership, Organization
 from forvium.organizations.rbac import Permission, permissions_for_role
 from forvium.platform_admin.rbac import PlatformPermission, platform_permissions
@@ -69,7 +69,7 @@ def _org_approvers(ctx: Ctx, organization_id: str, exclude_user_id: str | None =
 
 
 def _verify_operator_mfa(ctx: Ctx, operator: User, mfa_code: str | None, action: str, **audit_kwargs) -> None:
-    if not verify_totp(operator.mfa_secret, mfa_code, valid_window=1):
+    if not consume_totp(operator, mfa_code):
         raise _deny(
             ctx,
             action,
@@ -115,8 +115,6 @@ def create_request(
         except (BreakGlassDisabled, NotImplementedError):
             raise _deny(ctx, action, "break_glass_disabled", "Dostep awaryjny (Break Glass) jest wylaczony.", **base)
 
-    _verify_operator_mfa(ctx, operator, mfa_code, action, organization_id=organization_id)
-
     org = ctx.db.get(Organization, organization_id)
     if org is None or org.deleted_at is not None:
         raise _deny(ctx, action, "organization_not_found", "Nie znaleziono organizacji.", status=404, **base)
@@ -150,6 +148,9 @@ def create_request(
     if duration < 1 or duration > ctx.policy.max_session_minutes:
         raise _deny(ctx, action, "duration_invalid",
                     f"Czas dostepu musi miescic sie w 1-{ctx.policy.max_session_minutes} min.", status=422, **base)
+
+    # Ponowna weryfikacja MFA jako ostatni krok przed zapisem (kod jest jednorazowy).
+    _verify_operator_mfa(ctx, operator, mfa_code, action, organization_id=organization_id)
 
     now = clock.now()
     req = SupportAccessRequest(
@@ -425,9 +426,6 @@ def start_session(
     if consent is None or consent.revoked_at is not None or now >= consent.valid_until:
         raise _deny(ctx, action, "consent_inactive", "Zgoda klienta zostala cofnieta lub wygasla.", **base)
 
-    _verify_operator_mfa(ctx, operator, mfa_code, action, organization_id=req.organization_id,
-                         support_request_id=req.id)
-
     if not is_ticket_active(ctx.db, req.ticket_id):
         raise _deny(ctx, action, "ticket_closed", "Zgloszenie supportowe jest zamkniete.", **base)
 
@@ -455,6 +453,8 @@ def start_session(
     expires_at = min(now + timedelta(minutes=minutes), consent.valid_until)
 
     # Zapisy dopiero po wszystkich sprawdzeniach (odmowy sa audytowane w osobnej transakcji).
+    _verify_operator_mfa(ctx, operator, mfa_code, action, organization_id=req.organization_id,
+                         support_request_id=req.id)
     if active is not None:
         _terminate_session(ctx, active, SessionStatus.EXPIRED, "session_expired", None)
 

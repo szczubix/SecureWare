@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from forvium.core.db import Base, new_id
@@ -25,6 +25,8 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String(200))
     password_hash: Mapped[str] = mapped_column(String(255))
     mfa_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Ostatnio wykorzystany krok TOTP - ten sam kod nie zadziala drugi raz.
+    mfa_last_step: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # None = zwykly klient. Wartosci: patrz platform_admin.rbac.PlatformRole
     platform_role: Mapped[str | None] = mapped_column(String(40), nullable=True)

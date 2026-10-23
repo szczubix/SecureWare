@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, timedelta
+
 import pyotp
 import pytest
 from fastapi.testclient import TestClient
@@ -27,7 +29,9 @@ class Env:
     # ---------------------------------------------------------- pomocnicze
     @staticmethod
     def otp(key: str) -> str:
-        return pyotp.TOTP(TOTP[key]).now()
+        """Kod TOTP dla biezacego czasu; zegar przesuwa sie o krok, bo kod jest jednorazowy."""
+        clock.advance(timedelta(seconds=30))
+        return pyotp.TOTP(TOTP[key]).at(clock.now().replace(tzinfo=UTC))
 
     @staticmethod
     def h(token: str) -> dict:

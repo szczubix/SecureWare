@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -20,11 +24,24 @@ from forvium.platform_admin.router import router as platform_admin
 from forvium.support_access.policy import DEFAULT_POLICY, SupportAccessPolicy
 from forvium.support_access.router_admin import router as support_admin
 from forvium.support_access.router_app import router as support_app
+from forvium.support_access.scheduler import sweep_loop
 
 
 def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | None = None) -> FastAPI:
     settings = settings or get_settings()
-    app = FastAPI(title="Forvium Watch API", version="1.0.0")
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        task = None
+        if settings.support_sweep_interval_seconds > 0:
+            task = asyncio.create_task(sweep_loop(app, settings.support_sweep_interval_seconds))
+        yield
+        if task:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
+    app = FastAPI(title="Forvium Watch API", version="1.0.0", lifespan=lifespan)
 
     db = Database(settings.database_url)
     db.create_all()

@@ -168,9 +168,13 @@
       const h = await api(`/api/app/orgs/${org.id}/support-access`);
       const pending = h.requests.filter((r) => r.status === "pending");
       const reload = () => viewSupportAccess(org, content);
+      const { units } = await api(`/api/app/orgs/${org.id}/units`).catch(() => ({ units: [] }));
+      const unitName = Object.fromEntries(units.map((u) => [u.id, u.name]));
 
       const pendingCards = pending.map((r) => {
         const scopes = r.scopes.map((s) => el("label", {}, el("input", { type: "checkbox", value: s, checked: true, style: "width:auto" }), " ", SCOPE_LABELS[s] || s));
+        // Pusty wybor = wszystkie jednostki; zaznaczenie obejmuje tez jednostki podrzedne.
+        const unitBoxes = units.map((u) => el("label", {}, el("input", { type: "checkbox", value: u.id, style: "width:auto" }), " ", u.name));
         const hours = el("input", { type: "number", min: 1, max: 168, value: 24 });
         const note = el("input", { placeholder: "Notatka (opcjonalnie)" });
         return el("div", { class: "card" },
@@ -179,13 +183,16 @@
           el("p", {}, "Powod: ", r.reason),
           el("p", {}, "Tryb: ", el("span", { class: "pill" }, r.access_level), " · Czas sesji: ", r.duration_minutes, " min"),
           el("label", {}, "Zakres zgody"), ...scopes,
+          ...(unitBoxes.length ? [el("label", {}, "Ogranicz do jednostek (brak zaznaczenia = wszystkie)"), ...unitBoxes] : []),
           el("label", {}, "Zgoda wazna (godziny)"), hours,
           el("label", {}, "Notatka"), note,
           el("div", { class: "row", style: "margin-top:10px" },
             el("button", { onclick: async () => {
-              const chosen = scopes.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => i.value);
+              const checked = (labels) => labels.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => i.value);
+              const unitIds = checked(unitBoxes);
               await api(`/api/app/orgs/${org.id}/support-access/requests/${r.id}/approve`, { method: "POST",
-                body: { scopes: chosen, valid_hours: Number(hours.value), note: note.value } }).catch((e) => alert(e.message));
+                body: { scopes: checked(scopes), unit_ids: unitIds.length ? unitIds : null,
+                        valid_hours: Number(hours.value), note: note.value } }).catch((e) => alert(e.message));
               reload();
             } }, "Zatwierdz"),
             el("button", { class: "danger", onclick: async () => {
@@ -197,7 +204,9 @@
       const consentRows = h.requests.filter((r) => r.consent).map((r) => {
         const c = r.consent;
         const active = !c.revoked_at && new Date(c.valid_until) > new Date();
-        return el("tr", {}, el("td", {}, r.ticket_number), el("td", {}, r.operator_id), el("td", {}, c.scopes.join(", ")),
+        const scopeText = c.scopes.map((s) => SCOPE_LABELS[s] || s).join(", ") +
+          (c.unit_ids ? " · jednostki: " + c.unit_ids.map((id) => unitName[id] || id).join(", ") : "");
+        return el("tr", {}, el("td", {}, r.ticket_number), el("td", {}, r.operator_id), el("td", {}, scopeText),
           el("td", {}, fmt(c.valid_until)), el("td", {}, c.revoked_at ? "cofnieta " + fmt(c.revoked_at) : active ? "aktywna" : "wygasla"),
           el("td", {}, active ? el("button", { class: "danger", onclick: async () => {
             await api(`/api/app/orgs/${org.id}/support-access/consents/${c.id}/revoke`, { method: "POST" }).catch((e) => alert(e.message));

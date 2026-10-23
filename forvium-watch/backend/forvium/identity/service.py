@@ -11,10 +11,19 @@ from forvium.core.security import (
     USER_TOKEN_PREFIX,
     new_token,
     token_digest,
+    match_totp_step,
     verify_password,
-    verify_totp,
 )
 from forvium.identity.models import User, UserSession
+
+
+def consume_totp(user: User, code: str | None) -> bool:
+    """Sprawdza kod TOTP i oznacza jego krok jako zuzyty (ochrona przed ponownym uzyciem)."""
+    step = match_totp_step(user.mfa_secret, code, clock.now())
+    if step is None or (user.mfa_last_step is not None and step <= user.mfa_last_step):
+        return False
+    user.mfa_last_step = step
+    return True
 
 
 def login(ctx: Ctx, *, email: str, password: str, mfa_code: str | None, kind: str, ttl_minutes: int) -> str:
@@ -25,7 +34,7 @@ def login(ctx: Ctx, *, email: str, password: str, mfa_code: str | None, kind: st
     if ok and kind == "operator" and not user.platform_role:
         ok = False
     if ok and (kind == "operator" or user.mfa_secret):
-        ok = verify_totp(user.mfa_secret, mfa_code)
+        ok = consume_totp(user, mfa_code)
     if not ok:
         ctx.audit.record(action, outcome="denied", actor_user_id=user.id if user else None,
                          actor_type="anonymous", ip_address=ctx.ip, details={"reason": "invalid_credentials"})

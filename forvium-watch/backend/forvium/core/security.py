@@ -8,7 +8,9 @@ weryfikowany we wlasnej tabeli i nie da sie uzyc jednego w miejscu drugiego.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import secrets
+from datetime import UTC, datetime
 
 import pyotp
 from argon2 import PasswordHasher
@@ -45,7 +47,17 @@ def new_totp_secret() -> str:
     return pyotp.random_base32()
 
 
-def verify_totp(secret: str | None, code: str | None, valid_window: int = 1) -> bool:
+def match_totp_step(secret: str | None, code: str | None, at: datetime, valid_window: int = 1) -> int | None:
+    """Zwraca numer kroku czasowego TOTP pasujacego do kodu albo None.
+
+    Wywolujacy odrzuca kroki <= ostatnio uzytego, co blokuje ponowne uzycie kodu.
+    """
     if not secret or not code:
-        return False
-    return pyotp.TOTP(secret).verify(code.strip(), valid_window=valid_window)
+        return None
+    totp = pyotp.TOTP(secret)
+    ts = int(at.replace(tzinfo=UTC).timestamp())
+    for offset in range(-valid_window, valid_window + 1):
+        t = ts + offset * totp.interval
+        if hmac.compare_digest(totp.at(t), code.strip()):
+            return t // totp.interval
+    return None
