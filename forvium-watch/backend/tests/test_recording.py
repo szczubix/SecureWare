@@ -87,11 +87,11 @@ def test_sanitizer_blocks_dangerous_markup():
     from forvium.security.html_sanitizer import sanitize_html
 
     dirty = ('<div onclick="x()"><a href="javascript:alert(1)">l</a><iframe src="//evil"></iframe>'
-             '<textarea>haslo</p>dalej</textarea><style>*{}</style><svg><script>1</script></svg>'
+             '<textarea>hasło</p>dalej</textarea><style>*{}</style><svg><script>1</script></svg>'
              '<input type="password" value="p"><input type="checkbox" checked onfocus="x">'
              '<td colspan="2;x">c</td><p style="background:url(//evil)">t</p></div>')
     clean = sanitize_html(dirty)
-    for bad in ("onclick", "javascript", "iframe", "haslo", "dalej", "style", "svg", "script", "password",
+    for bad in ("onclick", "javascript", "iframe", "hasło", "dalej", "style", "svg", "script", "password",
                 "onfocus", "url("):
         assert bad not in clean, bad
     assert '<input type="checkbox" checked disabled>' in clean and "<p>t</p>" in clean

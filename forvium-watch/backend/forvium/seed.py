@@ -40,13 +40,13 @@ def seed(db: Session) -> dict:
 
     alice = user("alice", "alice@acme.example", "Alicja Kowalska")
     bob = user("bob", "bob@acme.example", "Bartosz Nowak")
-    dorota = user("dorota", "dorota@acme.example", "Dorota Zielinska")
-    carol = user("carol", "carol@beta.example", "Karolina Wisniewska")
+    dorota = user("dorota", "dorota@acme.example", "Dorota Zielińska")
+    carol = user("carol", "carol@beta.example", "Karolina Wiśniewska")
     ola = user("ola", "ola@forvium.com", "Ola (Support L2)", platform_role="support_l2")
     piotr = user("piotr", "piotr@forvium.com", "Piotr (Support L1)", platform_role="support_l1")
     marta = user("marta", "marta@forvium.com", "Marta (Kierownik supportu)", platform_role="support_lead")
-    ewa = user("ewa", "ewa@forvium.com", "Ewa (Oficer bezpieczenstwa)", platform_role="security_officer")
-    tomasz = user("tomasz", "tomasz@forvium.com", "Tomasz (Oficer bezpieczenstwa)", platform_role="security_officer")
+    ewa = user("ewa", "ewa@forvium.com", "Ewa (Oficer bezpieczeństwa)", platform_role="security_officer")
+    tomasz = user("tomasz", "tomasz@forvium.com", "Tomasz (Oficer bezpieczeństwa)", platform_role="security_officer")
 
     acme = Organization(name="Acme Sp. z o.o.", subscription_plan="business", created_at=now,
                         settings={"timezone": "Europe/Warsaw", "scan_interval_h": 6},
@@ -62,8 +62,8 @@ def seed(db: Session) -> dict:
     hq = OrgUnit(organization_id=acme.id, name="Centrala")
     db.add(hq)
     db.flush()
-    waw = OrgUnit(organization_id=acme.id, parent_id=hq.id, name="Oddzial Warszawa")
-    krk = OrgUnit(organization_id=acme.id, parent_id=hq.id, name="Oddzial Krakow")
+    waw = OrgUnit(organization_id=acme.id, parent_id=hq.id, name="Oddział Warszawa")
+    krk = OrgUnit(organization_id=acme.id, parent_id=hq.id, name="Oddział Kraków")
     beta_unit = OrgUnit(organization_id=beta.id, name="Beta HQ")
     db.add_all([waw, krk, beta_unit])
     db.flush()
@@ -76,9 +76,9 @@ def seed(db: Session) -> dict:
         Technology(organization_id=beta.id, unit_id=beta_unit.id, name="Apache httpd", version="2.4.58",
                    cves=[{"id": "CVE-2024-38476", "severity": "high"}]),
         DiagnosticEvent(organization_id=acme.id, level="error", component="scanner",
-                        message="Agent w Oddziale Krakow nie raportuje od 3 h", created_at=now - timedelta(hours=1)),
+                        message="Agent w Oddziale Kraków nie raportuje od 3 h", created_at=now - timedelta(hours=1)),
         DiagnosticEvent(organization_id=acme.id, level="warning", component="smtp",
-                        message="Odrzucone polaczenie TLS do serwera SMTP", created_at=now - timedelta(hours=2)),
+                        message="Odrzucone połączenie TLS do serwera SMTP", created_at=now - timedelta(hours=2)),
     ])
 
     db.add_all([
@@ -92,11 +92,11 @@ def seed(db: Session) -> dict:
     ])
 
     t_acme = SupportTicket(number="FW-1001", organization_id=acme.id, reporter_user_id=bob.id,
-                           subject="Dashboard nie pokazuje CVE dla Oddzialu Krakow", created_at=now)
-    t_closed = SupportTicket(number="FW-1002", organization_id=acme.id, subject="Stare zgloszenie",
+                           subject="Dashboard nie pokazuje CVE dla Oddziału Kraków", created_at=now)
+    t_closed = SupportTicket(number="FW-1002", organization_id=acme.id, subject="Stare zgłoszenie",
                              status=TicketStatus.CLOSED, created_at=now)
     t_beta = SupportTicket(number="FW-2001", organization_id=beta.id, reporter_user_id=carol.id,
-                           subject="Blad konfiguracji SMTP", created_at=now)
+                           subject="Błąd konfiguracji SMTP", created_at=now)
     db.add_all([t_acme, t_closed, t_beta])
     db.flush()
 
@@ -126,10 +126,10 @@ if __name__ == "__main__":  # pragma: no cover
         from sqlalchemy import select
 
         if session.scalar(select(User.id).limit(1)) is not None:
-            print("Baza zawiera juz dane - pomijam seed.")
+            print("Baza zawiera już dane - pomijam seed.")
             raise SystemExit(0)
         data = seed(session)
         session.commit()
-        print("Zaladowano dane demo. Haslo dla wszystkich kont:", DEMO_PASSWORD)
+        print("Załadowano dane demo. Hasło dla wszystkich kont:", DEMO_PASSWORD)
         for key, u in data["users"].items():
             print(f"  {u.email:24} TOTP: {TOTP[key]}")

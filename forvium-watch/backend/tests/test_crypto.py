@@ -128,7 +128,7 @@ def test_reencrypt_cli_encrypts_legacy_plaintext(env, tmp_path):
                             env={**os.environ, "FORVIUM_DATABASE_URL": url, "FORVIUM_DATA_KEYS": TEST_DATA_KEYS,
                                  "FORVIUM_DATA_KEY_ID": "k1"}, cwd=os.path.dirname(os.path.dirname(__file__)))
     assert result.returncode == 0, result.stderr
-    assert "Przepisano 1 pol" in result.stdout
+    assert "Przepisano 1 pól" in result.stdout
     raw = _raw(env, "SELECT mfa_secret FROM users WHERE email = 'carol@beta.example'")[0][0]
     assert raw.startswith("fwenc:v1:k1:")
     assert env.login_app("carol")

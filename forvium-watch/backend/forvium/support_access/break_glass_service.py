@@ -54,8 +54,8 @@ def on_break_glass_requested(ctx: Ctx, req: SupportAccessRequest, operator: User
                  "scopes": req.requested_scopes, "duration_minutes": req.requested_duration_minutes,
                  "justification": req.reason},
     )
-    body = (f"Operator {operator.id} wnioskuje o dostep awaryjny (Break Glass) do organizacji {org.name} "
-            f"({req.organization_id}), zgloszenie {req.ticket_number}, kategoria {req.incident_category}, "
+    body = (f"Operator {operator.id} wnioskuje o dostęp awaryjny (Break Glass) do organizacji {org.name} "
+            f"({req.organization_id}), zgłoszenie {req.ticket_number}, kategoria {req.incident_category}, "
             f"{req.requested_duration_minutes} min.\nUzasadnienie: {req.reason}\n"
             f"Wniosek wygasa {req.decision_deadline.isoformat()} UTC. Decyzja: admin.forvium.com -> Break Glass.")
     ctx.notifications.notify(
@@ -82,7 +82,7 @@ def approve_break_glass(ctx: Ctx, officer: User, *, request_id: str, mfa_code: s
             "support_request_id": req.id}
     _require_platform(ctx, officer, PlatformPermission.BREAK_GLASS_APPROVE, action)
     if officer.id == req.operator_user_id:
-        raise _deny(ctx, action, "self_approval", "Wniosek musi zatwierdzic inna osoba (zasada 4 oczu).", **base)
+        raise _deny(ctx, action, "self_approval", "Wniosek musi zatwierdzić inna osoba (zasada 4 oczu).", **base)
     if req.status != RequestStatus.PENDING_SECOND_APPROVAL:
         raise _deny(ctx, action, "request_not_pending", "Wniosek nie oczekuje na zatwierdzenie.", status=409, **base)
     _verify_operator_mfa(ctx, officer, mfa_code, action, webauthn=webauthn,
@@ -114,12 +114,12 @@ def approve_break_glass(ctx: Ctx, officer: User, *, request_id: str, mfa_code: s
                   details={"consent_id": consent.id, "valid_until": consent.valid_until.isoformat()}, **base)
 
     org = ctx.db.get(Organization, req.organization_id)
-    body = (f"Forvium uruchomilo procedure awaryjna (Break Glass) dla organizacji {org.name}: "
-            f"operator {req.operator_user_id} moze otworzyc sesje TYLKO DO ODCZYTU do "
-            f"{req.requested_duration_minutes} min, zgloszenie {req.ticket_number}.\n"
+    body = (f"Forvium uruchomiło procedure awaryjna (Break Glass) dla organizacji {org.name}: "
+            f"operator {req.operator_user_id} może otworzyć sesję TYLKO DO ODCZYTU do "
+            f"{req.requested_duration_minutes} min, zgłoszenie {req.ticket_number}.\n"
             f"Kategoria incydentu: {req.incident_category}\nUzasadnienie: {req.reason}\n"
-            f"Wniosek zatwierdzil oficer bezpieczenstwa Forvium ({officer.id}). Mozecie natychmiast cofnac te "
-            "zgode: Ustawienia -> Dostep serwisowy. Po incydencie otrzymacie raport z przegladu.")
+            f"Wniosek zatwierdził oficer bezpieczeństwa Forvium ({officer.id}). Możecie natychmiast cofnąć te "
+            "zgodę: Ustawienia -> Dostęp serwisowy. Po incydencie otrzymacie raport z przeglądu.")
     ctx.notifications.notify(ctx.db, _org_approvers(ctx, req.organization_id),
                              event="break_glass.approved",
                              title=f"PROCEDURA AWARYJNA Forvium ({req.ticket_number})", body=body,
@@ -129,7 +129,7 @@ def approve_break_glass(ctx: Ctx, officer: User, *, request_id: str, mfa_code: s
     if operator:
         ctx.notifications.notify(ctx.db, [operator], event="break_glass.approved",
                                  title=f"Break Glass zatwierdzony ({req.ticket_number})",
-                                 body=f"Zgoda awaryjna wazna do {consent.valid_until.isoformat()} UTC.",
+                                 body=f"Zgoda awaryjna ważna do {consent.valid_until.isoformat()} UTC.",
                                  organization_id=req.organization_id, data={"request_id": req.id})
     notify_security_team(ctx, f"Break Glass zatwierdzony ({req.ticket_number})", body)
     return consent
@@ -142,7 +142,7 @@ def reject_break_glass(ctx: Ctx, officer: User, *, request_id: str, note: str | 
             "support_request_id": req.id}
     _require_platform(ctx, officer, PlatformPermission.BREAK_GLASS_APPROVE, action)
     if officer.id == req.operator_user_id:
-        raise _deny(ctx, action, "self_decision", "Nie mozna decydowac o wlasnym wniosku.", **base)
+        raise _deny(ctx, action, "self_decision", "Nie można decydować o własnym wniosku.", **base)
     if req.status != RequestStatus.PENDING_SECOND_APPROVAL:
         raise _deny(ctx, action, "request_not_pending", "Wniosek nie oczekuje na zatwierdzenie.", status=409, **base)
     req.status = RequestStatus.REJECTED
@@ -167,14 +167,14 @@ def review_break_glass(ctx: Ctx, reviewer: User, *, request_id: str, notes: str)
     _require_platform(ctx, reviewer, PlatformPermission.BREAK_GLASS_REVIEW, action)
     if reviewer.id in (req.operator_user_id, req.decided_by_user_id):
         raise _deny(ctx, action, "reviewer_not_independent",
-                    "Przeglad musi wykonac osoba niezalezna od wnioskujacego i zatwierdzajacego.", **base)
+                    "Przegląd musi wykonać osoba niezależna od wnioskującego i zatwierdzającego.", **base)
     if req.status != RequestStatus.APPROVED or req.review_completed_at is not None:
-        raise _deny(ctx, action, "review_not_applicable", "Wniosek nie wymaga przegladu.", status=409, **base)
+        raise _deny(ctx, action, "review_not_applicable", "Wniosek nie wymaga przeglądu.", status=409, **base)
     sessions = list(ctx.db.scalars(select(SupportSession).where(SupportSession.request_id == req.id)))
     if any(s.status == SessionStatus.ACTIVE and clock.now() < s.expires_at for s in sessions):
-        raise _deny(ctx, action, "session_active", "Sesja awaryjna wciaz trwa.", status=409, **base)
+        raise _deny(ctx, action, "session_active", "Sesja awaryjna wciąż trwa.", status=409, **base)
     if len((notes or "").strip()) < 50:
-        raise _deny(ctx, action, "notes_too_short", "Opisz ustalenia przegladu (min. 50 znakow).", status=422,
+        raise _deny(ctx, action, "notes_too_short", "Opisz ustalenia przeglądu (min. 50 znaków).", status=422,
                     **base)
 
     req.review_completed_at = clock.now()
@@ -184,15 +184,15 @@ def review_break_glass(ctx: Ctx, reviewer: User, *, request_id: str, notes: str)
     ctx.audit.log(ctx.db, "break_glass.reviewed", ip_address=ctx.ip,
                   details={"sessions": len(sessions), "notes": req.review_notes}, **base)
     body = "\n\n".join(
-        [f"Przeglad procedury awaryjnej Forvium ({req.ticket_number}) zostal zakonczony.",
+        [f"Przegląd procedury awaryjnej Forvium ({req.ticket_number}) został zakończony.",
          f"Ustalenia: {req.review_notes}"]
         + [f"Sesja {i + 1}:\n{summary_text(sm)}" for i, sm in enumerate(summaries)]
-        + ["Szczegolowa lista operacji: Ustawienia -> Dostep serwisowy -> Historia sesji."]
+        + ["Szczegółowa lista operacji: Ustawienia -> Dostęp serwisowy -> Historia sesji."]
     )
     ctx.notifications.notify(ctx.db, _org_approvers(ctx, req.organization_id), event="break_glass.reviewed",
                              title=f"Raport z procedury awaryjnej Forvium ({req.ticket_number})", body=body,
                              organization_id=req.organization_id, data={"request_id": req.id})
-    notify_security_team(ctx, f"Break Glass - przeglad zakonczony ({req.ticket_number})", body)
+    notify_security_team(ctx, f"Break Glass - przegląd zakończony ({req.ticket_number})", body)
     return req
 
 

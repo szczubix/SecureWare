@@ -34,11 +34,11 @@ def create_standing_consent(
     base = {"actor_user_id": user.id, "actor_type": "user", "organization_id": organization_id}
     if user.platform_role is not None:
         raise _deny(ctx, action, "operator_cannot_approve",
-                    "Konto operatora Forvium nie moze udzielac zgod.", **base)
+                    "Konto operatora Forvium nie może udzielać zgód.", **base)
     try:
         parsed = parse_scopes(scopes)
     except ValueError:
-        raise _deny(ctx, action, "scope_invalid", "Nieznany zakres dostepu.", status=422, **base)
+        raise _deny(ctx, action, "scope_invalid", "Nieznany zakres dostępu.", status=422, **base)
     if not parsed:
         raise _deny(ctx, action, "scope_empty", "Wybierz co najmniej jeden zakres.", status=422, **base)
     if not 1 <= max_session_minutes <= ctx.policy.max_session_minutes:
@@ -46,7 +46,7 @@ def create_standing_consent(
                     f"Czas sesji: 1-{ctx.policy.max_session_minutes} min.", status=422, **base)
     if not 1 <= valid_days <= ctx.policy.max_standing_consent_days:
         raise _deny(ctx, action, "validity_invalid",
-                    f"Waznosc zgody stalej: 1-{ctx.policy.max_standing_consent_days} dni.", status=422, **base)
+                    f"Ważność zgody stałej: 1-{ctx.policy.max_standing_consent_days} dni.", status=422, **base)
     if allowed_platform_roles:
         try:
             allowed_platform_roles = sorted({PlatformRole(r).value for r in allowed_platform_roles})
@@ -56,10 +56,10 @@ def create_standing_consent(
         found = set(ctx.db.scalars(select(OrgUnit.id).where(OrgUnit.organization_id == organization_id,
                                                             OrgUnit.id.in_(unit_ids))))
         if found != set(unit_ids):
-            raise _deny(ctx, action, "unit_invalid", "Nieprawidlowe jednostki.", status=422, **base)
+            raise _deny(ctx, action, "unit_invalid", "Nieprawidłowe jednostki.", status=422, **base)
     # Zgoda stala jest silniejsza niz pojedyncza decyzja - wymaga MFA przedstawiciela klienta.
     if user.mfa_secret and not consume_totp(user, mfa_code):
-        raise _deny(ctx, action, "mfa_required", "Potwierdz zgode stala kodem MFA.", status=401, **base)
+        raise _deny(ctx, action, "mfa_required", "Potwierdź zgodę stała kodem MFA.", status=401, **base)
 
     now = clock.now()
     org = ctx.db.get(Organization, organization_id)
@@ -88,12 +88,12 @@ def create_standing_consent(
     ctx.notifications.notify(
         ctx.db, _org_approvers(ctx, organization_id, exclude_user_id=user.id),
         event="support_access.standing_consent_created",
-        title=("Potwierdz zgode stala na dostep serwisowy Forvium" if dual
-               else "Utworzono zgode stala na dostep serwisowy Forvium"),
-        body=(f"{user.display_name} udzielil(a) zgody stalej (zakres: {', '.join(standing.scopes)}, "
-              f"do {max_session_minutes} min na sesje, wazna do {standing.valid_until.date()}). "
-              + ("Zgoda zacznie obowiazywac po potwierdzeniu przez druga osobe. " if dual else "")
-              + "Mozna ja cofnac w Ustawienia -> Dostep serwisowy."),
+        title=("Potwierdź zgodę stała na dostęp serwisowy Forvium" if dual
+               else "Utworzono zgodę stała na dostęp serwisowy Forvium"),
+        body=(f"{user.display_name} udzielił(a) zgody stałej (zakres: {', '.join(standing.scopes)}, "
+              f"do {max_session_minutes} min na sesje, ważna do {standing.valid_until.date()}). "
+              + ("Zgoda zacznie obowiązywać po potwierdzeniu przez druga osobę. " if dual else "")
+              + "Można ja cofnąć w Ustawienia -> Dostęp serwisowy."),
         organization_id=organization_id, data={"standing_consent_id": standing.id},
     )
     return standing
@@ -106,16 +106,16 @@ def confirm_standing_consent(ctx: Ctx, user: User, *, organization_id: str, stan
     base = {"actor_user_id": user.id, "actor_type": "user", "organization_id": organization_id}
     standing = ctx.db.get(SupportStandingConsent, standing_id)
     if standing is None or standing.organization_id != organization_id:
-        raise DomainError(404, "standing_consent_not_found", "Nie znaleziono zgody stalej.")
+        raise DomainError(404, "standing_consent_not_found", "Nie znaleziono zgody stałej.")
     if standing.confirmed_at is not None or standing.revoked_at is not None:
-        raise _deny(ctx, action, "not_pending", "Zgoda stala nie czeka na potwierdzenie.", status=409, **base)
+        raise _deny(ctx, action, "not_pending", "Zgoda stała nie czeka na potwierdzenie.", status=409, **base)
     if user.id == standing.granted_by_user_id:
         raise _deny(ctx, action, "second_approver_required",
-                    "Zgode stala musi potwierdzic inna osoba niz tworzaca.", **base)
+                    "Zgodę stała musi potwierdzić inna osoba niż tworząca.", **base)
     if user.platform_role is not None:
-        raise _deny(ctx, action, "operator_cannot_approve", "Konto operatora Forvium nie moze udzielac zgod.", **base)
+        raise _deny(ctx, action, "operator_cannot_approve", "Konto operatora Forvium nie może udzielać zgód.", **base)
     if user.mfa_secret and not consume_totp(user, mfa_code):
-        raise _deny(ctx, action, "mfa_required", "Potwierdz zgode stala kodem MFA.", status=401, **base)
+        raise _deny(ctx, action, "mfa_required", "Potwierdź zgodę stała kodem MFA.", status=401, **base)
     standing.confirmed_by_user_id = user.id
     standing.confirmed_at = clock.now()
     ctx.audit.log(ctx.db, "support.standing_consent.confirmed", ip_address=ctx.ip,
@@ -126,7 +126,7 @@ def confirm_standing_consent(ctx: Ctx, user: User, *, organization_id: str, stan
 def revoke_standing_consent(ctx: Ctx, user: User, *, organization_id: str, standing_id: str) -> SupportStandingConsent:
     standing = ctx.db.get(SupportStandingConsent, standing_id)
     if standing is None or standing.organization_id != organization_id:
-        raise DomainError(404, "standing_consent_not_found", "Nie znaleziono zgody stalej.")
+        raise DomainError(404, "standing_consent_not_found", "Nie znaleziono zgody stałej.")
     if standing.revoked_at is not None:
         return standing
     standing.revoked_at = clock.now()

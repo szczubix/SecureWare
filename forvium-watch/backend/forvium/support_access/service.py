@@ -85,7 +85,7 @@ def _verify_operator_mfa(ctx: Ctx, operator: User, mfa_code: str | None, action:
         ok, method = verify_assertion(ctx, operator, webauthn), "webauthn"
     elif require_hardware:
         raise _deny(ctx, action, "hardware_mfa_required",
-                    "Ta operacja wymaga potwierdzenia kluczem bezpieczenstwa (WebAuthn).",
+                    "Ta operacja wymaga potwierdzenia kluczem bezpieczeństwa (WebAuthn).",
                     status=401, actor_user_id=operator.id, actor_type="operator", **audit_kwargs)
     else:
         ok, method = consume_totp(operator, mfa_code), "totp"
@@ -100,7 +100,7 @@ def _verify_operator_mfa(ctx: Ctx, operator: User, mfa_code: str | None, action:
 
 def _require_platform(ctx: Ctx, operator: User, permission: PlatformPermission, action: str) -> None:
     if not operator.is_active or permission not in platform_permissions(operator.platform_role):
-        raise _deny(ctx, action, "operator_not_permitted", "Brak uprawnien operatora.",
+        raise _deny(ctx, action, "operator_not_permitted", "Brak uprawnień operatora.",
                     actor_user_id=operator.id, actor_type="operator")
 
 
@@ -131,10 +131,10 @@ def create_request(
         try:
             ensure_break_glass_allowed(ctx.break_glass)
         except BreakGlassDisabled:
-            raise _deny(ctx, action, "break_glass_disabled", "Dostep awaryjny (Break Glass) jest wylaczony.", **base)
+            raise _deny(ctx, action, "break_glass_disabled", "Dostęp awaryjny (Break Glass) jest wyłączony.", **base)
         _require_platform(ctx, operator, PlatformPermission.BREAK_GLASS_REQUEST, action)
     elif mode != AccessMode.STANDARD:
-        raise _deny(ctx, action, "mode_invalid", "Nieznany tryb dostepu.", status=422, **base)
+        raise _deny(ctx, action, "mode_invalid", "Nieznany tryb dostępu.", status=422, **base)
     else:
         _require_platform(ctx, operator, PlatformPermission.SUPPORT_ACCESS_REQUEST, action)
 
@@ -145,31 +145,31 @@ def create_request(
     reference = ctx.db.get(User, reference_user_id)
     if reference is None or not reference.is_active or _membership(ctx, organization_id, reference_user_id) is None:
         raise _deny(ctx, action, "reference_user_invalid",
-                    "Uzytkownik referencyjny nie nalezy do organizacji.", status=422, **base)
+                    "Użytkownik referencyjny nie należy do organizacji.", status=422, **base)
     if reference.id == operator.id:
-        raise _deny(ctx, action, "self_reference", "Operator nie moze odtwarzac wlasnego widoku.", status=422, **base)
+        raise _deny(ctx, action, "self_reference", "Operator nie może odtwarzać własnego widoku.", status=422, **base)
 
     min_reason = ctx.break_glass.min_justification_length if break_glass else ctx.policy.min_reason_length
     if len((reason or "").strip()) < min_reason:
         raise _deny(ctx, action, "reason_too_short",
-                    f"Podaj szczegolowe uzasadnienie (min. {min_reason} znakow).", status=422, **base)
+                    f"Podaj szczegółowe uzasadnienie (min. {min_reason} znaków).", status=422, **base)
     if break_glass:
         try:
             incident_category = IncidentCategory(incident_category or "").value
         except ValueError:
-            raise _deny(ctx, action, "incident_category_invalid", "Wybierz kategorie incydentu.", status=422, **base)
+            raise _deny(ctx, action, "incident_category_invalid", "Wybierz kategorię incydentu.", status=422, **base)
     else:
         incident_category = None
 
     ticket = find_active_ticket(ctx.db, ticket_number or "", organization_id)
     if ticket is None:
         raise _deny(ctx, action, "ticket_invalid",
-                    "Zgloszenie nie istnieje, jest zamkniete lub dotyczy innej organizacji.", status=422, **base)
+                    "Zgłoszenie nie istnieje, jest zamknięte lub dotyczy innej organizacji.", status=422, **base)
 
     try:
         requested = parse_scopes(scopes)
     except ValueError:
-        raise _deny(ctx, action, "scope_invalid", "Nieznany zakres dostepu.", status=422, **base)
+        raise _deny(ctx, action, "scope_invalid", "Nieznany zakres dostępu.", status=422, **base)
     if not requested:
         raise _deny(ctx, action, "scope_empty", "Wybierz co najmniej jeden zakres.", status=422, **base)
     if not requested <= operator_scope_cap(operator.platform_role):
@@ -180,7 +180,7 @@ def create_request(
     duration = duration_minutes or ctx.policy.default_session_minutes
     if duration < 1 or duration > max_minutes:
         raise _deny(ctx, action, "duration_invalid",
-                    f"Czas dostepu musi miescic sie w 1-{max_minutes} min.", status=422, **base)
+                    f"Czas dostępu musi mieścić się w 1-{max_minutes} min.", status=422, **base)
 
     # Ponowna weryfikacja MFA jako ostatni krok przed zapisem (kod jest jednorazowy).
     _verify_operator_mfa(ctx, operator, mfa_code, action, webauthn=webauthn,
@@ -232,11 +232,11 @@ def create_request(
             ctx.db,
             approvers,
             event="support_access.auto_approved",
-            title=f"Dostep serwisowy Forvium zatwierdzony automatycznie ({ticket.number})",
+            title=f"Dostęp serwisowy Forvium zatwierdzony automatycznie ({ticket.number})",
             body=(
-                f"Operator Forvium ({operator.id}) uzyskal dostep READ_ONLY do organizacji {org.name} "
-                f"na podstawie Waszej zgody stalej. Powod: {req.reason}. Zgoda wazna do "
-                f"{consent.valid_until.isoformat()} UTC. Mozesz ja cofnac: Ustawienia -> Dostep serwisowy."
+                f"Operator Forvium ({operator.id}) uzyskał dostęp READ_ONLY do organizacji {org.name} "
+                f"na podstawie Waszej zgody stałej. Powód: {req.reason}. Zgoda ważna do "
+                f"{consent.valid_until.isoformat()} UTC. Możesz ją cofnąć: Ustawienia -> Dostęp serwisowy."
             ),
             organization_id=organization_id,
             data={"request_id": req.id, "consent_id": consent.id, "standing_consent_id": standing.id},
@@ -247,11 +247,11 @@ def create_request(
         ctx.db,
         approvers,
         event="support_access.requested",
-        title=f"Forvium prosi o dostep serwisowy ({ticket.number})",
+        title=f"Forvium prosi o dostęp serwisowy ({ticket.number})",
         body=(
-            f"Operator Forvium ({operator.id}) prosi o dostep serwisowy READ_ONLY do organizacji "
-            f"{org.name} na {duration} min. Powod: {req.reason}. Zatwierdz lub odrzuc prosbe "
-            "w aplikacji: Ustawienia -> Dostep serwisowy."
+            f"Operator Forvium ({operator.id}) prosi o dostęp serwisowy READ_ONLY do organizacji "
+            f"{org.name} na {duration} min. Powód: {req.reason}. Zatwierdź lub odrzuć prośbę "
+            "w aplikacji: Ustawienia -> Dostęp serwisowy."
         ),
         organization_id=organization_id,
         data={"request_id": req.id},
@@ -287,7 +287,7 @@ def _auto_approve_from_standing(ctx: Ctx, req: SupportAccessRequest, standing: S
     req.status = RequestStatus.APPROVED
     req.decided_by_user_id = standing.granted_by_user_id
     req.decided_at = now
-    req.decision_note = f"Zatwierdzono automatycznie (zgoda stala {standing.id})"
+    req.decision_note = f"Zatwierdzono automatycznie (zgoda stała {standing.id})"
     consent = SupportConsent(
         request_id=req.id,
         organization_id=req.organization_id,
@@ -325,7 +325,7 @@ def _expire_stale_request(ctx: Ctx, req: SupportAccessRequest) -> None:
 def _load_request_for_org(ctx: Ctx, request_id: str, organization_id: str) -> SupportAccessRequest:
     req = ctx.db.get(SupportAccessRequest, request_id)
     if req is None or req.organization_id != organization_id:
-        raise DomainError(404, "request_not_found", "Nie znaleziono prosby.")
+        raise DomainError(404, "request_not_found", "Nie znaleziono prośby.")
     _expire_stale_request(ctx, req)
     return req
 
@@ -358,17 +358,17 @@ def approve_request(
             "support_request_id": req.id}
 
     if approver.id == req.operator_user_id:
-        raise _deny(ctx, action, "self_approval", "Nie mozna zatwierdzic wlasnej prosby o dostep.", **base)
+        raise _deny(ctx, action, "self_approval", "Nie można zatwierdzić własnej prośby o dostęp.", **base)
     if approver.platform_role is not None:
         # Zgode wydaje wylacznie przedstawiciel klienta, nigdy konto operatorskie Forvium.
         raise _deny(ctx, action, "operator_cannot_approve",
-                    "Konto operatora Forvium nie moze zatwierdzac dostepu serwisowego.", **base)
+                    "Konto operatora Forvium nie może zatwierdzać dostępu serwisowego.", **base)
     confirming = req.status == RequestStatus.PENDING_CUSTOMER_CONFIRMATION
     if req.status != RequestStatus.PENDING and not confirming:
-        raise _deny(ctx, action, "request_not_pending", "Prosba nie oczekuje na decyzje.", status=409, **base)
+        raise _deny(ctx, action, "request_not_pending", "Prośba nie oczekuje na decyzje.", status=409, **base)
     if confirming and approver.id == req.first_approved_by_user_id:
         raise _deny(ctx, action, "second_approver_required",
-                    "Zgode musi potwierdzic inna osoba niz pierwsza zatwierdzajaca.", **base)
+                    "Zgodę musi potwierdzić inna osoba niż pierwsza zatwierdzająca.", **base)
 
     # Przy potwierdzeniu punktem odniesienia sa parametry z pierwszego zatwierdzenia.
     grant = (req.pending_grant or {}) if confirming else {}
@@ -376,10 +376,10 @@ def approve_request(
     try:
         granted = parse_scopes(scopes) if scopes is not None else requested
     except ValueError:
-        raise _deny(ctx, action, "scope_invalid", "Nieznany zakres dostepu.", status=422, **base)
+        raise _deny(ctx, action, "scope_invalid", "Nieznany zakres dostępu.", status=422, **base)
     if not granted or not granted <= requested:
         raise _deny(ctx, action, "scope_exceeds_request",
-                    "Zgoda moze obejmowac tylko zakresy, o ktore wnioskowano.", status=422, **base)
+                    "Zgoda może obejmować tylko zakresy, o które wnioskowano.", status=422, **base)
 
     if confirming:
         first_units = grant.get("unit_ids")
@@ -387,7 +387,7 @@ def approve_request(
             unit_ids = first_units
         elif first_units and not set(unit_ids) <= set(first_units):
             raise _deny(ctx, action, "unit_exceeds_first_approval",
-                        "Potwierdzenie moze tylko zawezic jednostki.", status=422, **base)
+                        "Potwierdzenie może tylko zawęzić jednostki.", status=422, **base)
         valid_hours = min(valid_hours or grant["valid_hours"], grant["valid_hours"])
     if unit_ids:
         from forvium.organizations.models import OrgUnit
@@ -398,12 +398,12 @@ def approve_request(
             )
         )
         if found != set(unit_ids):
-            raise _deny(ctx, action, "unit_invalid", "Nieprawidlowe jednostki.", status=422, **base)
+            raise _deny(ctx, action, "unit_invalid", "Nieprawidłowe jednostki.", status=422, **base)
 
     hours = valid_hours or ctx.policy.default_consent_hours
     if hours < 1 or hours > ctx.policy.max_consent_hours:
         raise _deny(ctx, action, "validity_invalid",
-                    f"Waznosc zgody: 1-{ctx.policy.max_consent_hours} h.", status=422, **base)
+                    f"Ważność zgody: 1-{ctx.policy.max_consent_hours} h.", status=422, **base)
 
     now = clock.now()
     org = ctx.db.get(Organization, organization_id)
@@ -419,10 +419,10 @@ def approve_request(
         ctx.notifications.notify(
             ctx.db, _org_approvers(ctx, organization_id, exclude_user_id=approver.id),
             event="support_access.confirmation_required",
-            title=f"Potwierdz dostep serwisowy Forvium ({req.ticket_number})",
-            body=(f"{approver.display_name} zatwierdzil(a) dostep serwisowy (zakres: "
+            title=f"Potwierdź dostęp serwisowy Forvium ({req.ticket_number})",
+            body=(f"{approver.display_name} zatwierdził(a) dostęp serwisowy (zakres: "
                   f"{', '.join(req.pending_grant['scopes'])}). Wasza organizacja wymaga drugiego potwierdzenia: "
-                  "Ustawienia -> Dostep serwisowy."),
+                  "Ustawienia -> Dostęp serwisowy."),
             organization_id=organization_id, data={"request_id": req.id},
         )
         return None
@@ -454,8 +454,8 @@ def approve_request(
     if operator:
         ctx.notifications.notify(
             ctx.db, [operator], event="support_access.approved",
-            title=f"Zgoda na dostep serwisowy ({req.ticket_number}) udzielona",
-            body=f"Zgoda wazna do {consent.valid_until.isoformat()} UTC, zakres: {', '.join(consent.scopes)}.",
+            title=f"Zgoda na dostęp serwisowy ({req.ticket_number}) udzielona",
+            body=f"Zgoda ważna do {consent.valid_until.isoformat()} UTC, zakres: {', '.join(consent.scopes)}.",
             organization_id=organization_id, data={"request_id": req.id, "consent_id": consent.id},
         )
     ctx.audit.log(
@@ -477,9 +477,9 @@ def reject_request(ctx: Ctx, user: User, *, organization_id: str, request_id: st
     base = {"actor_user_id": user.id, "actor_type": "user", "organization_id": organization_id,
             "support_request_id": req.id}
     if user.id == req.operator_user_id:
-        raise _deny(ctx, action, "self_decision", "Nie mozna decydowac o wlasnej prosbie.", **base)
+        raise _deny(ctx, action, "self_decision", "Nie można decydować o własnej prośbie.", **base)
     if req.status not in (RequestStatus.PENDING, RequestStatus.PENDING_CUSTOMER_CONFIRMATION):
-        raise _deny(ctx, action, "request_not_pending", "Prosba nie oczekuje na decyzje.", status=409, **base)
+        raise _deny(ctx, action, "request_not_pending", "Prośba nie oczekuje na decyzje.", status=409, **base)
     req.status = RequestStatus.REJECTED
     req.decided_by_user_id = user.id
     req.decided_at = clock.now()
@@ -488,8 +488,8 @@ def reject_request(ctx: Ctx, user: User, *, organization_id: str, request_id: st
     if operator:
         ctx.notifications.notify(
             ctx.db, [operator], event="support_access.rejected",
-            title=f"Prosba o dostep serwisowy ({req.ticket_number}) odrzucona",
-            body="Klient odrzucil prosbe o dostep serwisowy.", organization_id=organization_id,
+            title=f"Prośba o dostęp serwisowy ({req.ticket_number}) odrzucona",
+            body="Klient odrzucił prośbę o dostęp serwisowy.", organization_id=organization_id,
             data={"request_id": req.id},
         )
     ctx.audit.log(ctx.db, "support.request.rejected", ip_address=ctx.ip, **base)
@@ -498,9 +498,9 @@ def reject_request(ctx: Ctx, user: User, *, organization_id: str, request_id: st
 def cancel_request(ctx: Ctx, operator: User, request_id: str) -> None:
     req = ctx.db.get(SupportAccessRequest, request_id)
     if req is None or req.operator_user_id != operator.id:
-        raise DomainError(404, "request_not_found", "Nie znaleziono prosby.")
+        raise DomainError(404, "request_not_found", "Nie znaleziono prośby.")
     if req.status not in (RequestStatus.PENDING, RequestStatus.PENDING_SECOND_APPROVAL):
-        raise DomainError(409, "request_not_pending", "Prosba nie oczekuje na decyzje.")
+        raise DomainError(409, "request_not_pending", "Prośba nie oczekuje na decyzje.")
     req.status = RequestStatus.CANCELLED
     ctx.audit.log(ctx.db, "support.request.cancelled", actor_user_id=operator.id, actor_type="operator",
                      organization_id=req.organization_id, support_request_id=req.id, ip_address=ctx.ip)
@@ -547,10 +547,10 @@ def _notify_session_summary(ctx: Ctx, session: SupportSession) -> None:
         ctx.db,
         _org_approvers(ctx, session.organization_id, exclude_user_id=session.operator_user_id),
         event="support_access.session_ended",
-        title=f"Zakonczono sesje wsparcia Forvium ({session.ticket_number})",
-        body=(f"Operator Forvium {session.operator_user_id} zakonczyl sesje wsparcia w trybie tylko do odczytu.\n"
+        title=f"Zakończono sesję wsparcia Forvium ({session.ticket_number})",
+        body=(f"Operator Forvium {session.operator_user_id} zakończył sesję wsparcia w trybie tylko do odczytu.\n"
               + summary_text(summary)
-              + "\nPelna lista operacji: Ustawienia -> Dostep serwisowy -> Historia sesji."),
+              + "\nPełna lista operacji: Ustawienia -> Dostęp serwisowy -> Historia sesji."),
         organization_id=session.organization_id,
         data={"session_id": session.id, "summary": summary},
     )
@@ -575,8 +575,8 @@ def revoke_consent(ctx: Ctx, user: User, *, organization_id: str, consent_id: st
     operator = ctx.db.get(User, consent.operator_user_id)
     if operator:
         ctx.notifications.notify(ctx.db, [operator], event="support_access.consent_revoked",
-                                 title="Klient cofnal zgode na dostep serwisowy",
-                                 body="Wszystkie aktywne sesje wsparcia zostaly zakonczone.",
+                                 title="Klient cofnął zgodę na dostęp serwisowy",
+                                 body="Wszystkie aktywne sesje wsparcia zostały zakończone.",
                                  organization_id=organization_id, data={"consent_id": consent.id})
     return consent
 
@@ -591,33 +591,33 @@ def start_session(
     action = "support.session.start"
     req = ctx.db.get(SupportAccessRequest, request_id)
     if req is None:
-        raise _deny(ctx, action, "request_not_found", "Nie znaleziono prosby.", status=404,
+        raise _deny(ctx, action, "request_not_found", "Nie znaleziono prośby.", status=404,
                     actor_user_id=operator.id, actor_type="operator")
     base = {"actor_user_id": operator.id, "actor_type": "operator", "organization_id": req.organization_id,
             "on_behalf_of_user_id": req.reference_user_id, "support_request_id": req.id}
 
     _require_platform(ctx, operator, PlatformPermission.SUPPORT_ACCESS_START, action)
     if req.operator_user_id != operator.id:
-        raise _deny(ctx, action, "not_request_owner", "Sesje moze uruchomic tylko operator, ktory zlozyl prosbe.",
+        raise _deny(ctx, action, "not_request_owner", "Sesje może uruchomić tylko operator, który złożył prośbę.",
                     **base)
     _expire_stale_request(ctx, req)
     if req.status != RequestStatus.APPROVED:
-        raise _deny(ctx, action, "no_consent", "Brak zgody klienta na dostep serwisowy.", **base)
+        raise _deny(ctx, action, "no_consent", "Brak zgody klienta na dostęp serwisowy.", **base)
 
     consent = ctx.db.scalar(select(SupportConsent).where(SupportConsent.request_id == req.id))
     now = clock.now()
     if consent is None or consent.revoked_at is not None or now >= consent.valid_until:
-        raise _deny(ctx, action, "consent_inactive", "Zgoda klienta zostala cofnieta lub wygasla.", **base)
+        raise _deny(ctx, action, "consent_inactive", "Zgoda klienta została cofnięta lub wygasła.", **base)
 
     if not is_ticket_active(ctx.db, req.ticket_id):
-        raise _deny(ctx, action, "ticket_closed", "Zgloszenie supportowe jest zamkniete.", **base)
+        raise _deny(ctx, action, "ticket_closed", "Zgłoszenie supportowe jest zamknięte.", **base)
 
     active = ctx.db.scalar(
         select(SupportSession).where(SupportSession.consent_id == consent.id,
                                      SupportSession.status == SessionStatus.ACTIVE)
     )
     if active is not None and now < active.expires_at:
-        raise _deny(ctx, action, "session_already_active", "Sesja w ramach tej zgody jest juz aktywna.",
+        raise _deny(ctx, action, "session_already_active", "Sesja w ramach tej zgody jest już aktywna.",
                     status=409, **base)
 
     member = _membership(ctx, req.organization_id, req.reference_user_id)
@@ -627,13 +627,13 @@ def start_session(
         operator_platform_role=operator.platform_role,
     )
     if not permissions:
-        raise _deny(ctx, action, "empty_permissions", "Zakres zgody nie daje zadnych uprawnien.", **base)
+        raise _deny(ctx, action, "empty_permissions", "Zakres zgody nie daje żadnych uprawnień.", **base)
 
     policy_max = ctx.break_glass.max_session_minutes if req.mode == AccessMode.BREAK_GLASS \
         else ctx.policy.max_session_minutes
     minutes = min(duration_minutes or consent.max_session_minutes, consent.max_session_minutes, policy_max)
     if minutes < 1:
-        raise _deny(ctx, action, "duration_invalid", "Nieprawidlowy czas sesji.", status=422, **base)
+        raise _deny(ctx, action, "duration_invalid", "Nieprawidłowy czas sesji.", status=422, **base)
     expires_at = min(now + timedelta(minutes=minutes), consent.valid_until)
 
     # Zapisy dopiero po wszystkich sprawdzeniach (odmowy sa audytowane w osobnej transakcji).
@@ -668,18 +668,18 @@ def start_session(
     ctx.notifications.notify(
         ctx.db, _org_approvers(ctx, req.organization_id, exclude_user_id=operator.id),
         event="support_access.session_started",
-        title=(f"PROCEDURA AWARYJNA: rozpoczeto sesje Forvium Break Glass ({req.ticket_number})"
-               if req.mode == AccessMode.BREAK_GLASS else f"Rozpoczeto sesje wsparcia Forvium ({req.ticket_number})"),
-        body=(f"Operator Forvium {operator.id} rozpoczal sesje wsparcia w trybie tylko do odczytu "
-              f"(zgloszenie {req.ticket_number}). Sesja wygasa {expires_at.isoformat()} UTC. "
-              "Mozesz ja zakonczyc lub cofnac zgode w kazdej chwili: Ustawienia -> Dostep serwisowy."),
+        title=(f"PROCEDURA AWARYJNA: rozpoczęto sesję Forvium Break Glass ({req.ticket_number})"
+               if req.mode == AccessMode.BREAK_GLASS else f"Rozpoczęto sesję wsparcia Forvium ({req.ticket_number})"),
+        body=(f"Operator Forvium {operator.id} rozpoczął sesję wsparcia w trybie tylko do odczytu "
+              f"(zgłoszenie {req.ticket_number}). Sesja wygasa {expires_at.isoformat()} UTC. "
+              "Możesz ją zakończyć lub cofnąć zgodę w każdej chwili: Ustawienia -> Dostęp serwisowy."),
         organization_id=req.organization_id, data={"session_id": session.id},
     )
     if req.mode == AccessMode.BREAK_GLASS:
         from forvium.support_access.break_glass_service import notify_security_team
 
         notify_security_team(ctx, f"Break Glass: start sesji ({req.ticket_number})",
-                             f"Operator {operator.id} rozpoczal sesje awaryjna {session.id} w organizacji "
+                             f"Operator {operator.id} rozpoczął sesję awaryjną {session.id} w organizacji "
                              f"{req.organization_id} do {expires_at.isoformat()} UTC.")
     ctx.audit.log(
         ctx.db,
@@ -706,7 +706,7 @@ def exchange_launch_code(ctx: Ctx, code: str) -> tuple[SupportSession, str]:
     if session is None or session.status != SessionStatus.ACTIVE or session.launch_code_expires_at is None \
             or now >= session.launch_code_expires_at or now >= session.expires_at:
         ctx.throttle.fail("launch_ip", ctx.ip, actor_type="anonymous", ip_address=ctx.ip)
-        raise _deny(ctx, action, "launch_code_invalid", "Kod uruchomienia jest nieprawidlowy lub wygasl.",
+        raise _deny(ctx, action, "launch_code_invalid", "Kod uruchomienia jest nieprawidłowy lub wygasł.",
                     status=401, actor_type="anonymous",
                     support_session_id=session.id if session else None,
                     organization_id=session.organization_id if session else None)
@@ -742,7 +742,7 @@ def validate_support_token(ctx: Ctx, token: str) -> ValidatedSupportSession:
     session = ctx.db.scalar(select(SupportSession).where(SupportSession.token_hash == token_digest(token)))
     if session is None:
         ctx.throttle.fail("support_token_ip", ctx.ip, actor_type="anonymous", ip_address=ctx.ip)
-        raise _deny(ctx, action, "invalid_support_token", "Sesja wsparcia jest nieprawidlowa lub zakonczona.",
+        raise _deny(ctx, action, "invalid_support_token", "Sesja wsparcia jest nieprawidłowa lub zakończona.",
                     status=401, actor_type="anonymous")
 
     base = {"actor_user_id": session.operator_user_id, "actor_type": "support",
@@ -752,10 +752,10 @@ def validate_support_token(ctx: Ctx, token: str) -> ValidatedSupportSession:
     def fail(status: SessionStatus, reason: str) -> DomainError:
         _terminate_session(ctx, session, status, reason, None)
         ctx.db.commit()
-        return _deny(ctx, action, reason, "Sesja wsparcia nie jest juz aktywna.", status=401, **base)
+        return _deny(ctx, action, reason, "Sesja wsparcia nie jest już aktywna.", status=401, **base)
 
     if session.status != SessionStatus.ACTIVE:
-        raise _deny(ctx, action, "session_not_active", "Sesja wsparcia nie jest juz aktywna.", status=401, **base)
+        raise _deny(ctx, action, "session_not_active", "Sesja wsparcia nie jest już aktywna.", status=401, **base)
     if now >= session.expires_at:
         raise fail(SessionStatus.EXPIRED, "session_expired")
 
@@ -815,23 +815,23 @@ def extend_session(ctx: Ctx, operator: User, *, session_id: str, minutes: int, r
     now = clock.now()
     _require_platform(ctx, operator, PlatformPermission.SUPPORT_ACCESS_START, action)
     if session.status != SessionStatus.ACTIVE or now >= session.expires_at:
-        raise _deny(ctx, action, "session_not_active", "Sesja nie jest juz aktywna.", status=409, **base)
+        raise _deny(ctx, action, "session_not_active", "Sesja nie jest już aktywna.", status=409, **base)
     consent = ctx.db.get(SupportConsent, session.consent_id)
     if consent is None or consent.revoked_at is not None or now >= consent.valid_until:
-        raise _deny(ctx, action, "consent_inactive", "Zgoda klienta zostala cofnieta lub wygasla.", **base)
+        raise _deny(ctx, action, "consent_inactive", "Zgoda klienta została cofnięta lub wygasła.", **base)
     if session.extensions_count >= ctx.policy.max_extensions:
-        raise _deny(ctx, action, "extension_limit", "Wykorzystano limit przedluzen tej sesji.", status=409, **base)
+        raise _deny(ctx, action, "extension_limit", "Wykorzystano limit przedłużeń tej sesji.", status=409, **base)
     if not 1 <= minutes <= ctx.policy.max_extension_minutes:
         raise _deny(ctx, action, "duration_invalid",
-                    f"Przedluzenie: 1-{ctx.policy.max_extension_minutes} min.", status=422, **base)
+                    f"Przedłużenie: 1-{ctx.policy.max_extension_minutes} min.", status=422, **base)
     if len((reason or "").strip()) < ctx.policy.min_reason_length:
-        raise _deny(ctx, action, "reason_too_short", "Podaj powod przedluzenia.", status=422, **base)
+        raise _deny(ctx, action, "reason_too_short", "Podaj powód przedłużenia.", status=422, **base)
     total_max = ctx.break_glass.max_total_session_minutes if break_glass else ctx.policy.max_total_session_minutes
     new_expires = min(session.expires_at + timedelta(minutes=minutes),
                       session.started_at + timedelta(minutes=total_max), consent.valid_until)
     if new_expires <= session.expires_at:
         raise _deny(ctx, action, "extension_window_exhausted",
-                    "Nie mozna przedluzyc: osiagnieto limit czasu sesji lub waznosci zgody.", status=409, **base)
+                    "Nie można przedłużyć: osiągnięto limit czasu sesji lub ważności zgody.", status=409, **base)
     _verify_operator_mfa(ctx, operator, mfa_code, action, webauthn=webauthn,
                          require_hardware=break_glass and ctx.break_glass.requires_hardware_mfa,
                          organization_id=session.organization_id, support_request_id=session.request_id)
@@ -847,17 +847,17 @@ def extend_session(ctx: Ctx, operator: User, *, session_id: str, minutes: int, r
     ctx.notifications.notify(
         ctx.db, _org_approvers(ctx, session.organization_id, exclude_user_id=operator.id),
         event="support_access.session_extended",
-        title=f"Przedluzono sesje wsparcia Forvium ({session.ticket_number})",
-        body=(f"Operator {operator.id} przedluzyl sesje tylko do odczytu o {added} min (do "
-              f"{new_expires.isoformat()} UTC). Powod: {reason.strip()}. Mozesz ja zakonczyc w kazdej chwili: "
-              "Ustawienia -> Dostep serwisowy."),
+        title=f"Przedłużono sesję wsparcia Forvium ({session.ticket_number})",
+        body=(f"Operator {operator.id} przedłużył sesję tylko do odczytu o {added} min (do "
+              f"{new_expires.isoformat()} UTC). Powód: {reason.strip()}. Możesz ją zakończyć w każdej chwili: "
+              "Ustawienia -> Dostęp serwisowy."),
         organization_id=session.organization_id, data={"session_id": session.id},
     )
     if break_glass:
         from forvium.support_access.break_glass_service import notify_security_team
 
-        notify_security_team(ctx, f"Break Glass: przedluzenie sesji ({session.ticket_number})",
-                             f"Sesja {session.id} przedluzona do {new_expires.isoformat()} UTC. Powod: {reason.strip()}")
+        notify_security_team(ctx, f"Break Glass: przedłużenie sesji ({session.ticket_number})",
+                             f"Sesja {session.id} przedłużona do {new_expires.isoformat()} UTC. Powód: {reason.strip()}")
     return session
 
 

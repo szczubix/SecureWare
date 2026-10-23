@@ -9,9 +9,9 @@ from forvium.audit.chain import verify_file
 from forvium.core.clock import clock
 
 JUSTIFICATION = (
-    "Aktywny incydent bezpieczenstwa: agenci w organizacji raportuja masowe wykrycia krytycznej podatnosci, "
-    "a wlasciciel organizacji jest nieosiagalny od 6 godzin (urlop, brak zastepstwa). Potrzebny wglad w liste "
-    "CVE i stan konfiguracji, aby potwierdzic, czy alarmy nie sa wynikiem bledu skanera."
+    "Aktywny incydent bezpieczeństwa: agenci w organizacji raportuja masowe wykrycia krytycznej podatnosci, "
+    "a wlasciciel organizacji jest nieosiagalny od 6 godzin (urlop, brak zastępstwa). Potrzebny wglad w liste "
+    "CVE i stan konfiguracji, aby potwierdzić, czy alarmy nie sa wynikiem błędu skanera."
 )
 
 
@@ -118,7 +118,7 @@ def test_full_break_glass_flow(bg_env):
     assert ok and count == len(flagged)
 
     # Przeglad po incydencie: niezalezna osoba (nie ola, nie ewa).
-    review = {"notes": "Potwierdzono blad sygnatur skanera; zadnych dzialan poza odczytem CVE. Sprawa zamknieta."}
+    review = {"notes": "Potwierdzono błąd sygnatur skanera; żadnych działań poza odczytem CVE. Sprawa zamknieta."}
     r = env.client.post(f"/api/admin/break-glass/requests/{req['id']}/review", headers=env.h(ewa), json=review)
     assert r.status_code == 403 and r.json()["error"] == "reviewer_not_independent"
     tomasz = env.login_admin("tomasz")

@@ -107,7 +107,7 @@ def test_audit_export_retries_after_sink_failure(env, tmp_path):
 
     class Broken:
         def send(self, events):
-            raise ConnectionError("SIEM niedostepny")
+            raise ConnectionError("SIEM niedostępny")
 
     env.app.state.audit_sinks = [Broken()]
     env.login_app("alice")

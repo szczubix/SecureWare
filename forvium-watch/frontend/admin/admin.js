@@ -9,12 +9,12 @@
     dashboard: "Dashboard organizacji",
     units: "Struktura jednostek",
     technologies_cve: "Technologie i CVE",
-    diagnostics: "Bledy i stan konfiguracji",
+    diagnostics: "Błędy i stan konfiguracji",
   };
   const CATEGORY_LABELS = {
-    security_incident: "Incydent bezpieczenstwa",
+    security_incident: "Incydent bezpieczeństwa",
     critical_outage: "Krytyczna awaria",
-    data_integrity: "Integralnosc danych",
+    data_integrity: "Integralność danych",
   };
   const P = {
     request: "platform.support_access.request",
@@ -42,11 +42,11 @@
     if (t) headers.Authorization = "Bearer " + t;
     const r = await fetch(API + path, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
     if (opts.raw) {
-      if (!r.ok) throw new Error("Blad " + r.status);
+      if (!r.ok) throw new Error("Błąd " + r.status);
       return r;
     }
     const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw Object.assign(new Error(data.message || "Blad " + r.status), { status: r.status, code: data.error });
+    if (!r.ok) throw Object.assign(new Error(data.message || "Błąd " + r.status), { status: r.status, code: data.error });
     return data;
   }
   const fmt = (iso) => (iso ? new Date(iso).toLocaleString("pl-PL") : "—");
@@ -89,8 +89,8 @@
       const { options } = await api("/api/admin/webauthn/assertion/options", { method: "POST" });
       return { webauthn: await getAssertion(options) };
     }
-    if (requireKey) throw new Error("Ta operacja wymaga klucza bezpieczenstwa (WebAuthn). Dodaj klucz w zakladce Konto.");
-    const code = prompt(`${what}\nPonowna weryfikacja MFA - podaj kod z aplikacji uwierzytelniajacej:`);
+    if (requireKey) throw new Error("Ta operacja wymaga klucza bezpieczeństwa (WebAuthn). Dodaj klucz w zakładce Konto.");
+    const code = prompt(`${what}\nPonowna weryfikacja MFA - podaj kod z aplikacji uwierzytelniającej:`);
     return code ? { mfa_code: code } : null;
   }
 
@@ -116,7 +116,7 @@
     } },
       el("h2", {}, "Logowanie operatora"),
       el("label", {}, "E-mail"), el("input", { name: "email", type: "email", required: true, autocomplete: "username" }),
-      el("label", {}, "Haslo"), el("input", { name: "password", type: "password", required: true, autocomplete: "current-password" }),
+      el("label", {}, "Hasło"), el("input", { name: "password", type: "password", required: true, autocomplete: "current-password" }),
       el("label", {}, "Kod MFA"), el("input", { name: "mfa_code", required: true, inputmode: "numeric", autocomplete: "one-time-code" }),
       el("p", { class: "error" }, error || ""),
       el("button", { type: "submit" }, "Zaloguj"));
@@ -133,8 +133,8 @@
   };
   function tabs() {
     const items = [];
-    if (can(P.request)) items.push(["Uzytkownicy", () => renderUsers()], ["Moje prosby", () => renderMyRequestsPage()]);
-    if (can(P.oversight)) items.push(["Nadzor sesji", () => renderOversight()], ["Alerty", () => renderAlerts()]);
+    if (can(P.request)) items.push(["Użytkownicy", () => renderUsers()], ["Moje prośby", () => renderMyRequestsPage()]);
+    if (can(P.oversight)) items.push(["Nadzór sesji", () => renderOversight()], ["Alerty", () => renderAlerts()]);
     if (can(P.audit)) items.push(["Audyt", () => renderAudit()]);
     if (can(P.bgApprove) || can(P.bgReview)) items.push(["Break Glass", () => renderBreakGlass()]);
     items.push(["Powiadomienia", () => renderNotifications()], ["Konto", () => renderAccount()]);
@@ -172,9 +172,9 @@
     const search = el("input", { placeholder: "Szukaj po e-mailu lub nazwie", value: q });
     search.onchange = () => renderUsers(search.value);
     show(
-      card(el("h2", {}, "Uzytkownicy"), search),
+      card(el("h2", {}, "Użytkownicy"), search),
       card(table(["E-mail", "Nazwa", ""], users.map((u) => el("tr", {}, el("td", {}, u.email), el("td", {}, u.display_name),
-        el("td", {}, el("button", { class: "secondary", onclick: () => renderUserDetail(u.id) }, "Szczegoly")))))));
+        el("td", {}, el("button", { class: "secondary", onclick: () => renderUserDetail(u.id) }, "Szczegóły")))))));
   }
 
   async function renderUserDetail(userId) {
@@ -201,7 +201,7 @@
     const counter = el("span", { class: "muted" });
     const duration = el("input", { name: "duration_minutes", type: "number", min: 1, max: policy.max_session_minutes, value: policy.default_session_minutes });
     const bgFields = el("div", { hidden: true },
-      el("p", { class: "danger-text" }, "Procedura awaryjna: wymaga zatwierdzenia przez oficera bezpieczenstwa, klient i zespol bezpieczenstwa zostana powiadomieni, a sesja podlega obowiazkowemu przegladowi."),
+      el("p", { class: "danger-text" }, "Procedura awaryjna: wymaga zatwierdzenia przez oficera bezpieczeństwa, klient i zespół bezpieczeństwa zostaną powiadomieni, a sesja podlega obowiązkowemu przeglądowi."),
       el("label", {}, "Kategoria incydentu"),
       el("select", { name: "incident_category" }, ...(policy.incident_categories || []).map((c) => el("option", { value: c }, CATEGORY_LABELS[c] || c))));
     const updateMode = () => {
@@ -210,7 +210,7 @@
       const min = bg ? policy.break_glass_min_justification : 15;
       reason.setAttribute("minlength", min);
       duration.max = bg ? policy.break_glass_max_session_minutes : policy.max_session_minutes;
-      counter.textContent = `${reason.value.length} / min. ${min} znakow`;
+      counter.textContent = `${reason.value.length} / min. ${min} znaków`;
     };
     modeSel.onchange = updateMode;
     reason.oninput = updateMode;
@@ -220,7 +220,7 @@
       e.preventDefault();
       const f = Object.fromEntries(new FormData(form));
       try {
-        const proof = await stepUp("Wyslanie prosby o dostep.", { requireKey: f.mode === "break_glass" && policy.break_glass_requires_webauthn });
+        const proof = await stepUp("Wysłanie prośby o dostęp.", { requireKey: f.mode === "break_glass" && policy.break_glass_requires_webauthn });
         if (!proof) return;
         const r = await api("/api/admin/support-access/requests", { method: "POST", body: {
           ...proof,
@@ -230,30 +230,30 @@
         } });
         msg.className = "";
         msg.textContent = {
-          approved: "Prosba zatwierdzona automatycznie (zgoda stala klienta). Mozesz uruchomic sesje w zakladce Moje prosby.",
-          pending_second_approval: "Wniosek awaryjny wyslany do oficerow bezpieczenstwa.",
-        }[r.request.status] || "Prosba wyslana. Klient otrzymal powiadomienie w aplikacji i e-mail.";
+          approved: "Prośba zatwierdzona automatycznie (zgoda stała klienta). Możesz uruchomić sesję w zakładce Moje prośby.",
+          pending_second_approval: "Wniosek awaryjny wysłany do oficerów bezpieczeństwa.",
+        }[r.request.status] || "Prośba wysłana. Klient otrzymał powiadomienie w aplikacji i e-mail.";
         form.reset();
         updateMode();
       } catch (err) { msg.className = "error"; msg.textContent = err.message; }
     } },
-      el("h3", {}, "Dostep serwisowy"),
+      el("h3", {}, "Dostęp serwisowy"),
       el("p", { class: "muted" }, "Sesja w trybie READ_ONLY, wymaga zgody klienta. Maksymalny czas: ", policy.max_session_minutes, " min."),
       el("label", {}, "Tryb"), modeSel, bgFields,
       el("label", {}, "Organizacja"), orgSel,
-      el("label", {}, "Uzytkownik referencyjny"), el("input", { value: `${u.display_name} <${u.email}>`, disabled: true }),
-      el("label", {}, "Powod dostepu / uzasadnienie"), reason, counter,
-      el("label", {}, "Numer zgloszenia"), ticketSel,
-      el("label", {}, "Czas dostepu (min)"), duration,
+      el("label", {}, "Użytkownik referencyjny"), el("input", { value: `${u.display_name} <${u.email}>`, disabled: true }),
+      el("label", {}, "Powód dostępu / uzasadnienie"), reason, counter,
+      el("label", {}, "Numer zgłoszenia"), ticketSel,
+      el("label", {}, "Czas dostępu (min)"), duration,
       el("label", {}, "Zakres"), ...scopeBoxes,
-      el("p", { class: "muted" }, myKeys.length ? "Wyslanie potwierdzisz kluczem bezpieczenstwa." : "Wyslanie potwierdzisz kodem MFA."),
+      el("p", { class: "muted" }, myKeys.length ? "Wysłanie potwierdzisz kluczem bezpieczeństwa." : "Wysłanie potwierdzisz kodem MFA."),
       msg,
-      el("button", { type: "submit" }, "Wyslij prosbe o dostep"));
+      el("button", { type: "submit" }, "Wyślij prośbę o dostęp"));
 
     show(
-      card(el("a", { onclick: () => renderUsers() }, "← Uzytkownicy"),
+      card(el("a", { onclick: () => renderUsers() }, "← Użytkownicy"),
         el("h2", {}, u.display_name), el("p", { class: "muted" }, u.email, " · ID ", u.id)),
-      detail.organizations.length ? form : el("div", { class: "card muted" }, "Uzytkownik nie nalezy do zadnej organizacji."));
+      detail.organizations.length ? form : el("div", { class: "card muted" }, "Użytkownik nie należy do żadnej organizacji."));
     if (detail.organizations.length) await loadTickets();
   }
 
@@ -271,22 +271,22 @@
       }
       if (r.active_session) {
         actions.append(el("button", { class: "secondary", onclick: async () => {
-          const minutes = prompt("O ile minut przedluzyc sesje? (max 15)", "15");
+          const minutes = prompt("O ile minut przedłużyć sesję? (maks. 15)", "15");
           if (!minutes) return;
-          const reason = prompt("Powod przedluzenia (klient zobaczy go w powiadomieniu):");
+          const reason = prompt("Powód przedłużenia (klient zobaczy go w powiadomieniu):");
           if (!reason) return;
           try {
-            const proof = await stepUp("Przedluzenie sesji.", { requireKey: r.mode === "break_glass" });
+            const proof = await stepUp("Przedłużenie sesji.", { requireKey: r.mode === "break_glass" });
             if (!proof) return;
             await api(`/api/admin/support-access/sessions/${r.active_session.id}/extend`, { method: "POST",
               body: { minutes: Number(minutes), reason, ...proof } });
           } catch (e) { alert(e.message); }
           renderMyRequestsPage();
-        } }, "Przedluz"));
+        } }, "Przedłuż"));
         actions.append(el("button", { class: "danger", onclick: async () => {
           await api(`/api/admin/support-access/sessions/${r.active_session.id}/end`, { method: "POST" }).catch((e) => alert(e.message));
           renderMyRequestsPage();
-        } }, "Zakoncz sesje"));
+        } }, "Zakończ sesję"));
       } else if (r.status === "approved" && r.consent && !r.consent.revoked_at && new Date(r.consent.valid_until) > new Date()) {
         actions.append(el("button", { onclick: async () => {
           try {
@@ -296,25 +296,25 @@
             // Osobna karta app.forvium.com (noopener izoluje ja od panelu admin). Link zamiast window.open,
             // bo po ceremonii WebAuthn przegladarka zablokowalaby automatycznie otwierane okno.
             actions.replaceChildren(el("a", { class: "button-link", href: s.launch_url, target: "_blank",
-              rel: "noopener noreferrer" }, "Otworz sesje wsparcia (kod wazny 60 s)"));
+              rel: "noopener noreferrer" }, "Otwórz sesję wsparcia (kod ważny 60 s)"));
           } catch (e) { alert(e.message); renderMyRequestsPage(); }
-        } }, "Uruchom sesje"));
+        } }, "Uruchom sesję"));
       }
-      const status = r.consent && r.consent.revoked_at ? "zgoda cofnieta" : r.status;
+      const status = r.consent && r.consent.revoked_at ? "zgoda cofnięta" : r.status;
       return el("tr", {}, el("td", {}, fmt(r.created_at)), el("td", {}, r.ticket_number),
         el("td", {}, r.mode === "break_glass" ? el("span", { class: "danger-text" }, "BREAK GLASS") : "standardowy"),
         el("td", {}, el("span", { class: "pill" }, status)),
         el("td", {}, (r.consent ? r.consent.scopes : r.scopes).map((s) => SCOPE_LABELS[s] || s).join(", ")),
         el("td", {}, r.consent ? fmt(r.consent.valid_until) : "—"), actions);
     });
-    show(card(el("h3", {}, "Moje prosby o dostep"),
-      table(["Data", "Zgloszenie", "Tryb", "Status", "Zakres", "Zgoda do", ""], rows)));
+    show(card(el("h3", {}, "Moje prośby o dostęp"),
+      table(["Data", "Zgłoszenie", "Tryb", "Status", "Zakres", "Zgoda do", ""], rows)));
   }
 
   // ------------------------------------------------------------ nadzor sesji
   async function renderOversight(status = "active") {
     const show = begin();
-    const sel = el("select", {}, ...[["active", "Aktywne"], ["", "Wszystkie"], ["ended", "Zakonczone"], ["expired", "Wygasle"], ["revoked", "Cofniete"]]
+    const sel = el("select", {}, ...[["active", "Aktywne"], ["", "Wszystkie"], ["ended", "Zakończone"], ["expired", "Wygasłe"], ["revoked", "Cofnięte"]]
       .map(([v, l]) => el("option", { value: v, selected: v === status }, l)));
     sel.onchange = () => renderOversight(sel.value);
     try {
@@ -327,22 +327,22 @@
           el("button", { class: "secondary", onclick: () => renderAudit({ support_session_id: s.id }) }, "Audyt"),
           can(P.audit) ? el("button", { class: "secondary", onclick: () => renderRecording(s) }, "Nagranie") : "",
           s.status === "active" ? el("button", { class: "danger", onclick: async () => {
-            if (!confirm("Zakonczyc te sesje wsparcia?")) return;
+            if (!confirm("Zakończyć tę sesję wsparcia?")) return;
             await api(`/api/admin/support-access/oversight/sessions/${s.id}/terminate`, { method: "POST" }).catch((e) => alert(e.message));
             renderOversight(status);
-          } }, "Zakoncz") : "")));
-      show(card(el("h2", {}, "Nadzor sesji wsparcia"), el("label", {}, "Status"), sel),
-        card(table(["Start", "Operator", "Organizacja", "Zgloszenie", "Tryb", "Status", "Koniec", ""], rows)));
+          } }, "Zakończ") : "")));
+      show(card(el("h2", {}, "Nadzór sesji wsparcia"), el("label", {}, "Status"), sel),
+        card(table(["Start", "Operator", "Organizacja", "Zgłoszenie", "Tryb", "Status", "Koniec", ""], rows)));
     } catch (e) { show(errorCard(e)); }
   }
 
   // ------------------------------------------------------------------ audyt
   async function renderAudit(initial = {}, offset = 0) {
     const show = begin();
-    const fields = [["operator_id", "ID operatora"], ["organization_id", "ID organizacji"], ["ticket", "Zgloszenie"],
+    const fields = [["operator_id", "ID operatora"], ["organization_id", "ID organizacji"], ["ticket", "Zgłoszenie"],
       ["support_session_id", "ID sesji"], ["action_prefix", "Akcja (prefiks)"], ["since", "Od (RRRR-MM-DD)"], ["until", "Do (RRRR-MM-DD)"]];
     const inputs = Object.fromEntries(fields.map(([k]) => [k, el("input", { value: initial[k] || "" })]));
-    const outcome = el("select", {}, ...[["", "Kazdy wynik"], ["success", "Sukces"], ["denied", "Odmowa"]].map(([v, l]) => el("option", { value: v, selected: v === (initial.outcome || "") }, l)));
+    const outcome = el("select", {}, ...[["", "Każdy wynik"], ["success", "Sukces"], ["denied", "Odmowa"]].map(([v, l]) => el("option", { value: v, selected: v === (initial.outcome || "") }, l)));
     const bg = el("select", {}, ...[["", "Wszystkie"], ["true", "Tylko Break Glass"]].map(([v, l]) => el("option", { value: v, selected: v === (initial.break_glass || "") }, l)));
     const params = () => {
       const p = new URLSearchParams();
@@ -379,10 +379,10 @@
         el("td", {}, e.details && e.details.reason ? e.details.reason : "")));
       results.replaceChildren(card(
         el("p", { class: "muted" }, `Wyniki ${data.total ? offset + 1 : 0}–${offset + data.events.length} z ${data.total}`),
-        table(["Czas", "Akcja", "Wynik", "Wykonawca", "W imieniu", "Operacja API", "Powod"], rows),
+        table(["Czas", "Akcja", "Wynik", "Wykonawca", "W imieniu", "Operacja API", "Powód"], rows),
         el("div", { class: "pager" },
           el("button", { class: "secondary", disabled: offset === 0, onclick: () => renderAudit(current(), Math.max(0, offset - 50)) }, "← Poprzednie"),
-          el("button", { class: "secondary", disabled: offset + 50 >= data.total, onclick: () => renderAudit(current(), offset + 50) }, "Nastepne →"))));
+          el("button", { class: "secondary", disabled: offset + 50 >= data.total, onclick: () => renderAudit(current(), offset + 50) }, "Następne →"))));
     } catch (e) { results.replaceChildren(errorCard(e)); }
   }
 
@@ -408,29 +408,29 @@
               await api(`/api/admin/break-glass/requests/${r.id}/approve`, { method: "POST", body: proof });
             } catch (e) { alert(e.message); }
             renderBreakGlass();
-          } }, "Zatwierdz (4 oczy)"),
+          } }, "Zatwierdź (4 oczy)"),
           el("button", { class: "secondary", onclick: async () => {
-            const note = prompt("Powod odrzucenia:");
+            const note = prompt("Powód odrzucenia:");
             if (note === null) return;
             await api(`/api/admin/break-glass/requests/${r.id}/reject`, { method: "POST", body: { note } }).catch((e) => alert(e.message));
             renderBreakGlass();
-          } }, "Odrzuc"))));
+          } }, "Odrzuć"))));
       const reviewCards = reviews.requests.map((r) => {
-        const notes = el("textarea", { rows: 3, placeholder: "Ustalenia przegladu (min. 50 znakow)" });
+        const notes = el("textarea", { rows: 3, placeholder: "Ustalenia przeglądu (min. 50 znaków)" });
         return card(
-          el("h3", {}, "Przeglad po incydencie · ", r.ticket_number),
-          el("p", {}, "Wnioskowal: ", r.operator_id, " · Zatwierdzil: ", r.decided_by_user_id || "—"),
+          el("h3", {}, "Przegląd po incydencie · ", r.ticket_number),
+          el("p", {}, "Wnioskowal: ", r.operator_id, " · Zatwierdził: ", r.decided_by_user_id || "—"),
           el("p", {}, "Sesje: ", r.sessions.map((s) => `${fmt(s.started_at)} (${s.status})`).join(", ") || "brak"),
           el("button", { class: "secondary", onclick: () => renderAudit({ break_glass: "true" }) }, "Zdarzenia Break Glass w audycie"),
           ...(can(P.bgReview) ? [notes, el("button", { class: "spaced", onclick: async () => {
             await api(`/api/admin/break-glass/requests/${r.id}/review`, { method: "POST", body: { notes: notes.value } })
               .then(() => renderBreakGlass()).catch((e) => alert(e.message));
-          } }, "Zakoncz przeglad i wyslij raport klientowi")] : []));
+          } }, "Zakończ przegląd i wyślij raport klientowi")] : []));
       });
       show(
-        card(el("h2", {}, "Break Glass"), el("p", { class: "muted" }, "Wnioski awaryjne wymagaja zatwierdzenia przez innego oficera bezpieczenstwa niz wnioskujacy, a kazde uzycie - niezaleznego przegladu.")),
-        card(el("h3", {}, "Oczekujace na zatwierdzenie")), ...(pendingCards.length ? pendingCards : [card(el("p", { class: "muted" }, "Brak wnioskow."))]),
-        card(el("h3", {}, "Do przegladu")), ...(reviewCards.length ? reviewCards : [card(el("p", { class: "muted" }, "Brak."))]));
+        card(el("h2", {}, "Break Glass"), el("p", { class: "muted" }, "Wnioski awaryjne wymagają zatwierdzenia przez innego oficera bezpieczeństwa niż wnioskujący, a każde użycie - niezależnego przeglądu.")),
+        card(el("h3", {}, "Oczekujące na zatwierdzenie")), ...(pendingCards.length ? pendingCards : [card(el("p", { class: "muted" }, "Brak wniosków."))]),
+        card(el("h3", {}, "Do przeglądu")), ...(reviewCards.length ? reviewCards : [card(el("p", { class: "muted" }, "Brak."))]));
     } catch (e) { show(errorCard(e)); }
   }
 
@@ -450,7 +450,7 @@
     };
     slider.onchange = load;
     show(card(el("h2", {}, "Nagranie sesji ", sess.ticket_number),
-      el("p", { class: "danger-text" }, "Nagranie zawiera dane klienta. Otwarcie kazdej klatki jest rejestrowane w audycie."),
+      el("p", { class: "danger-text" }, "Nagranie zawiera dane klienta. Otwarcie każdej klatki jest rejestrowane w audycie."),
       caption, slider, frame));
     load();
   }
@@ -458,13 +458,13 @@
   // -------------------------------------------------------------- alerty
   async function renderAlerts(status = "open") {
     const show = begin();
-    const sel = el("select", {}, ...[["open", "Otwarte"], ["acknowledged", "Przyjete"], ["resolved", "Rozwiazane"], ["", "Wszystkie"]]
+    const sel = el("select", {}, ...[["open", "Otwarte"], ["acknowledged", "Przyjęte"], ["resolved", "Rozwiązane"], ["", "Wszystkie"]]
       .map(([v, l]) => el("option", { value: v, selected: v === status }, l)));
     sel.onchange = () => renderAlerts(sel.value);
     try {
       const { alerts } = await api("/api/admin/security/alerts?status=" + status);
       const act = (a, action) => async () => {
-        const notes = action === "resolve" ? prompt("Jak rozwiazano alert?") : "";
+        const notes = action === "resolve" ? prompt("Jak rozwiązano alert?") : "";
         if (notes === null) return;
         await api(`/api/admin/security/alerts/${a.id}/${action}`, { method: "POST", body: { notes } }).catch((e) => alert(e.message));
         renderAlerts(status);
@@ -476,8 +476,8 @@
         el("td", { class: "row" },
           a.support_session_id && can(P.audit) ? el("button", { class: "secondary", onclick: () => renderAudit({ support_session_id: a.support_session_id }) }, "Audyt") : "",
           a.status === "open" ? el("button", { class: "secondary", onclick: act(a, "acknowledge") }, "Przyjmij") : "",
-          a.status !== "resolved" ? el("button", { onclick: act(a, "resolve") }, "Rozwiaz") : "")));
-      show(card(el("h2", {}, "Alerty bezpieczenstwa"), el("label", {}, "Status"), sel),
+          a.status !== "resolved" ? el("button", { onclick: act(a, "resolve") }, "Rozwiąż") : "")));
+      show(card(el("h2", {}, "Alerty bezpieczeństwa"), el("label", {}, "Status"), sel),
         card(table(["Czas", "Waga", "Alert", "Operator", "Status", ""], rows)));
     } catch (e) { show(errorCard(e)); }
   }
@@ -489,22 +489,22 @@
     const msg = el("p");
     const rows = myKeys.map((k) => el("tr", {}, el("td", {}, k.name), el("td", {}, fmt(k.created_at)), el("td", {}, fmt(k.last_used_at)),
       el("td", {}, el("button", { class: "danger", onclick: async () => {
-        if (!confirm(`Usunac klucz "${k.name}"?`)) return;
+        if (!confirm(`Usunąć klucz "${k.name}"?`)) return;
         try {
-          const proof = await stepUp("Usuniecie klucza.");
+          const proof = await stepUp("Usunięcie klucza.");
           if (!proof) return;
           await api(`/api/admin/webauthn/credentials/${k.id}/remove`, { method: "POST", body: proof });
         } catch (e) { alert(e.message); }
         renderAccount();
-      } }, "Usun"))));
-    const name = el("input", { value: "Klucz bezpieczenstwa", maxlength: 100 });
-    show(card(el("h2", {}, "Klucze bezpieczenstwa (WebAuthn / passkeys)"),
-      el("p", { class: "muted" }, "Klucz sprzetowy FIDO2 lub passkey z weryfikacja (PIN / biometria). Zastepuje kod TOTP przy ponownej weryfikacji i jest wymagany w procedurze Break Glass."),
-      table(["Nazwa", "Dodany", "Ostatnio uzyty", ""], rows),
+      } }, "Usuń"))));
+    const name = el("input", { value: "Klucz bezpieczeństwa", maxlength: 100 });
+    show(card(el("h2", {}, "Klucze bezpieczeństwa (WebAuthn / passkeys)"),
+      el("p", { class: "muted" }, "Klucz sprzętowy FIDO2 lub passkey z weryfikacja (PIN / biometria). Zastępuje kod TOTP przy ponownej weryfikacji i jest wymagany w procedurze Break Glass."),
+      table(["Nazwa", "Dodany", "Ostatnio użyty", ""], rows),
       el("label", {}, "Nazwa nowego klucza"), name, msg,
       el("button", { class: "spaced", onclick: async () => {
         try {
-          const proof = await stepUp("Dodanie klucza bezpieczenstwa.");
+          const proof = await stepUp("Dodanie klucza bezpieczeństwa.");
           if (!proof) return;
           const { options } = await api("/api/admin/webauthn/register/options", { method: "POST", body: proof });
           const credential = await createKey(options);
@@ -520,7 +520,7 @@
     const { notifications } = await api("/api/admin/notifications");
     show(card(el("h2", {}, "Powiadomienia")),
       ...(notifications.length ? notifications.map((n) => card(el("h3", {}, n.title), el("p", { class: "muted" }, fmt(n.created_at)), el("pre", { class: "body" }, n.body)))
-        : [card(el("p", { class: "muted" }, "Brak powiadomien."))]));
+        : [card(el("p", { class: "muted" }, "Brak powiadomień."))]));
   }
 
   start();

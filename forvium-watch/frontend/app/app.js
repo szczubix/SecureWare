@@ -12,7 +12,7 @@
     dashboard: "Dashboard organizacji",
     units: "Struktura jednostek",
     technologies_cve: "Technologie i CVE",
-    diagnostics: "Bledy i stan konfiguracji",
+    diagnostics: "Błędy i stan konfiguracji",
   };
 
   function el(tag, attrs = {}, ...children) {
@@ -31,14 +31,14 @@
     const r = await fetch(API + path, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
     const data = await r.json().catch(() => ({}));
     if (r.status === 401 && supportToken) supportEnded();
-    if (!r.ok) throw Object.assign(new Error(data.message || "Blad " + r.status), { status: r.status, code: data.error });
+    if (!r.ok) throw Object.assign(new Error(data.message || "Błąd " + r.status), { status: r.status, code: data.error });
     return data;
   }
 
   const fmt = (iso) => (iso ? new Date(iso).toLocaleString("pl-PL") : "—");
   const card = (...children) => el("div", { class: "card" }, ...children);
   const checkedValues = (labels) => labels.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => i.value);
-  const askMfa = (what) => prompt(`${what}\nPotwierdz kodem MFA z aplikacji uwierzytelniajacej:`);
+  const askMfa = (what) => prompt(`${what}\nPotwierdź kodem MFA z aplikacji uwierzytelniającej:`);
 
   // Podglad zrzutu widoku operatora: iframe w piaskownicy BEZ skryptow (tresc i tak jest sanityzowana na serwerze).
   function snapshotFrame() {
@@ -56,8 +56,8 @@
     sessionStorage.removeItem(SUPPORT_KEY);
     clearInterval(bannerTimer);
     banner.hidden = false;
-    banner.replaceChildren(el("span", { class: "title" }, "Sesja wsparcia Forvium zakonczona"));
-    root.replaceChildren(card("Dostep serwisowy wygasl lub zostal zakonczony. Mozesz zamknac te karte."));
+    banner.replaceChildren(el("span", { class: "title" }, "Sesja wsparcia Forvium zakończona"));
+    root.replaceChildren(card("Dostęp serwisowy wygasł lub został zakończony. Możesz zamknąć te kartę."));
   }
 
   // Zrzut biezacego widoku dla klienta (podglad na zywo i nagranie). Pola formularzy nie sa wysylane.
@@ -77,7 +77,7 @@
     const tick = () => {
       if (remaining <= 0) return supportEnded();
       const m = Math.floor(remaining / 60), s = String(remaining % 60).padStart(2, "0");
-      timeEl.textContent = `Pozostaly czas: ${m}:${s}`;
+      timeEl.textContent = `Pozostały czas: ${m}:${s}`;
       remaining -= 1;
     };
     banner.hidden = false;
@@ -86,19 +86,19 @@
       el("span", { class: "meta" },
         el("span", {}, "Organizacja: ", info.organization.name),
         el("span", {}, "Operator: ", info.operator_id),
-        el("span", {}, "Zgloszenie: ", info.ticket_number),
-        el("span", {}, "Klient widzi ten ekran na zywo"),
+        el("span", {}, "Zgłoszenie: ", info.ticket_number),
+        el("span", {}, "Klient widzi ten ekran na żywo"),
         timeEl),
       el("button", { onclick: async () => {
         try { await api("/api/app/support/session/end", { method: "POST" }); } catch (_) {}
         supportEnded();
-      } }, "Zakoncz dostep"),
+      } }, "Zakończ dostęp"),
     );
     tick();
     bannerTimer = setInterval(tick, 1000);
     // Rewalidacja co 15 s: przedluzenie sesji, cofniecie zgody, zakonczenie przez klienta.
     setInterval(() => api("/api/app/support/session").then((i) => { remaining = i.remaining_seconds; }).catch(() => {}), 15000);
-    document.getElementById("who").textContent = "Widok uzytkownika: " + info.reference_user.display_name;
+    document.getElementById("who").textContent = "Widok użytkownika: " + info.reference_user.display_name;
     renderOrg(info.organization, info.permissions);
   }
 
@@ -114,7 +114,7 @@
     } },
       el("h2", {}, "Logowanie"),
       el("label", {}, "E-mail"), el("input", { name: "email", type: "email", required: true, autocomplete: "username" }),
-      el("label", {}, "Haslo"), el("input", { name: "password", type: "password", required: true, autocomplete: "current-password" }),
+      el("label", {}, "Hasło"), el("input", { name: "password", type: "password", required: true, autocomplete: "current-password" }),
       el("label", {}, "Kod MFA"), el("input", { name: "mfa_code", inputmode: "numeric", autocomplete: "one-time-code" }),
       el("p", { class: "error" }, error || ""),
       el("button", { type: "submit" }, "Zaloguj"));
@@ -151,7 +151,7 @@
       "Diagnostyka": (pane) => viewDiagnostics(org, pane),
     };
     if (!supportPermissions) {
-      views["Dostep serwisowy"] = (pane) => viewSupportAccess(org, pane);
+      views["Dostęp serwisowy"] = (pane) => viewSupportAccess(org, pane);
       views["Powiadomienia"] = (pane) => viewNotifications(pane);
     }
     const nav = el("nav", { class: "card" }, el("strong", {}, org.name, " "),
@@ -163,7 +163,7 @@
   async function guarded(content, fn) {
     try { await fn(); } catch (e) {
       content.replaceChildren(el("div", { class: "card error" },
-        e.code === "forbidden_in_support_mode" ? "Ta sekcja nie jest objeta zgoda na dostep serwisowy." : e.message));
+        e.code === "forbidden_in_support_mode" ? "Ta sekcja nie jest objęta zgoda na dostęp serwisowy." : e.message));
     }
   }
 
@@ -193,7 +193,7 @@
         card(el("h3", {}, "Stan konfiguracji"),
           el("p", {}, "SMTP skonfigurowany: ", cfg.smtp_configured ? "tak" : "nie"),
           el("p", {}, "Webhooki: ", cfg.webhooks_count, " · Sekrety: ", cfg.secrets_count, " · Plan: ", cfg.subscription_plan)),
-        card(el("h3", {}, "Bledy"), el("table", {},
+        card(el("h3", {}, "Błędy"), el("table", {},
           ...errs.errors.map((e) => el("tr", {}, el("td", {}, fmt(e.created_at)), el("td", {}, e.level), el("td", {}, e.component), el("td", {}, e.message))))));
     });
   }
@@ -215,49 +215,49 @@
         const scopeText = c.scopes.map((s) => SCOPE_LABELS[s] || s).join(", ") +
           (c.unit_ids ? " · jednostki: " + c.unit_ids.map((id) => unitName[id] || id).join(", ") : "");
         const basis = { customer: c.second_approver_user_id ? "decyzja klienta (2 osoby)" : "decyzja klienta",
-          standing: "zgoda stala", break_glass: el("span", { class: "danger-text" }, "BREAK GLASS") }[c.basis] || c.basis;
+          standing: "zgoda stała", break_glass: el("span", { class: "danger-text" }, "BREAK GLASS") }[c.basis] || c.basis;
         return el("tr", {}, el("td", {}, r.ticket_number), el("td", {}, r.operator_id), el("td", {}, basis), el("td", {}, scopeText),
-          el("td", {}, fmt(c.valid_until)), el("td", {}, c.revoked_at ? "cofnieta " + fmt(c.revoked_at) : active ? "aktywna" : "wygasla"),
+          el("td", {}, fmt(c.valid_until)), el("td", {}, c.revoked_at ? "cofnięta " + fmt(c.revoked_at) : active ? "aktywna" : "wygasła"),
           el("td", {}, active ? el("button", { class: "danger", onclick: async () => {
             await api(`/api/app/orgs/${org.id}/support-access/consents/${c.id}/revoke`, { method: "POST" }).catch((e) => alert(e.message));
             reload();
-          } }, "Cofnij zgode") : ""));
+          } }, "Cofnij zgodę") : ""));
       });
 
       const panel = el("div");
       const sessionRows = h.sessions.map((s) => el("tr", {},
         el("td", {}, fmt(s.started_at)), el("td", {}, s.operator_id), el("td", {}, s.ticket_number),
-        el("td", {}, el("span", { class: "pill" }, s.status), s.extensions_count ? ` (przedluzona ${s.extensions_count}x)` : ""),
+        el("td", {}, el("span", { class: "pill" }, s.status), s.extensions_count ? ` (przedłużona ${s.extensions_count}x)` : ""),
         el("td", {}, fmt(s.ended_at || s.expires_at)),
         el("td", { class: "row" },
-          s.status === "active" ? el("button", { onclick: () => livePanel(org, s, panel, reload) }, "Podglad na zywo") : "",
+          s.status === "active" ? el("button", { onclick: () => livePanel(org, s, panel, reload) }, "Podgląd na żywo") : "",
           el("button", { class: "secondary", onclick: () => replayPanel(org, s, panel) }, "Nagranie"),
           el("button", { class: "secondary", onclick: async () => {
             const a = await api(`/api/app/orgs/${org.id}/support-access/sessions/${s.id}/activity`);
-            panel.replaceChildren(card(el("h3", {}, "Aktywnosc sesji ", s.id), el("table", {},
+            panel.replaceChildren(card(el("h3", {}, "Aktywność sesji ", s.id), el("table", {},
               ...a.events.map((e) => el("tr", {}, el("td", {}, fmt(e.occurred_at)), el("td", {}, e.action),
                 el("td", {}, e.method || ""), el("td", {}, e.route || ""), el("td", {}, e.outcome))))));
-          } }, "Aktywnosc"),
+          } }, "Aktywność"),
           s.status === "active" ? el("button", { class: "danger", onclick: async () => {
             await api(`/api/app/orgs/${org.id}/support-access/sessions/${s.id}/terminate`, { method: "POST" }).catch((e) => alert(e.message));
             reload();
-          } }, "Zakoncz") : "")));
+          } }, "Zakończ") : "")));
 
       content.replaceChildren(
-        card(el("h2", {}, "Dostep serwisowy Forvium"),
-          el("p", { class: "muted" }, "Operator Forvium moze zobaczyc Twoja organizacje wylacznie w trybie tylko do odczytu, w zakresie i czasie, ktore zatwierdzisz. Trwajaca sesje mozesz ogladac na zywo i przerwac w kazdej chwili.")),
+        card(el("h2", {}, "Dostęp serwisowy Forvium"),
+          el("p", { class: "muted" }, "Operator Forvium może zobaczyć Twoją organizację wyłącznie w trybie tylko do odczytu, w zakresie i czasie, które zatwierdzisz. Trwającą sesję możesz oglądać na żywo i przerwać w każdej chwili.")),
         settingsCard(org, settings, reload),
-        ...(decisionCards.length ? decisionCards : [el("div", { class: "card muted" }, "Brak oczekujacych prosb.")]),
+        ...(decisionCards.length ? decisionCards : [el("div", { class: "card muted" }, "Brak oczekujących próśb.")]),
         card(el("h3", {}, "Zgody"), el("table", {},
-          el("tr", {}, ...["Zgloszenie", "Operator", "Podstawa", "Zakres", "Wazna do", "Status", ""].map((t) => el("th", {}, t))), ...consentRows)),
+          el("tr", {}, ...["Zgłoszenie", "Operator", "Podstawa", "Zakres", "Ważna do", "Status", ""].map((t) => el("th", {}, t))), ...consentRows)),
         standingSection(org, h.standing_consents || [], units, reload, settings.dual_approval),
         card(el("h3", {}, "Historia sesji"), el("table", {},
-          el("tr", {}, ...["Start", "Operator", "Zgloszenie", "Status", "Koniec", ""].map((t) => el("th", {}, t))), ...sessionRows)),
+          el("tr", {}, ...["Start", "Operator", "Zgłoszenie", "Status", "Koniec", ""].map((t) => el("th", {}, t))), ...sessionRows)),
         panel);
     });
   }
 
-  // Zatwierdzanie prosby - pierwsze albo (przy zatwierdzaniu przez dwie osoby) potwierdzenie przez druga osobe.
+  // Zatwierdzanie prosby - pierwsze albo (przy zatwierdzaniu przez dwie osoby) potwierdzenie przez drugą osobę.
   function decisionCard(org, r, units, reload) {
     const confirming = r.status === "pending_customer_confirmation";
     const grant = r.pending_grant || {};
@@ -269,14 +269,14 @@
     const hours = el("input", { type: "number", min: 1, max: confirming ? grant.valid_hours : 168, value: confirming ? grant.valid_hours : 24 });
     const note = el("input", { placeholder: "Notatka (opcjonalnie)" });
     return el("div", { class: "card" + (confirming ? " highlight" : "") },
-      el("h3", {}, confirming ? "Potwierdz dostep (druga osoba) · " : "Prosba o dostep · ", r.ticket_number),
-      confirming ? el("p", { class: "danger-text" }, "Pierwsze zatwierdzenie: ", r.first_approved_by_user_id, ". Twoja organizacja wymaga drugiej osoby - mozesz tylko potwierdzic lub zawezic zakres.") : "",
+      el("h3", {}, confirming ? "Potwierdź dostęp (druga osoba) · " : "Prośba o dostęp · ", r.ticket_number),
+      confirming ? el("p", { class: "danger-text" }, "Pierwsze zatwierdzenie: ", r.first_approved_by_user_id, ". Twoja organizacja wymaga drugiej osoby - możesz tylko potwierdzić lub zawęzić zakres.") : "",
       el("p", {}, "Operator Forvium: ", r.operator_id),
-      el("p", {}, "Powod: ", r.reason),
+      el("p", {}, "Powód: ", r.reason),
       el("p", {}, "Tryb: ", el("span", { class: "pill" }, r.access_level), " · Czas sesji: ", r.duration_minutes, " min"),
       el("label", {}, "Zakres zgody"), ...scopes,
       ...(unitBoxes.length ? [el("label", {}, "Ogranicz do jednostek (brak zaznaczenia = wszystkie dozwolone)"), ...unitBoxes] : []),
-      el("label", {}, "Zgoda wazna (godziny)"), hours,
+      el("label", {}, "Zgoda ważna (godziny)"), hours,
       el("label", {}, "Notatka"), note,
       el("div", { class: "row spaced" },
         el("button", { onclick: async () => {
@@ -285,31 +285,31 @@
             const res = await api(`/api/app/orgs/${org.id}/support-access/requests/${r.id}/approve`, { method: "POST",
               body: { scopes: checkedValues(scopes), unit_ids: unitIds.length ? unitIds : null,
                       valid_hours: Number(hours.value), note: note.value } });
-            if (res.status === "pending_customer_confirmation") alert("Zapisano. Dostep zacznie obowiazywac po potwierdzeniu przez druga osobe.");
+            if (res.status === "pending_customer_confirmation") alert("Zapisano. Dostęp zacznie obowiązywać po potwierdzeniu przez drugą osobę.");
           } catch (e) { alert(e.message); }
           reload();
-        } }, confirming ? "Potwierdz" : "Zatwierdz"),
+        } }, confirming ? "Potwierdź" : "Zatwierdź"),
         el("button", { class: "danger", onclick: async () => {
           await api(`/api/app/orgs/${org.id}/support-access/requests/${r.id}/reject`, { method: "POST", body: { note: note.value } }).catch((e) => alert(e.message));
           reload();
-        } }, "Odrzuc")));
+        } }, "Odrzuć")));
   }
 
   function settingsCard(org, settings, reload) {
     const put = async (enabled) => {
-      const code = askMfa(enabled ? "Wlaczenie zatwierdzania przez dwie osoby." : "Wylaczenie zatwierdzania przez dwie osoby.");
+      const code = askMfa(enabled ? "Włączenie zatwierdzania przez dwie osoby." : "Wyłączenie zatwierdzania przez dwie osoby.");
       if (code === null) return;
       await api(`/api/app/orgs/${org.id}/support-access/settings`, { method: "PUT", body: { dual_approval: enabled, mfa_code: code } })
         .catch((e) => alert(e.message));
       reload();
     };
     return card(el("h3", {}, "Zatwierdzanie przez dwie osoby"),
-      el("p", { class: "muted" }, "Gdy wlaczone, kazdy dostep serwisowy (i kazda zgoda stala) wymaga zatwierdzenia przez dwie rozne osoby z Twojej organizacji. Wylaczenie tez wymaga drugiej osoby."),
-      el("p", {}, "Status: ", el("strong", {}, settings.dual_approval ? "wlaczone" : "wylaczone"),
-        settings.dual_approval_disable_requested_by ? el("span", { class: "danger-text" }, " · zgloszono wylaczenie (", settings.dual_approval_disable_requested_by, ") - czeka na druga osobe") : ""),
+      el("p", { class: "muted" }, "Gdy włączone, każdy dostęp serwisowy (i każda zgoda stała) wymaga zatwierdzenia przez dwie różne osoby z Twojej organizacji. Wyłączenie też wymaga drugiej osoby."),
+      el("p", {}, "Status: ", el("strong", {}, settings.dual_approval ? "włączone" : "wyłączone"),
+        settings.dual_approval_disable_requested_by ? el("span", { class: "danger-text" }, " · zgłoszono wyłączenie (", settings.dual_approval_disable_requested_by, ") - czeka na drugą osobę") : ""),
       settings.dual_approval
-        ? el("button", { class: "secondary", onclick: () => put(false) }, settings.dual_approval_disable_requested_by ? "Potwierdz wylaczenie" : "Wylacz")
-        : el("button", { onclick: () => put(true) }, "Wlacz"));
+        ? el("button", { class: "secondary", onclick: () => put(false) }, settings.dual_approval_disable_requested_by ? "Potwierdź wyłączenie" : "Wyłącz")
+        : el("button", { onclick: () => put(true) }, "Włącz"));
   }
 
   // ---------------------------------------------------- podglad na zywo / nagranie
@@ -325,21 +325,21 @@
         const live = await api(`/api/app/orgs/${org.id}/support-access/sessions/${s.id}/live?after=${latest}`);
         if (live.snapshot) { frame.show(live.snapshot.html); latest = live.snapshot.seq; }
         status.textContent = live.active
-          ? `Operator ${live.operator_id} oglada teraz: ${live.current_view || "—"} · pozostalo ${Math.ceil(live.remaining_seconds / 60)} min`
-          : "Sesja zakonczona.";
+          ? `Operator ${live.operator_id} ogląda teraz: ${live.current_view || "—"} · pozostało ${Math.ceil(live.remaining_seconds / 60)} min`
+          : "Sesja zakończona.";
         feed.replaceChildren(...live.activity.map((e) => el("tr", {}, el("td", {}, fmt(e.occurred_at)),
           el("td", {}, e.method, " ", e.route), el("td", {}, el("span", { class: "pill" }, e.outcome)))));
         if (!live.active) clearInterval(timer);
       } catch (e) { status.textContent = e.message; }
     };
     panel.replaceChildren(card(
-      el("h3", {}, "Podglad na zywo · sesja ", s.ticket_number),
+      el("h3", {}, "Podgląd na żywo · sesja ", s.ticket_number),
       status,
       el("div", { class: "row" }, el("button", { class: "danger", onclick: async () => {
         await api(`/api/app/orgs/${org.id}/support-access/sessions/${s.id}/terminate`, { method: "POST" }).catch((e) => alert(e.message));
         clearInterval(timer);
         reload();
-      } }, "Przerwij sesje")),
+      } }, "Przerwij sesję")),
       frame,
       el("h3", { class: "spaced" }, "Ostatnie operacje operatora"), feed));
     poll();
@@ -371,17 +371,17 @@
     const rows = standing.map((st) => el("tr", {},
       el("td", {}, st.scopes.map((x) => SCOPE_LABELS[x] || x).join(", ")),
       el("td", {}, st.max_session_minutes, " min"),
-      el("td", {}, st.allowed_platform_roles ? st.allowed_platform_roles.map((r) => ROLE_LABELS[r] || r).join(", ") : "kazda"),
+      el("td", {}, st.allowed_platform_roles ? st.allowed_platform_roles.map((r) => ROLE_LABELS[r] || r).join(", ") : "każda"),
       el("td", {}, fmt(st.valid_until)),
-      el("td", {}, st.revoked_at ? "cofnieta" : st.pending_confirmation ? "czeka na druga osobe" : st.active ? "aktywna" : "wygasla"),
+      el("td", {}, st.revoked_at ? "cofnięta" : st.pending_confirmation ? "czeka na drugą osobę" : st.active ? "aktywna" : "wygasła"),
       el("td", { class: "row" },
         st.pending_confirmation ? el("button", { onclick: async () => {
-          const code = askMfa("Potwierdzenie zgody stalej.");
+          const code = askMfa("Potwierdzenie zgody stałej.");
           if (code === null) return;
           await api(`/api/app/orgs/${org.id}/support-access/standing-consents/${st.id}/confirm`, { method: "POST", body: { mfa_code: code } })
             .catch((e) => alert(e.message));
           reload();
-        } }, "Potwierdz") : "",
+        } }, "Potwierdź") : "",
         st.active || st.pending_confirmation ? el("button", { class: "danger", onclick: async () => {
           await api(`/api/app/orgs/${org.id}/support-access/standing-consents/${st.id}/revoke`, { method: "POST" }).catch((e) => alert(e.message));
           reload();
@@ -396,18 +396,18 @@
     const mfa = el("input", { inputmode: "numeric", autocomplete: "one-time-code", placeholder: "Kod MFA" });
     const msg = el("p", { class: "error" });
     return card(
-      el("h3", {}, "Zgody stale"),
-      el("p", { class: "muted" }, "Zgoda stala pozwala supportowi Forvium otwierac sesje tylko do odczytu bez kazdorazowego pytania - w granicach ponizej. O kazdym takim dostepie dostaniesz powiadomienie, a zgode mozna cofnac w kazdej chwili (konczy to tez trwajace sesje).",
-        dual ? " Przy zatwierdzaniu przez dwie osoby nowa zgoda stala zacznie dzialac po potwierdzeniu przez druga osobe." : ""),
-      el("table", {}, el("tr", {}, ...["Zakres", "Sesja do", "Role supportu", "Wazna do", "Status", ""].map((t) => el("th", {}, t))), ...rows),
-      el("details", { class: "spaced" }, el("summary", {}, "Dodaj zgode stala"),
+      el("h3", {}, "Zgody stałe"),
+      el("p", { class: "muted" }, "Zgoda stała pozwala supportowi Forvium otwierać sesje tylko do odczytu bez każdorazowego pytania - w granicach poniżej. O każdym takim dostępie dostaniesz powiadomienie, a zgodę można cofnąć w każdej chwili (kończy to też trwające sesje).",
+        dual ? " Przy zatwierdzaniu przez dwie osoby nowa zgoda stała zacznie działać po potwierdzeniu przez drugą osobę." : ""),
+      el("table", {}, el("tr", {}, ...["Zakres", "Sesja do", "Role supportu", "Ważna do", "Status", ""].map((t) => el("th", {}, t))), ...rows),
+      el("details", { class: "spaced" }, el("summary", {}, "Dodaj zgodę stała"),
         el("label", {}, "Zakres"), ...scopeBoxes,
         ...(unitBoxes.length ? [el("label", {}, "Ogranicz do jednostek (brak zaznaczenia = wszystkie)"), ...unitBoxes] : []),
-        el("label", {}, "Tylko dla rol supportu (brak zaznaczenia = kazda)"), ...roleBoxes,
+        el("label", {}, "Tylko dla ról supportu (brak zaznaczenia = każda)"), ...roleBoxes,
         el("label", {}, "Maksymalny czas sesji (min)"), minutes,
-        el("label", {}, "Wazna przez (dni)"), days,
+        el("label", {}, "Ważna przez (dni)"), days,
         el("label", {}, "Notatka"), note,
-        el("label", {}, "Potwierdz kodem MFA"), mfa, msg,
+        el("label", {}, "Potwierdź kodem MFA"), mfa, msg,
         el("button", { onclick: async () => {
           try {
             const roles = checkedValues(roleBoxes), unitIds = checkedValues(unitBoxes);
@@ -417,7 +417,7 @@
               valid_days: Number(days.value), note: note.value, mfa_code: mfa.value } });
             reload();
           } catch (e) { msg.textContent = e.message; }
-        } }, "Udziel zgody stalej")));
+        } }, "Udziel zgody stałej")));
   }
 
   // ---------------------------------------------------------- powiadomienia
@@ -426,7 +426,7 @@
     content.replaceChildren(card(el("h2", {}, "Powiadomienia")),
       ...(notifications.length ? notifications.map((n) => card(el("h3", {}, n.title),
         el("p", { class: "muted" }, fmt(n.created_at)), el("pre", { class: "body" }, n.body)))
-        : [el("div", { class: "card muted" }, "Brak powiadomien.")]));
+        : [el("div", { class: "card muted" }, "Brak powiadomień.")]));
   }
 
   if (supportToken) startSupportMode().catch(() => supportEnded());

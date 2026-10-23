@@ -122,7 +122,7 @@ def get_app_principal(request: Request, ctx: Ctx = Depends(get_ctx)) -> AppPrinc
 def require_user_principal(principal: AppPrincipal = Depends(get_app_principal)) -> AppPrincipal:
     """Operacje na wlasnym koncie (haslo, MFA, tokeny) - nigdy w trybie wsparcia."""
     if principal.is_support:
-        raise DomainError(403, "forbidden_in_support_mode", "Operacja niedostepna w trybie wsparcia Forvium.")
+        raise DomainError(403, "forbidden_in_support_mode", "Operacja niedostępna w trybie wsparcia Forvium.")
     return principal
 
 
@@ -166,8 +166,8 @@ def require_org_permission(permission: Permission):
         if permission not in access.permissions:
             if principal.is_support:
                 raise DomainError(403, "forbidden_in_support_mode",
-                                  "Operacja niedostepna w trybie wsparcia Forvium lub poza zakresem zgody.")
-            raise DomainError(403, "forbidden", "Brak uprawnien.")
+                                  "Operacja niedostępna w trybie wsparcia Forvium lub poza zakresem zgody.")
+            raise DomainError(403, "forbidden", "Brak uprawnień.")
         return access
 
     return dependency
@@ -204,7 +204,7 @@ def get_operator(request: Request, ctx: Ctx = Depends(get_ctx)) -> OperatorPrinc
 def require_platform_permission(permission: PlatformPermission):
     def dependency(op: OperatorPrincipal = Depends(get_operator)) -> OperatorPrincipal:
         if permission not in op.permissions:
-            raise DomainError(403, "forbidden", "Brak uprawnien operatora.")
+            raise DomainError(403, "forbidden", "Brak uprawnień operatora.")
         return op
 
     return dependency

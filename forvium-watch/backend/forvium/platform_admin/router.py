@@ -32,7 +32,7 @@ def user_detail(user_id: str, op: OperatorPrincipal = Depends(require_platform_p
                 ctx: Ctx = Depends(get_ctx)):
     user = ctx.db.get(User, user_id)
     if user is None or user.platform_role is not None:
-        raise DomainError(404, "user_not_found", "Nie znaleziono uzytkownika.")
+        raise DomainError(404, "user_not_found", "Nie znaleziono użytkownika.")
     rows = ctx.db.execute(select(Organization, Membership.role)
                           .join(Membership, Membership.organization_id == Organization.id)
                           .where(Membership.user_id == user.id, Organization.deleted_at.is_(None))).all()

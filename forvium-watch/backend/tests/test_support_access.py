@@ -431,7 +431,7 @@ def test_customer_gets_start_and_summary_notifications(env):
     summary = ended["data"]["summary"]
     assert summary["views"] == ["Dashboard", "Lista CVE"]
     assert summary["denied_calls"] == 1 and summary["end_reason"] == "ended_by_operator"
-    assert "Ogladane widoki: Dashboard, Lista CVE" in ended["body"]
+    assert "Oglądane widoki: Dashboard, Lista CVE" in ended["body"]
 
     from sqlalchemy import select
 
@@ -439,8 +439,8 @@ def test_customer_gets_start_and_summary_notifications(env):
 
     with env.app.state.db.sessionmaker() as db:
         subjects = [m.subject for m in db.scalars(select(EmailOutbox).where(EmailOutbox.to_address == "alice@acme.example"))]
-    assert any(sub.startswith("Rozpoczeto sesje") for sub in subjects)
-    assert any(sub.startswith("Zakonczono sesje") for sub in subjects)
+    assert any(sub.startswith("Rozpoczęto sesję") for sub in subjects)
+    assert any(sub.startswith("Zakończono sesję") for sub in subjects)
 
 
 def test_summary_sent_on_expiry(env):

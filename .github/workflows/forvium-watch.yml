@@ -88,4 +88,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose config -q
-      - run: docker compose build api
+      - run: docker compose build api worker app admin gateway

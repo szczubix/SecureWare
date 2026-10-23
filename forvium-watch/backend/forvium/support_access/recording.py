@@ -54,7 +54,7 @@ def store_snapshot(ctx: Ctx, policy: RecordingPolicy, session: SupportSession, v
     clean = sanitize_html(html)
     size = len(clean.encode())
     if size > policy.max_snapshot_bytes:
-        raise DomainError(413, "snapshot_too_large", "Zrzut widoku jest zbyt duzy.")
+        raise DomainError(413, "snapshot_too_large", "Zrzut widoku jest zbyt duży.")
     last = ctx.db.execute(
         select(func.count(SupportSessionSnapshot.id), func.max(SupportSessionSnapshot.seq),
                func.max(SupportSessionSnapshot.captured_at))
@@ -62,10 +62,10 @@ def store_snapshot(ctx: Ctx, policy: RecordingPolicy, session: SupportSession, v
     ).one()
     count, max_seq, last_at = last
     if count >= policy.max_snapshots_per_session:
-        raise DomainError(429, "snapshot_limit", "Osiagnieto limit zrzutow w tej sesji.")
+        raise DomainError(429, "snapshot_limit", "Osiągnięto limit zrzutów w tej sesji.")
     now = clock.now()
     if last_at and (now - last_at).total_seconds() < policy.min_interval_seconds:
-        raise DomainError(429, "snapshot_rate", "Zbyt czeste zrzuty.")
+        raise DomainError(429, "snapshot_rate", "Zbyt częste zrzuty.")
     snap = SupportSessionSnapshot(session_id=session.id, organization_id=session.organization_id,
                                   seq=(max_seq or 0) + 1, view=(view or "")[:100], captured_at=now, size=size,
                                   html=clean)

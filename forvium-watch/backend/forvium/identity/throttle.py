@@ -72,7 +72,7 @@ class Throttle:
         bucket = self._with_session(lambda s: s.get(RateLimitBucket, key))
         if bucket and bucket.locked_until and clock.now() < bucket.locked_until:
             self._audit.record("security.throttled", outcome="denied", details={"kind": kind}, **audit_kwargs)
-            raise DomainError(429, "too_many_attempts", "Zbyt wiele nieudanych prob. Sprobuj ponownie pozniej.")
+            raise DomainError(429, "too_many_attempts", "Zbyt wiele nieudanych prób. Spróbuj ponownie później.")
 
     def fail(self, kind: str, value: str | None, **audit_kwargs) -> None:
         if not value:

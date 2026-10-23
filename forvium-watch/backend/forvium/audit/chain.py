@@ -104,9 +104,9 @@ def verify_file(path: str, key: bytes | None = None) -> tuple[bool, int, str]:
                 continue
             rec = json.loads(line)
             if rec["prev_hash"] != prev:
-                return False, count, f"linia {lineno}: przerwany lancuch (prev_hash)"
+                return False, count, f"linia {lineno}: przerwany łańcuch (prev_hash)"
             if chain_hash(prev, rec["event"], key) != rec["hash"]:
-                return False, count, f"linia {lineno}: niezgodny skrot - zdarzenie zmienione"
+                return False, count, f"linia {lineno}: niezgodny skrót - zdarzenie zmienione"
             prev = rec["hash"]
             count += 1
-    return True, count, "lancuch poprawny"
+    return True, count, "łańcuch poprawny"

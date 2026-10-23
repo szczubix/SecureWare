@@ -101,7 +101,7 @@ def test_alert_handling(env):
     assert env.client.post(url + "/acknowledge", headers=env.h(marta), json={}).json()["alert"]["status"] == "acknowledged"
     assert env.client.post(url + "/resolve", headers=env.h(marta), json={"notes": "ok"}).status_code == 422
     r = env.client.post(url + "/resolve", headers=env.h(marta),
-                        json={"notes": "Operator zamknal karte i odswiezyl - brak naruszenia."})
+                        json={"notes": "Operator zamknął kartę i odświeżył - brak naruszenia."})
     assert r.json()["alert"]["status"] == "resolved"
     assert not _by_rule(_alerts(env, marta), "post_session_access")  # domyslnie tylko otwarte
     assert env.audit(action="security.alert.resolved")

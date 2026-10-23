@@ -77,7 +77,7 @@ def change_password(body: PasswordChangeIn, principal: AppPrincipal = Depends(re
                     ctx: Ctx = Depends(get_ctx)):
     user = principal.actor
     if not verify_password(user.password_hash, body.current_password) or len(body.new_password) < 12:
-        raise DomainError(422, "password_invalid", "Nieprawidlowe haslo.")
+        raise DomainError(422, "password_invalid", "Nieprawidłowe hasło.")
     user.password_hash = hash_password(body.new_password)
     ctx.audit.log(ctx.db, "identity.password.changed", actor_user_id=user.id, actor_type="user", ip_address=ctx.ip)
     return {"ok": True}
@@ -128,7 +128,7 @@ class StepUpIn(BaseModel):
 
 class RegisterVerifyIn(BaseModel):
     credential: dict
-    name: str = "Klucz bezpieczenstwa"
+    name: str = "Klucz bezpieczeństwa"
 
 
 def _credential_out(c) -> dict:

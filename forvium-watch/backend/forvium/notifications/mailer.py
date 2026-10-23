@@ -51,7 +51,7 @@ class LogSender:
     """Tryb dev: zapisuje tylko odbiorce i temat."""
 
     def send(self, to_address: str, subject: str, body: str) -> None:
-        logger.info("E-mail (dev, niewyslany) do %s: %s", to_address, subject)
+        logger.info("E-mail (dev, niewysłany) do %s: %s", to_address, subject)
 
 
 def sender_from_settings(settings: Settings) -> EmailSender:
@@ -102,7 +102,7 @@ def deliver_pending(db: Session, sender: EmailSender, batch_size: int = 50) -> i
             msg.last_error = type(exc).__name__[:200]
             if msg.attempts >= MAX_ATTEMPTS:
                 msg.failed_at = now
-                logger.error("E-mail %s nie zostal wyslany po %s probach", msg.id, msg.attempts)
+                logger.error("E-mail %s nie został wysłany po %s próbach", msg.id, msg.attempts)
             else:
                 msg.next_attempt_at = now + _backoff(msg.attempts)
             continue

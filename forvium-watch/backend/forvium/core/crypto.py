@@ -54,12 +54,12 @@ class KeyRing:
 
     def __post_init__(self) -> None:
         if self.active_kid not in self.keys:
-            raise CryptoConfigError(f"Brak aktywnego klucza '{self.active_kid}' w pierscieniu kluczy.")
+            raise CryptoConfigError(f"Brak aktywnego klucza '{self.active_kid}' w pierścieniu kluczy.")
         for kid, key in self.keys.items():
             if len(key) != 32:
                 raise CryptoConfigError(f"Klucz '{kid}' musi miec 32 bajty (AES-256).")
             if ":" in kid:
-                raise CryptoConfigError("Identyfikator klucza nie moze zawierac ':'.")
+                raise CryptoConfigError("Identyfikator klucza nie może zawierać ':'.")
 
     def encrypt(self, plaintext: bytes, context: str) -> str:
         nonce = os.urandom(12)
@@ -90,7 +90,7 @@ def _parse_pairs(value: str) -> list[tuple[str, str]]:
     for item in filter(None, (p.strip() for p in value.split(","))):
         kid, _, material = item.partition(":")
         if not kid or not material:
-            raise CryptoConfigError("Oczekiwany format: kid:wartosc[,kid:wartosc]")
+            raise CryptoConfigError("Oczekiwany format: kid:wartość[,kid:wartość]")
         pairs.append((kid, material))
     return pairs
 
@@ -120,7 +120,7 @@ def keyring_from_settings(settings) -> KeyRing:
             raise CryptoConfigError(
                 "Brak klucza szyfrowania danych. Skonfiguruj FORVIUM_DATA_KEYS_WRAPPED (Vault) lub "
                 "FORVIUM_DATA_KEYS; tylko lokalnie: FORVIUM_ALLOW_INSECURE_DEV_KEY=true.")
-        logger.warning("UWAGA: uzywany jest staly klucz deweloperski - nie do produkcji.")
+        logger.warning("UWAGA: używany jest stały klucz deweloperski - nie do produkcji.")
         keys[DEV_KEY_ID] = hashlib.sha256(b"forvium-insecure-dev-key").digest()
         return KeyRing(keys, DEV_KEY_ID)
     active = settings.data_key_id or next(iter(keys))
@@ -138,7 +138,7 @@ def set_keyring(keyring: KeyRing) -> None:
 
 def get_keyring() -> KeyRing:
     if _keyring is None:
-        raise CryptoConfigError("Pierscien kluczy nie zostal zainicjalizowany.")
+        raise CryptoConfigError("Pierścień kluczy nie został zainicjalizowany.")
     return _keyring
 
 
@@ -230,7 +230,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - CLI
     from forvium.core.config import get_settings
     from forvium.core.db import Database
 
-    parser = argparse.ArgumentParser(description="Narzedzia szyfrowania danych Forvium")
+    parser = argparse.ArgumentParser(description="Narzędzia szyfrowania danych Forvium")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("reencrypt", help="zaszyfruj/przepisz wszystkie pola aktywnym kluczem")
     sub.add_parser("generate-key", help="wygeneruj nowy klucz danych (base64)")
@@ -244,7 +244,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - CLI
     with db.sessionmaker() as session:
         n = reencrypt_all(session)
         session.commit()
-    print(f"Przepisano {n} pol aktywnym kluczem '{get_keyring().active_kid}'.")
+    print(f"Przepisano {n} pól aktywnym kluczem '{get_keyring().active_kid}'.")
     return 0
 
 

@@ -13,10 +13,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("path")
     parser.add_argument("--key", default=os.environ.get("FORVIUM_AUDIT_EXPORT_HMAC_KEY", ""),
-                        help="klucz HMAC (domyslnie FORVIUM_AUDIT_EXPORT_HMAC_KEY)")
+                        help="klucz HMAC (domyślnie FORVIUM_AUDIT_EXPORT_HMAC_KEY)")
     args = parser.parse_args(argv)
     ok, count, message = verify_file(args.path, args.key.encode() or None)
-    print(f"{'OK' if ok else 'BLAD'}: {message} (zweryfikowano {count} zdarzen)")
+    print(f"{'OK' if ok else 'BŁĄD'}: {message} (zweryfikowano {count} zdarzeń)")
     return 0 if ok else 1
 
 

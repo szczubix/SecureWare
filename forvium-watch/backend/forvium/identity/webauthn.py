@@ -141,7 +141,7 @@ def registration_options(ctx: Ctx, user: User) -> dict:
 def finish_registration(ctx: Ctx, user: User, credential: dict, name: str) -> WebAuthnCredential:
     expected = _consume_challenge(ctx, user, PURPOSE_REGISTER, _challenge_from(credential))
     if expected is None:
-        raise DomainError(400, "webauthn_challenge_invalid", "Wyzwanie WebAuthn jest nieprawidlowe lub wygaslo.")
+        raise DomainError(400, "webauthn_challenge_invalid", "Wyzwanie WebAuthn jest nieprawidłowe lub wygasło.")
     try:
         verified = verify_registration_response(credential=credential, expected_challenge=expected,
                                                 expected_rp_id=rp_id(ctx), expected_origin=_origin(ctx),
@@ -149,13 +149,13 @@ def finish_registration(ctx: Ctx, user: User, credential: dict, name: str) -> We
     except InvalidRegistrationResponse as exc:
         ctx.audit.record("identity.webauthn.register", outcome="denied", actor_user_id=user.id,
                          actor_type="operator", ip_address=ctx.ip, details={"reason": "invalid_attestation"})
-        raise DomainError(400, "webauthn_invalid", f"Nie udalo sie zweryfikowac klucza: {exc}") from exc
+        raise DomainError(400, "webauthn_invalid", f"Nie udało się zweryfikować klucza: {exc}") from exc
     cred = WebAuthnCredential(
         user_id=user.id,
         credential_id=bytes_to_base64url(verified.credential_id),
         public_key=verified.credential_public_key,
         sign_count=verified.sign_count,
-        name=(name or "Klucz bezpieczenstwa").strip()[:100],
+        name=(name or "Klucz bezpieczeństwa").strip()[:100],
         aaguid=verified.aaguid,
         transports=(credential.get("response") or {}).get("transports"),
         created_at=clock.now(),
@@ -165,9 +165,9 @@ def finish_registration(ctx: Ctx, user: User, credential: dict, name: str) -> We
     ctx.audit.log(ctx.db, "identity.webauthn.registered", actor_user_id=user.id, actor_type="operator",
                   ip_address=ctx.ip, details={"credential": cred.id, "name": cred.name, "aaguid": cred.aaguid})
     ctx.notifications.notify(ctx.db, [user], event="identity.webauthn.registered",
-                             title="Dodano klucz bezpieczenstwa do konta Forvium",
-                             body=f"Do Twojego konta dodano klucz '{cred.name}'. Jesli to nie Ty, "
-                                  "natychmiast skontaktuj sie z zespolem bezpieczenstwa.")
+                             title="Dodano klucz bezpieczeństwa do konta Forvium",
+                             body=f"Do Twojego konta dodano klucz '{cred.name}'. Jeśli to nie Ty, "
+                                  "natychmiast skontaktuj się z zespołem bezpieczeństwa.")
     return cred
 
 
@@ -179,8 +179,8 @@ def remove_credential(ctx: Ctx, user: User, credential_pk: str) -> None:
     ctx.audit.log(ctx.db, "identity.webauthn.removed", actor_user_id=user.id, actor_type="operator",
                   ip_address=ctx.ip, details={"credential": credential_pk, "name": cred.name})
     ctx.notifications.notify(ctx.db, [user], event="identity.webauthn.removed",
-                             title="Usunieto klucz bezpieczenstwa z konta Forvium",
-                             body=f"Z Twojego konta usunieto klucz '{cred.name}'.")
+                             title="Usunięto klucz bezpieczeństwa z konta Forvium",
+                             body=f"Z Twojego konta usunięto klucz '{cred.name}'.")
 
 
 # ------------------------------------------------------------- asercja (step-up)
@@ -189,7 +189,7 @@ def remove_credential(ctx: Ctx, user: User, credential_pk: str) -> None:
 def assertion_options(ctx: Ctx, user: User) -> dict:
     creds = credentials_of(ctx, user)
     if not creds:
-        raise DomainError(409, "webauthn_not_registered", "Najpierw dodaj klucz bezpieczenstwa.")
+        raise DomainError(409, "webauthn_not_registered", "Najpierw dodaj klucz bezpieczeństwa.")
     challenge = _new_challenge(ctx, user, PURPOSE_STEP_UP)
     options = generate_authentication_options(
         rp_id=rp_id(ctx), challenge=challenge, user_verification=UserVerificationRequirement.REQUIRED,

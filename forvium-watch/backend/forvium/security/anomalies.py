@@ -119,7 +119,7 @@ def detect(ctx: Ctx, policy: AnomalyPolicy) -> list[Finding]:
         if len(events) >= policy.post_session_attempts:
             e = events[-1]
             findings.append(Finding(
-                "post_session_access", "high", "Proby uzycia tokenu zakonczonej sesji wsparcia",
+                "post_session_access", "high", "Próby użycia tokenu zakończonej sesji wsparcia",
                 f"post_session_access:{session_id}", e.actor_user_id, e.organization_id, session_id,
                 {"attempts": len(events), "ips": sorted({x.ip_address or "" for x in events})}))
 
@@ -148,7 +148,7 @@ def detect(ctx: Ctx, policy: AnomalyPolicy) -> list[Finding]:
             local = e.occurred_at.replace(tzinfo=ZoneInfo("UTC")).astimezone(tz)
             if local.weekday() >= 5 or not start_h <= local.hour < end_h:
                 findings.append(Finding(
-                    "off_hours", "low", "Sesja wsparcia rozpoczeta poza godzinami pracy",
+                    "off_hours", "low", "Sesja wsparcia rozpoczęta poza godzinami pracy",
                     f"off_hours:{e.support_session_id}", e.actor_user_id, e.organization_id, e.support_session_id,
                     {"local_time": local.strftime("%Y-%m-%d %H:%M %Z")}))
 
@@ -156,7 +156,7 @@ def detect(ctx: Ctx, policy: AnomalyPolicy) -> list[Finding]:
     for e in _events(ctx, now - policy.window, "security.lockout"):
         if e.actor_type == "operator" and e.actor_user_id:
             findings.append(Finding(
-                "mfa_lockout", "medium", "Blokada konta operatora po nieudanych probach weryfikacji",
+                "mfa_lockout", "medium", "Blokada konta operatora po nieudanych próbach weryfikacji",
                 f"mfa_lockout:{e.id}", e.actor_user_id, details=e.details))
 
     # 7. Uzycie Break Glass.
@@ -208,9 +208,9 @@ def run_detection(ctx: Ctx, policy: AnomalyPolicy) -> list[SecurityAlert]:
             body = (f"[{f.severity.upper()}] {f.title}\nOperator: {f.operator_user_id or '-'}\n"
                     f"Organizacja: {f.organization_id or '-'}\nSesja: {f.support_session_id or '-'}\n"
                     + (f"Automatyczna akcja: {alert.auto_action}\n" if alert.auto_action else "")
-                    + "Szczegoly: admin.forvium.com -> Alerty.")
+                    + "Szczegóły: admin.forvium.com -> Alerty.")
             ctx.notifications.notify(ctx.db, _recipients(ctx), event="security.alert",
-                                     title=f"Alert bezpieczenstwa: {f.title}", body=body,
+                                     title=f"Alert bezpieczeństwa: {f.title}", body=body,
                                      organization_id=f.organization_id, data={"alert_id": alert.id},
                                      email=SEVERITY_ORDER[f.severity] >= SEVERITY_ORDER["high"])
             if SEVERITY_ORDER[f.severity] >= SEVERITY_ORDER["high"]:
@@ -223,11 +223,11 @@ def handle_alert(ctx: Ctx, user: User, alert_id: str, status: str, notes: str | 
     if alert is None:
         raise DomainError(404, "alert_not_found", "Nie znaleziono alertu.")
     if status not in ("acknowledged", "resolved"):
-        raise DomainError(422, "status_invalid", "Nieprawidlowy status.")
+        raise DomainError(422, "status_invalid", "Nieprawidłowy status.")
     if status == "resolved" and len((notes or "").strip()) < 10:
-        raise DomainError(422, "notes_required", "Opisz, jak rozwiazano alert.")
+        raise DomainError(422, "notes_required", "Opisz, jak rozwiązano alert.")
     if alert.operator_user_id == user.id:
-        raise DomainError(403, "self_handling", "Nie mozna obslugiwac alertu dotyczacego wlasnych dzialan.")
+        raise DomainError(403, "self_handling", "Nie można obsługiwać alertu dotyczącego własnych działań.")
     alert.status = status
     alert.handled_by_user_id = user.id
     alert.handled_at = clock.now()

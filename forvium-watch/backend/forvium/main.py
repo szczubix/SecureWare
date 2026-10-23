@@ -12,7 +12,6 @@ from fastapi.responses import JSONResponse
 
 from forvium.audit.middleware import SupportAuditMiddleware
 from forvium.audit.router import router as audit_admin
-from forvium.security.anomalies import AnomalyPolicy, run_anomaly_job
 from forvium.security.router import router as security_admin
 from forvium.support_access.recording import RecordingPolicy
 from forvium.audit.service import AuditLog
@@ -30,13 +29,13 @@ from forvium.support_access.policy import DEFAULT_POLICY, SupportAccessPolicy
 from forvium.support_access.router_admin import bg_router as break_glass_admin
 from forvium.support_access.router_admin import router as support_admin
 from forvium.support_access.router_app import router as support_app
-from forvium.core.periodic import periodic
 from forvium.audit.chain import ChainedJsonlFile
-from forvium.audit.export import run_audit_export, sinks_from_settings
+from forvium.audit.export import sinks_from_settings
+from forvium.jobs import start_jobs
+from forvium.notifications.mailer import sender_from_settings
+from forvium.security.anomalies import AnomalyPolicy
 from forvium.identity.throttle import Throttle
 from forvium.support_access.break_glass import BreakGlassPolicy
-from forvium.notifications.mailer import run_delivery, sender_from_settings
-from forvium.support_access.scheduler import run_sweep
 
 
 def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | None = None) -> FastAPI:
@@ -44,14 +43,7 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        jobs = [
-            ("support-sweep", settings.support_sweep_interval_seconds, lambda: run_sweep(app)),
-            ("email-delivery", settings.email_interval_seconds, lambda: run_delivery(app)),
-            ("anomaly-detection", settings.anomaly_interval_seconds, lambda: run_anomaly_job(app)),
-            ("audit-export", settings.audit_export_interval_seconds if app.state.audit_sinks else 0,
-             lambda: run_audit_export(app)),
-        ]
-        tasks = [asyncio.create_task(periodic(name, interval, fn)) for name, interval, fn in jobs if interval > 0]
+        tasks = start_jobs(app) if settings.run_background_jobs else []
         yield
         for task in tasks:
             task.cancel()

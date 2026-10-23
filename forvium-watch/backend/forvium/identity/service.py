@@ -43,7 +43,7 @@ def login(ctx: Ctx, *, email: str, password: str, mfa_code: str | None, kind: st
         ctx.audit.record(action, outcome="denied", details={"reason": "invalid_credentials"}, **audit)
         ctx.throttle.fail("login_account", email, **audit)
         ctx.throttle.fail("login_ip", ctx.ip, **audit)
-        raise DomainError(401, "invalid_credentials", "Nieprawidlowe dane logowania.")
+        raise DomainError(401, "invalid_credentials", "Nieprawidłowe dane logowania.")
 
     ctx.throttle.reset("login_account", email)
     token = new_token(OPERATOR_TOKEN_PREFIX if kind == "operator" else USER_TOKEN_PREFIX)

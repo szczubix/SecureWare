@@ -15,18 +15,18 @@ VIEW_LABELS = {
     "/api/app/orgs/{org_id}/technologies": "Technologie",
     "/api/app/orgs/{org_id}/cves": "Lista CVE",
     "/api/app/orgs/{org_id}/config/status": "Stan konfiguracji",
-    "/api/app/orgs/{org_id}/errors": "Bledy",
+    "/api/app/orgs/{org_id}/errors": "Błędy",
 }
 
 END_REASON_LABELS = {
-    "ended_by_operator": "zakonczona przez operatora",
-    "terminated_by_customer": "zakonczona przez Twoja organizacje",
-    "terminated_by_supervisor": "zakonczona przez przelozonego supportu Forvium",
-    "consent_revoked": "zgoda zostala cofnieta",
-    "consent_expired": "zgoda wygasla",
-    "session_expired": "uplynal czas sesji",
-    "ticket_closed": "zgloszenie zostalo zamkniete",
-    "terminated_by_anomaly": "zakonczona automatycznie przez system bezpieczenstwa Forvium",
+    "ended_by_operator": "zakończona przez operatora",
+    "terminated_by_customer": "zakończona przez Twoją organizację",
+    "terminated_by_supervisor": "zakończona przez przełożonego supportu Forvium",
+    "consent_revoked": "zgoda została cofnięta",
+    "consent_expired": "zgoda wygasła",
+    "session_expired": "upłynął czas sesji",
+    "ticket_closed": "zgłoszenie zostało zamknięte",
+    "terminated_by_anomaly": "zakończona automatycznie przez system bezpieczeństwa Forvium",
 }
 
 
@@ -52,9 +52,9 @@ def summary_text(summary: dict) -> str:
     minutes, seconds = divmod(summary["duration_seconds"], 60)
     lines = [
         f"Czas trwania: {minutes} min {seconds} s",
-        f"Powod zakonczenia: {END_REASON_LABELS.get(summary['end_reason'] or '', summary['end_reason'])}",
+        f"Powód zakończenia: {END_REASON_LABELS.get(summary['end_reason'] or '', summary['end_reason'])}",
         f"Liczba operacji (tylko odczyt): {summary['api_calls']}",
-        f"Zablokowane proby: {summary['denied_calls']}",
-        "Ogladane widoki: " + (", ".join(summary["views"]) or "brak"),
+        f"Zablokowane próby: {summary['denied_calls']}",
+        "Oglądane widoki: " + (", ".join(summary["views"]) or "brak"),
     ]
     return "\n".join(lines)

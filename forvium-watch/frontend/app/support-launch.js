@@ -9,13 +9,13 @@
     const r = await fetch(window.FORVIUM_API + "/api/app/support/launch", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }),
     });
-    if (!r.ok) throw new Error((await r.json()).message || "Blad");
+    if (!r.ok) throw new Error((await r.json()).message || "Błąd");
     const data = await r.json();
     // Token wsparcia tylko w sessionStorage tej karty i pod osobnym kluczem -
     // nie nadpisuje sesji klienta i znika po zamknieciu karty.
     sessionStorage.setItem("fw_support_token", data.token);
     location.replace("index.html");
   } catch (e) {
-    msg.textContent = "Nie udalo sie uruchomic sesji wsparcia: " + e.message;
+    msg.textContent = "Nie udało się uruchomić sesji wsparcia: " + e.message;
   }
 })();

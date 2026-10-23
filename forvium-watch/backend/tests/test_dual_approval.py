@@ -45,7 +45,7 @@ def test_reject_during_confirmation(env):
     request_id = env.create_request(op).json()["request"]["id"]
     env.approve(alice, request_id)
     r = env.client.post(env.org_url(f"/support-access/requests/{request_id}/reject"), headers=env.h(dorota),
-                        json={"note": "nie zgadzam sie"})
+                        json={"note": "nie zgadzam się"})
     assert r.status_code == 200
     assert env.start(op, request_id).json()["error"] == "no_consent"
 

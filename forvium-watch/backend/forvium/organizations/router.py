@@ -133,7 +133,7 @@ def change_role(user_id: str, body: RoleIn, access: OrgAccess = Depends(require_
     m = ctx.db.scalar(select(Membership).where(Membership.organization_id == access.organization.id,
                                                Membership.user_id == user_id))
     if m is None:
-        raise DomainError(404, "member_not_found", "Nie znaleziono czlonka.")
+        raise DomainError(404, "member_not_found", "Nie znaleziono członka.")
     m.role = body.role
     return {"ok": True}
 

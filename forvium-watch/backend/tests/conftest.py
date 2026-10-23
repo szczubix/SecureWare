@@ -61,7 +61,7 @@ class Env:
             json={
                 "organization_id": self.ids["orgs"][org],
                 "reference_user_id": self.ids["users"][reference],
-                "reason": "Diagnoza bledu wyswietlania CVE zgloszonego przez klienta",
+                "reason": "Diagnoza błędu wyswietlania CVE zgloszonego przez klienta",
                 "ticket_number": self.ids["tickets"][ticket],
                 "duration_minutes": duration,
                 "scopes": list(scopes),

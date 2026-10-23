@@ -6,7 +6,8 @@ przejmowania sesji użytkownika.
 
 ```
 forvium-watch/
-├── compose.yaml        całe środowisko lokalne: PostgreSQL, migracje, API, oba frontendy, Mailpit
+├── compose.yaml        całe środowisko lokalne: gateway, API (2 repliki), worker, oba frontendy,
+│                       PostgreSQL, migracje, Mailpit
 ├── backend/            wspólny backend FastAPI (api.forvium.com)
 │   ├── forvium/
 │   │   ├── identity/          Identity & Access – konta, sesje, MFA (TOTP + WebAuthn), limity prób
@@ -18,11 +19,13 @@ forvium-watch/
 │   │   ├── support_access/    prośby, zgody (też stałe), sesje, przedłużenia, nagrania, Break Glass
 │   │   ├── security/          wykrywanie anomalii i alerty, sanityzacja zrzutów widoku
 │   │   ├── core/crypto.py     szyfrowanie danych w spoczynku (AES-256-GCM, klucze z KMS)
+│   │   ├── jobs.py, worker.py zadania w tle i ich heartbeat (osobny kontener `worker`)
 │   │   └── access.py          jedno miejsce uwierzytelniania i autoryzacji (RBAC + RLS)
 │   ├── migrations/            Alembic: 0001 schemat (+ trigger audytu), 0002 RLS i uprawnienia,
-│   │                          0003 szyfrowanie, WebAuthn, dwie osoby, przedłużenia, alerty, nagrania
+│   │                          0003 szyfrowanie, WebAuthn, dwie osoby, przedłużenia, alerty, nagrania,
+│   │                          0004 heartbeat zadań w tle
 │   └── tests/
-├── deploy/             role PostgreSQL, konfiguracja nginx (nagłówki bezpieczeństwa, CSP)
+├── deploy/             role PostgreSQL, gateway (routing po hoście, limity zapytań)
 └── frontend/
     ├── admin/          admin.forvium.com – użytkownicy, prośby, nadzór, alerty, audyt, Break Glass, klucze
     └── app/            app.forvium.com – zgody, ustawienia, podgląd na żywo, nagrania, baner wsparcia
@@ -37,10 +40,27 @@ docker compose up --build
 
 | Usługa | Adres |
 |---|---|
-| app (klient) | http://localhost:8001 |
-| admin (operatorzy) | http://localhost:8002 |
-| API | http://localhost:8000 (dokumentacja: `/docs`) |
+| app (klient) | http://app.localhost:8080 |
+| admin (operatorzy) | http://admin.localhost:8080 |
+| API | http://api.localhost:8080 (dokumentacja: `/docs`) |
 | Mailpit (wysłane e-maile) | http://localhost:8025 |
+
+Przeglądarki rozwiązują `*.localhost` na 127.0.0.1 bez zmian w `/etc/hosts`.
+
+### Kontenery
+
+| Kontener | Rola | Sieci |
+|---|---|---|
+| `gateway` | nginx: jedyne wejście (port 8080), routing po nazwie hosta, limity zapytań na logowanie i API, `X-Request-ID`, blokada `/metrics` z zewnątrz, nieznany host → zamknięcie połączenia | edge |
+| `app`, `admin` | statyczne frontendy (nginx, CSP bez inline) z wbudowanym adresem API | edge |
+| `api` | FastAPI, bezstanowe, 2 repliki, **bez** zadań w tle (`RUN_BACKGROUND_JOBS=false`) | edge, backend |
+| `worker` | zadania w tle: wygaszanie sesji, wysyłka e-maili, wykrywanie anomalii, eksport audytu; healthcheck `python -m forvium.worker --check` sprawdza heartbeat w `job_runs` | backend |
+| `migrate` | jednorazowo: migracje jako właściciel schematu + dane demo | backend |
+| `db` | PostgreSQL 16 z RLS i osobnymi rolami | backend |
+| `mailpit` | przechwytuje wysłane e-maile | backend |
+
+Baza, worker i API nie publikują portów: z zewnątrz dostępny jest tylko `gateway` (i lokalnie UI Mailpit).
+Logi API i workera są w formacie JSON (`FORVIUM_LOG_FORMAT=json`).
 
 Kontener `migrate` uruchamia migracje jako właściciel schematu i ładuje dane demo.
 Hasło wszystkich kont to `Forvium-demo-2026!`, a sekrety TOTP do zeskanowania lub wpisania
@@ -299,14 +319,17 @@ Dostęp awaryjny bez zgody klienta. Domyślnie jest **wyłączony**
 | `WEBAUTHN_RP_ID` | host `ADMIN_ORIGIN` | identyfikator RP dla kluczy (np. `forvium.com`) |
 | `ANOMALY_INTERVAL_SECONDS` | 60 | wykrywanie anomalii |
 | `AUTO_CREATE_SCHEMA` | `false` | tylko eksperymenty; schemat tworzą migracje |
+| `RUN_BACKGROUND_JOBS` | `true` | `false` w replikach API, gdy zadania wykonuje osobny `worker` |
+| `LOG_FORMAT`, `LOG_LEVEL` | `text`, `INFO` | `json` = jeden obiekt JSON na linię (logi aplikacji i dostępu) |
 
 ### Wdrożenie
 
 1. Raz uruchom `deploy/postgres/roles.sql` jako superuser.
 2. Przy każdym wdrożeniu, przed startem API, uruchom `alembic upgrade head` i
    `python -m forvium.core.crypto reencrypt` jako `forvium_migrator`.
-3. Uruchom API jako `forvium_app`, za reverse proxy z TLS.
-4. Frontendy serwuj przez nginx z `deploy/nginx/frontend.conf`.
+3. Uruchom repliki API (`RUN_BACKGROUND_JOBS=false`) i jeden `worker` jako `forvium_app`,
+   za gatewayem z `deploy/gateway/` (w produkcji z TLS).
+4. Frontendy budują się z `frontend/Dockerfile` (`--build-arg PANEL=app|admin`).
 
 ## Rozwój bez Dockera
 

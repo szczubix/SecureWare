@@ -20,6 +20,12 @@ class Settings:
     # create_all tylko w testach / szybkim dev.
     auto_create_schema: bool = field(default_factory=lambda: _env("AUTO_CREATE_SCHEMA", "false") == "true")
 
+    # Zadania w tle w procesie API (lokalnie). W Compose/produkcji: false + osobny kontener worker.
+    run_background_jobs: bool = field(default_factory=lambda: _env("RUN_BACKGROUND_JOBS", "true") == "true")
+    # Logi: "json" (produkcja, zbieranie przez Loki/ELK) albo "text".
+    log_format: str = field(default_factory=lambda: _env("LOG_FORMAT", "text"))
+    log_level: str = field(default_factory=lambda: _env("LOG_LEVEL", "INFO"))
+
     # Co ile sekund wygaszac sesje wsparcia w tle (0 = wylaczone).
     support_sweep_interval_seconds: int = field(
         default_factory=lambda: int(_env("SUPPORT_SWEEP_INTERVAL_SECONDS", "60"))

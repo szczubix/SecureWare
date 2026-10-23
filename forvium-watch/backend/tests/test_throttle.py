@@ -15,7 +15,7 @@ def _login(env, password, key="bob"):
 
 def test_login_lockout_after_repeated_failures(env):
     for _ in range(5):
-        assert _login(env, "zle-haslo").status_code == 401
+        assert _login(env, "zle-hasło").status_code == 401
     r = _login(env, DEMO_PASSWORD)  # poprawne haslo, ale konto zablokowane
     assert r.status_code == 429 and r.json()["error"] == "too_many_attempts"
     assert env.audit(action="security.lockout")
@@ -26,16 +26,16 @@ def test_login_lockout_after_repeated_failures(env):
 
 def test_lockout_is_per_account(env):
     for _ in range(5):
-        _login(env, "zle-haslo", key="bob")
+        _login(env, "zle-hasło", key="bob")
     assert _login(env, DEMO_PASSWORD, key="alice").status_code == 200
 
 
 def test_success_resets_counter(env):
     for _ in range(4):
-        _login(env, "zle-haslo")
+        _login(env, "zle-hasło")
     assert _login(env, DEMO_PASSWORD).status_code == 200
     for _ in range(4):
-        _login(env, "zle-haslo")
+        _login(env, "zle-hasło")
     assert _login(env, DEMO_PASSWORD).status_code == 200
 
 
@@ -57,7 +57,7 @@ def test_launch_code_bruteforce_is_throttled(env):
 
 def test_lockout_keys_are_not_stored_in_plain_text(env):
     for _ in range(5):
-        _login(env, "zle-haslo")
+        _login(env, "zle-hasło")
     from sqlalchemy import select
 
     from forvium.identity.throttle import RateLimitBucket
