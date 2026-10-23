@@ -60,9 +60,26 @@ jobs:
           psql -h localhost -U postgres -c "DROP ROLE IF EXISTS forvium_app"
           psql -h localhost -U postgres -c "CREATE DATABASE forvium_roles"
           psql -h localhost -U postgres -d forvium_roles -v ON_ERROR_STOP=1 \
-               -v migrator_password="'m'" -v app_password="'a'" -f ../deploy/postgres/roles.sql
+               -v migrator_password="'m'" -v app_password="'a'" -v backup_password="'b'" \
+               -f ../deploy/postgres/roles.sql
           alembic -x url=postgresql+psycopg://forvium_migrator:m@localhost:5432/forvium_roles upgrade head
           alembic -x url=postgresql+psycopg://forvium_migrator:m@localhost:5432/forvium_roles check
+      - name: Kopia zapasowa i test odtwarzania (deploy/backup)
+        run: |
+          FORVIUM_DATABASE_URL=postgresql+psycopg://forvium_migrator:m@localhost:5432/forvium_roles \
+            FORVIUM_ALLOW_INSECURE_DEV_KEY=true python -m forvium.seed
+          docker build -t forvium-backup ../deploy/backup
+          mkdir -p "$RUNNER_TEMP/backups" "$RUNNER_TEMP/keys" && chmod 777 "$RUNNER_TEMP/backups" "$RUNNER_TEMP/keys"
+          run() {
+            docker run --rm --network host -v "$RUNNER_TEMP/backups:/backups" -v "$RUNNER_TEMP/keys:/keys" \
+              -e PGHOST=localhost -e PGDATABASE=forvium_roles \
+              -e BACKUP_PGUSER=forvium_backup -e BACKUP_PGPASSWORD=b \
+              -e RESTORE_PGUSER=postgres -e RESTORE_PGPASSWORD=ci \
+              -e HEARTBEAT_PGUSER=forvium_app -e HEARTBEAT_PGPASSWORD=a forvium-backup "$@"
+          }
+          run backup
+          run restore-test
+          run check
 
   frontend:
     runs-on: ubuntu-latest
@@ -88,7 +105,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose config -q
-      - run: docker compose build api worker app admin gateway
+      - run: docker compose build api worker app admin gateway backup
       - name: Prometheus config and alert rules
         run: >-
           docker run --rm --entrypoint promtool -v "$PWD/deploy/monitoring:/etc/prometheus:ro" prom/prometheus:v3.5.0

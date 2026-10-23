@@ -26,7 +26,7 @@ forvium-watch/
 │   │                          0003 szyfrowanie, WebAuthn, dwie osoby, przedłużenia, alerty, nagrania,
 │   │                          0004 heartbeat zadań w tle
 │   └── tests/
-├── deploy/             role PostgreSQL, gateway (routing po hoście, limity zapytań),
+├── deploy/             role PostgreSQL, gateway (routing po hoście, limity zapytań), kopie zapasowe,
 │                       monitoring (Prometheus, reguły alertów, Alertmanager, Grafana)
 └── frontend/
     ├── admin/          admin.forvium.com – użytkownicy, prośby, nadzór, alerty, audyt, Break Glass, klucze
@@ -58,6 +58,7 @@ Przeglądarki rozwiązują `*.localhost` na 127.0.0.1 bez zmian w `/etc/hosts`.
 | `api` | FastAPI, bezstanowe, 2 repliki, **bez** zadań w tle (`RUN_BACKGROUND_JOBS=false`) | edge, backend |
 | `worker` | zadania w tle: wygaszanie sesji, wysyłka e-maili, wykrywanie anomalii, eksport audytu; healthcheck `python -m forvium.worker --check` sprawdza heartbeat w `job_runs` | backend |
 | `migrate` | jednorazowo: migracje jako właściciel schematu + dane demo | backend |
+| `backup` | zaszyfrowane kopie bazy i audytu, retencja, cotygodniowy test odtwarzania | backend |
 | `db` | PostgreSQL 16 z RLS i osobnymi rolami | backend |
 | `mailpit` | przechwytuje wysłane e-maile | backend |
 
@@ -102,6 +103,50 @@ Break Glass jest domyślnie wyłączony. Żeby go włączyć lokalnie, uruchom
   zatrzymane zadanie w tle, niedostępna replika API, błędy 5xx, alerty bezpieczeństwa
   o wysokiej wadze, niewysyłane e-maile. Lokalnie Alertmanager wysyła alerty e-mailem
   do Mailpit (`security@forvium.local`).
+
+## Kopie zapasowe i test odtwarzania
+
+Kontener `backup` (`deploy/backup/`) co `BACKUP_INTERVAL_SECONDS` (domyślnie doba) tworzy
+zestaw w wolumenie `backups`:
+
+* `db.dump.age`: `pg_dump -Fc` jako rola **`forvium_backup`** (tylko odczyt,
+  `pg_read_all_data`, BYPASSRLS, więc zrzut obejmuje wszystkie organizacje),
+* `audit.tar.gz.age`: archiwum eksportu audytu (łańcuch skrótów, strumień Break Glass),
+* `manifest.json`: SHA-256 plików, wersja migracji i liczba wierszy każdej tabeli,
+  policzona **w tej samej migawce** co zrzut.
+
+Pliki są szyfrowane strumieniowo kluczem publicznym [age](https://age-encryption.org)
+(`BACKUP_AGE_RECIPIENT`), więc niezaszyfrowany zrzut nie trafia na dysk, a host kopii nie
+potrafi ich odczytać. Klucz prywatny trzymaj poza hostem (sejf, HSM); lokalnie, bez
+`BACKUP_AGE_RECIPIENT`, para kluczy jest generowana w wolumenie `backup-keys`. Retencja:
+`BACKUP_RETENTION_DAYS` (14), ale zawsze zostają co najmniej 3 ostatnie zestawy.
+
+**Test odtwarzania** (po pierwszej kopii, potem co `RESTORE_TEST_INTERVAL_SECONDS`, domyślnie
+tydzień) sprawdza sumy kontrolne, odszyfrowuje i odtwarza najnowszy zestaw do tymczasowej
+bazy `forvium_restore_check`, a potem weryfikuje:
+* wersję migracji,
+* liczbę wierszy każdej tabeli względem manifestu,
+* wymuszone RLS,
+* trigger audytu tylko do dopisywania (próba zmiany ma się nie udać),
+* czytelność archiwum audytu.
+
+Na koniec usuwa bazę tymczasową. Wynik trafia do `restore-test.json` i do `job_runs` (zadania
+`backup` i `restore-test`), więc zatrzymane kopie albo nieudany test widać w zakładce *Alerty*,
+w `/metrics` i w alertach Prometheusa. Healthcheck kontenera (`check`) jest czerwony, gdy kopia
+jest starsza niż 2 interwały albo ostatni test się nie powiódł. W CI ten sam cykl (seed →
+kopia → test odtwarzania) działa na PostgreSQL.
+
+```bash
+docker compose exec backup python3 /usr/local/bin/forvium_backup.py list
+docker compose exec backup python3 /usr/local/bin/forvium_backup.py backup
+docker compose exec backup python3 /usr/local/bin/forvium_backup.py restore-test
+# Odtwarzanie awaryjne - zawsze do NOWEJ bazy (istniejącej nie nadpisuje):
+docker compose exec backup python3 /usr/local/bin/forvium_backup.py restore 20261023T154303Z --target-db forvium_dr
+```
+
+Odtwarzanie na nowym klastrze: najpierw `deploy/postgres/roles.sql` (role muszą istnieć,
+żeby zachować właściciela i uprawnienia), potem `restore`, a na koniec przełącz
+`FORVIUM_DATABASE_URL` na odtworzoną bazę.
 
 ## Logowanie operatora
 
@@ -359,7 +404,8 @@ Dostęp awaryjny bez zgody klienta. Domyślnie jest **wyłączony**
 
 ### Wdrożenie
 
-1. Raz uruchom `deploy/postgres/roles.sql` jako superuser.
+1. Raz uruchom `deploy/postgres/roles.sql` jako superuser (role migratora, aplikacji i kopii).
+   W istniejącej instalacji dodaj tylko rolę `forvium_backup` (polecenie `CREATE ROLE` z tego pliku).
 2. Przy każdym wdrożeniu, przed startem API, uruchom `alembic upgrade head` i
    `python -m forvium.core.crypto reencrypt` jako `forvium_migrator`.
 3. Uruchom repliki API (`RUN_BACKGROUND_JOBS=false`) i jeden `worker` jako `forvium_app`,

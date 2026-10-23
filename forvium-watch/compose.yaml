@@ -11,6 +11,7 @@
 #   api      - FastAPI bez zadan w tle (mozna skalowac: deploy.replicas)
 #   worker   - zadania w tle (wygaszanie, e-mail, anomalie, eksport audytu, raporty)
 #   migrate  - jednorazowo: migracje + szyfrowanie danych + dane demo
+#   backup   - zaszyfrowane kopie (age) bazy i eksportu audytu, retencja, cotygodniowy test odtwarzania
 #   db, mailpit
 #   prometheus, alertmanager, grafana - profil "monitoring":
 #     docker compose --profile monitoring up   (Grafana: http://localhost:3000, Prometheus: http://localhost:9090)
@@ -50,6 +51,7 @@ services:
       POSTGRES_PASSWORD: local-postgres
       FORVIUM_MIGRATOR_PASSWORD: local-migrator
       FORVIUM_APP_PASSWORD: local-app
+      FORVIUM_BACKUP_PASSWORD: local-backup
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./deploy/postgres/roles.sql:/forvium/roles.sql:ro
@@ -128,6 +130,32 @@ services:
     depends_on: [api, app, admin]
     networks: [edge]
 
+  backup:
+    build: ./deploy/backup
+    environment:
+      PGHOST: db
+      PGDATABASE: forvium
+      BACKUP_PGUSER: forvium_backup
+      BACKUP_PGPASSWORD: local-backup
+      # Test odtwarzania tworzy i usuwa tymczasowa baze - potrzebne konto z CREATEDB (lokalnie superuser).
+      RESTORE_PGUSER: postgres
+      RESTORE_PGPASSWORD: local-postgres
+      HEARTBEAT_PGUSER: forvium_app
+      HEARTBEAT_PGPASSWORD: local-app
+      # W produkcji: BACKUP_AGE_RECIPIENT=age1... (klucz prywatny poza hostem kopii).
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      RESTORE_TEST_INTERVAL_SECONDS: ${RESTORE_TEST_INTERVAL_SECONDS:-604800}
+      BACKUP_RETENTION_DAYS: "14"
+    volumes:
+      - backups:/backups
+      - backup-keys:/keys
+      - audit-export:/var/forvium/audit:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [backend]
+
   mailpit:
     image: axllent/mailpit:v1.21
     ports:
@@ -171,4 +199,6 @@ networks:
 
 volumes:
   db-data:
+  backups:
+  backup-keys:
   audit-export:

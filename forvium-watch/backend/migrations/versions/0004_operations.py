@@ -1,7 +1,7 @@
-"""security extensions
+"""operations: heartbeat zadan w tle
 
-Sekrety (MFA, SMTP, webhooki, sekrety organizacji) przechowywane jako szyfrogramy (TEXT).
-Po migracji: `python -m forvium.core.crypto reencrypt` szyfruje dane zapisane wczesniej jawnie.
+Tabela job_runs: stan kazdego zadania w tle (worker, kopie zapasowe) - podstawa
+healthcheckow, metryk /metrics i alertow o zatrzymanych zadaniach.
 
 Revision ID: 0004
 Revises: 0003
