@@ -71,6 +71,9 @@ class Settings:
 
     # WebAuthn: identyfikator RP (domyslnie host panelu admin); origin = ADMIN_ORIGIN.
     webauthn_rp_id: str = field(default_factory=lambda: _env("WEBAUTHN_RP_ID", ""))
+    # Operator z zarejestrowanym kluczem loguje sie tylko kluczem (odporne na phishing), nie kodem TOTP.
+    operator_login_webauthn_only: bool = field(
+        default_factory=lambda: _env("OPERATOR_LOGIN_WEBAUTHN_ONLY", "false") == "true")
 
     # Zwykle sesje
     user_session_ttl_minutes: int = 12 * 60

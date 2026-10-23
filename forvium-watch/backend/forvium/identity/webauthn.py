@@ -40,6 +40,7 @@ from forvium.identity.models import User
 CHALLENGE_TTL = timedelta(minutes=2)
 PURPOSE_REGISTER = "register"
 PURPOSE_STEP_UP = "step_up"
+PURPOSE_LOGIN = "login"
 
 
 class WebAuthnCredential(Base):
@@ -186,11 +187,11 @@ def remove_credential(ctx: Ctx, user: User, credential_pk: str) -> None:
 # ------------------------------------------------------------- asercja (step-up)
 
 
-def assertion_options(ctx: Ctx, user: User) -> dict:
+def assertion_options(ctx: Ctx, user: User, purpose: str = PURPOSE_STEP_UP) -> dict:
     creds = credentials_of(ctx, user)
     if not creds:
         raise DomainError(409, "webauthn_not_registered", "Najpierw dodaj klucz bezpieczeństwa.")
-    challenge = _new_challenge(ctx, user, PURPOSE_STEP_UP)
+    challenge = _new_challenge(ctx, user, purpose)
     options = generate_authentication_options(
         rp_id=rp_id(ctx), challenge=challenge, user_verification=UserVerificationRequirement.REQUIRED,
         allow_credentials=[PublicKeyCredentialDescriptor(id=base64url_to_bytes(c.credential_id)) for c in creds],
@@ -198,11 +199,11 @@ def assertion_options(ctx: Ctx, user: User) -> dict:
     return json.loads(options_to_json(options))
 
 
-def verify_assertion(ctx: Ctx, user: User, credential: dict | None) -> bool:
+def verify_assertion(ctx: Ctx, user: User, credential: dict | None, purpose: str = PURPOSE_STEP_UP) -> bool:
     """Weryfikuje asercje WebAuthn uzytkownika; zuzywa wyzwanie i aktualizuje licznik."""
     if not isinstance(credential, dict):
         return False
-    expected = _consume_challenge(ctx, user, PURPOSE_STEP_UP, _challenge_from(credential))
+    expected = _consume_challenge(ctx, user, purpose, _challenge_from(credential))
     if expected is None:
         return False
     with ctx.db.no_autoflush:

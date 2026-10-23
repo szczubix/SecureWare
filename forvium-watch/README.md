@@ -80,6 +80,16 @@ w aplikacji uwierzytelniającej są w `docker compose logs migrate`.
 Break Glass jest domyślnie wyłączony. Żeby go włączyć lokalnie, uruchom
 `FORVIUM_BREAK_GLASS_ENABLED=true docker compose up`.
 
+## Logowanie operatora
+
+Hasło + drugi składnik: kod TOTP albo **klucz bezpieczeństwa (WebAuthn)**. Przy kluczu
+panel najpierw wysyła e-mail i hasło do `POST /api/admin/auth/login/webauthn/options`
+(błędne hasło liczy się do limitu prób, a lista kluczy nie wycieka bez hasła), a potem
+asercję do `POST /api/admin/auth/login`. Wyzwanie logowania jest jednorazowe i ma osobny
+cel (`login`) - asercja z ponownej weryfikacji go nie zastąpi. Przy
+`FORVIUM_OPERATOR_LOGIN_WEBAUTHN_ONLY=true` operator, który ma klucz, nie zaloguje się już
+kodem TOTP. W audycie `identity.login.operator` ma `second_factor`: `webauthn` albo `totp`.
+
 ## Przepływ
 
 1. **Prośba** (`admin`): operator wybiera organizację i użytkownika referencyjnego, podaje
@@ -317,6 +327,7 @@ Dostęp awaryjny bez zgody klienta. Domyślnie jest **wyłączony**
 | `DATA_KEYS`, `DATA_KEY_ID` | — | klucze danych wprost (`kid:base64,...`) i aktywny klucz |
 | `ALLOW_INSECURE_DEV_KEY` | `false` | tylko lokalnie: stały klucz deweloperski |
 | `WEBAUTHN_RP_ID` | host `ADMIN_ORIGIN` | identyfikator RP dla kluczy (np. `forvium.com`) |
+| `OPERATOR_LOGIN_WEBAUTHN_ONLY` | `false` | operator z kluczem loguje się wyłącznie kluczem (zalecane w produkcji) |
 | `ANOMALY_INTERVAL_SECONDS` | 60 | wykrywanie anomalii |
 | `AUTO_CREATE_SCHEMA` | `false` | tylko eksperymenty; schemat tworzą migracje |
 | `RUN_BACKGROUND_JOBS` | `true` | `false` w replikach API, gdy zadania wykonuje osobny `worker` |

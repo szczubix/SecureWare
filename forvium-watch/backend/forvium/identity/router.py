@@ -21,6 +21,12 @@ class LoginIn(BaseModel):
     email: str
     password: str
     mfa_code: str | None = None
+    webauthn: dict | None = None
+
+
+class PasswordIn(BaseModel):
+    email: str
+    password: str
 
 
 class TokenOut(BaseModel):
@@ -103,7 +109,13 @@ def list_tokens(principal: AppPrincipal = Depends(require_user_principal)):
 def admin_login(body: LoginIn, request: Request, ctx: Ctx = Depends(get_ctx)):
     s = request.app.state.settings
     return {"token": service.login(ctx, email=body.email, password=body.password, mfa_code=body.mfa_code,
-                                   kind="operator", ttl_minutes=s.operator_session_ttl_minutes)}
+                                   kind="operator", ttl_minutes=s.operator_session_ttl_minutes,
+                                   webauthn=body.webauthn)}
+
+
+@admin_router.post("/auth/login/webauthn/options")
+def admin_login_webauthn_options(body: PasswordIn, ctx: Ctx = Depends(get_ctx)):
+    return {"options": service.operator_login_options(ctx, email=body.email, password=body.password)}
 
 
 @admin_router.post("/auth/logout")

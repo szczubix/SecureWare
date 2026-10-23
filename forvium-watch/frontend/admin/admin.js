@@ -105,21 +105,43 @@
   }
 
   // ---------------------------------------------------------------- logowanie
+  // Drugi skladnik: kod TOTP albo klucz bezpieczenstwa (haslo jest sprawdzane przed wydaniem wyzwania).
   function renderLogin(error) {
-    const form = el("form", { class: "card", onsubmit: async (e) => {
-      e.preventDefault();
+    const finish = async (body) => {
       try {
-        const r = await api("/api/admin/auth/login", { method: "POST", body: Object.fromEntries(new FormData(form)) });
+        const r = await api("/api/admin/auth/login", { method: "POST", body });
         sessionStorage.setItem(KEY, r.token);
         start();
       } catch (err) { renderLogin(err.message); }
+    };
+    const credentials = () => {
+      if (!form.reportValidity()) return null;
+      const { email, password } = Object.fromEntries(new FormData(form));
+      return { email, password };
+    };
+    const form = el("form", { class: "card", onsubmit: (e) => {
+      e.preventDefault();
+      const base = credentials();
+      if (!base) return;
+      const code = form.elements.mfa_code.value.trim();
+      if (!code) { renderLogin("Podaj kod MFA albo użyj klucza bezpieczeństwa."); return; }
+      finish({ ...base, mfa_code: code });
     } },
       el("h2", {}, "Logowanie operatora"),
       el("label", {}, "E-mail"), el("input", { name: "email", type: "email", required: true, autocomplete: "username" }),
       el("label", {}, "Hasło"), el("input", { name: "password", type: "password", required: true, autocomplete: "current-password" }),
-      el("label", {}, "Kod MFA"), el("input", { name: "mfa_code", required: true, inputmode: "numeric", autocomplete: "one-time-code" }),
+      el("label", {}, "Kod MFA"), el("input", { name: "mfa_code", inputmode: "numeric", autocomplete: "one-time-code" }),
       el("p", { class: "error" }, error || ""),
-      el("button", { type: "submit" }, "Zaloguj"));
+      el("div", { class: "actions" },
+        el("button", { type: "submit" }, "Zaloguj kodem MFA"),
+        el("button", { type: "button", class: "secondary", onclick: async () => {
+          const base = credentials();
+          if (!base) return;
+          try {
+            const { options } = await api("/api/admin/auth/login/webauthn/options", { method: "POST", body: base });
+            finish({ ...base, webauthn: await getAssertion(options) });
+          } catch (err) { renderLogin(err.message); }
+        } }, "Zaloguj kluczem bezpieczeństwa")));
     root.replaceChildren(form);
   }
 
