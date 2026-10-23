@@ -24,7 +24,9 @@ from forvium.platform_admin.router import router as platform_admin
 from forvium.support_access.policy import DEFAULT_POLICY, SupportAccessPolicy
 from forvium.support_access.router_admin import router as support_admin
 from forvium.support_access.router_app import router as support_app
-from forvium.support_access.scheduler import sweep_loop
+from forvium.core.periodic import periodic
+from forvium.notifications.mailer import run_delivery, sender_from_settings
+from forvium.support_access.scheduler import run_sweep
 
 
 def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | None = None) -> FastAPI:
@@ -32,11 +34,13 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        task = None
-        if settings.support_sweep_interval_seconds > 0:
-            task = asyncio.create_task(sweep_loop(app, settings.support_sweep_interval_seconds))
+        jobs = [
+            ("support-sweep", settings.support_sweep_interval_seconds, lambda: run_sweep(app)),
+            ("email-delivery", settings.email_interval_seconds, lambda: run_delivery(app)),
+        ]
+        tasks = [asyncio.create_task(periodic(name, interval, fn)) for name, interval, fn in jobs if interval > 0]
         yield
-        if task:
+        for task in tasks:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
@@ -44,11 +48,13 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
     app = FastAPI(title="Forvium Watch API", version="1.0.0", lifespan=lifespan)
 
     db = Database(settings.database_url)
-    db.create_all()
+    if settings.auto_create_schema:
+        db.create_all()
     app.state.settings = settings
     app.state.db = db
     app.state.audit = AuditLog(db.sessionmaker)
     app.state.notifications = NotificationEngine()
+    app.state.email_sender = sender_from_settings(settings)
     app.state.support_policy = policy or DEFAULT_POLICY
 
     @app.exception_handler(DomainError)

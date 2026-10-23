@@ -98,6 +98,8 @@ referencyjny), a do tego `organization_id`, `support_session_id` i `support_requ
   przetrwają rollback.
 * Do logu nie trafia treść żądań ani odpowiedzi. Szczegóły przechodzą przez `sanitize`,
   który maskuje klucze typu password, token, secret, mfa, smtp, webhook.
+* Na PostgreSQL tabela `audit_events` jest tylko do dopisywania: trigger z migracji `0001`
+  odrzuca każdy `UPDATE` i `DELETE`, także wykonany ręcznie w bazie.
 
 ## Break Glass
 
@@ -115,31 +117,48 @@ python -m venv .venv && . .venv/bin/activate
 pip install -r requirements-dev.txt
 export FORVIUM_DATABASE_URL=sqlite:///./forvium.db \
        FORVIUM_APP_ORIGIN=http://localhost:8001 FORVIUM_ADMIN_ORIGIN=http://localhost:8002
-python -m forvium.seed                 # konta demo i sekrety TOTP
+python -m forvium.seed                 # migracje (alembic upgrade head) + konta demo i sekrety TOTP
 uvicorn forvium.asgi:app --port 8000
 # w osobnych terminalach (config.js sam wskaże http://<host>:8000 poza domeną forvium.com):
 python -m http.server 8001 -d ../frontend/app
 python -m http.server 8002 -d ../frontend/admin
 ```
 
-W produkcji `FORVIUM_DATABASE_URL` wskazuje PostgreSQL (`postgresql+psycopg://…`).
-Proces w tle (`support_access/scheduler.py`) co `FORVIUM_SUPPORT_SWEEP_INTERVAL_SECONDS`
-sekund (domyślnie 60, `0` wyłącza) oznacza wygasłe sesje i prośby oraz zapisuje
-`support.session.expired`, także gdy nikt już z sesji nie korzysta. Dostęp i tak jest
-blokowany przy każdym żądaniu. Przy kilku instancjach API pętla jest bezpieczna
-(operacja idempotentna), ale wystarczy ją włączyć na jednej.
+### Produkcja
+
+* **Baza:** `FORVIUM_DATABASE_URL=postgresql+psycopg://…`. Schemat zakłada się i aktualizuje
+  wyłącznie migracjami: `alembic upgrade head` przy każdym wdrożeniu, przed startem API.
+  Nowa zmiana modelu wymaga `alembic revision --autogenerate -m "…"`. Test
+  `test_migrations_match_models` nie przepuści modelu bez migracji.
+  (`FORVIUM_AUTO_CREATE_SCHEMA=true` istnieje tylko na potrzeby szybkich eksperymentów.)
+* **E-mail:** powiadomienia trafiają do tabeli `email_outbox`, a proces w tle wysyła je co
+  `FORVIUM_EMAIL_INTERVAL_SECONDS` (domyślnie 15 s) przez platformowy SMTP Forvium:
+  `FORVIUM_SMTP_HOST`, `_PORT` (587), `_USERNAME`, `_PASSWORD`, `_FROM`, `_STARTTLS` (true).
+  Przy błędzie ponawia z rosnącym odstępem (2, 4, 8… min), a po 5 próbach oznacza
+  wiadomość jako nieudaną. Bez `FORVIUM_SMTP_HOST` wiadomości są tylko logowane.
+  Na PostgreSQL wiersze blokowane są `FOR UPDATE SKIP LOCKED`, więc kilka instancji API nie
+  wyśle tej samej wiadomości dwa razy.
+* **Wygaszanie:** co `FORVIUM_SUPPORT_SWEEP_INTERVAL_SECONDS` sekund (domyślnie 60, `0`
+  wyłącza) proces w tle oznacza wygasłe sesje i prośby oraz zapisuje
+  `support.session.expired`, także gdy nikt już z sesji nie korzysta. Dostęp i tak jest
+  blokowany przy każdym żądaniu.
 
 ## Testy
 
 ```bash
-cd backend && pytest
+cd backend && pytest                                   # SQLite
+FORVIUM_TEST_DATABASE_URL=postgresql+psycopg://user@host/forvium_test pytest   # PostgreSQL
 ```
+
+Przy PostgreSQL każdy test dostaje czysty schemat (`DROP SCHEMA public CASCADE`), więc
+potrzebna jest osobna, pusta baza testowa.
 
 `tests/test_support_access.py` pokrywa 10 obowiązkowych scenariuszy (`test_01` … `test_10`)
 oraz przypadki dodatkowe:
 
 * wymóg MFA i jednorazowość kodu MFA,
 * wygaszanie sesji w tle,
+* zgodność migracji z modelami, wysyłka e-maili z ponawianiem (`tests/test_infrastructure.py`),
 * limit 15 min,
 * jednorazowy kod startowy,
 * zawężenie jednostek,

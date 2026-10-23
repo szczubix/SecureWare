@@ -103,8 +103,11 @@ if __name__ == "__main__":  # pragma: no cover
     from forvium.core.config import get_settings
     from forvium.core.db import Database
 
-    database = Database(get_settings().database_url)
-    database.create_all()
+    from forvium.core.migrations import upgrade_head
+
+    url = get_settings().database_url
+    upgrade_head(url)
+    database = Database(url)
     with database.sessionmaker() as session:
         data = seed(session)
         session.commit()

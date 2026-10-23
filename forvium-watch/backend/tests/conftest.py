@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+import os
 from datetime import UTC, timedelta
 
 import pyotp
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import create_engine, select, text
 
 from forvium.audit.models import AuditEvent
 from forvium.core.clock import clock
 from forvium.core.config import Settings
+from forvium.core.migrations import upgrade_head
 from forvium.main import create_app
 from forvium.seed import DEMO_PASSWORD, TOTP, seed
 
@@ -107,16 +109,33 @@ class Env:
         return f"/api/app/orgs/{self.ids['orgs'][org]}{path}"
 
 
+def _database_url(tmp_path) -> str:
+    """Domyslnie plikowy SQLite (a nie in-memory na jednym polaczeniu), aby
+    niezalezne transakcje audytu dzialaly jak w produkcji. Ustaw
+    FORVIUM_TEST_DATABASE_URL=postgresql+psycopg://..., by testowac na PostgreSQL
+    (kazdy test dostaje czysty schemat)."""
+    pg = os.environ.get("FORVIUM_TEST_DATABASE_URL")
+    if not pg:
+        return f"sqlite:///{tmp_path}/fw.db"
+    engine = create_engine(pg)
+    with engine.begin() as conn:
+        conn.execute(text("DROP SCHEMA public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+    engine.dispose()
+    return pg
+
+
 @pytest.fixture
 def env(tmp_path):
     clock.reset()
-    # Plikowa baza (a nie in-memory na jednym polaczeniu), aby niezalezne
-    # transakcje audytu dzialaly jak w produkcji.
-    app = create_app(Settings(database_url=f"sqlite:///{tmp_path}/fw.db", app_origin="https://app.forvium.test",
+    url = _database_url(tmp_path)
+    upgrade_head(url)  # schemat z migracji Alembic, tak jak w produkcji
+    app = create_app(Settings(database_url=url, app_origin="https://app.forvium.test",
                               admin_origin="https://admin.forvium.test"))
     with app.state.db.sessionmaker() as s:
         data = seed(s)
         s.commit()
         e = Env(app, data)
     yield e
+    app.state.db.engine.dispose()
     clock.reset()

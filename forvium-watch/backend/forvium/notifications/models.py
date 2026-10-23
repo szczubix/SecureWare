@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from forvium.core.db import Base, new_id
@@ -34,4 +34,9 @@ class EmailOutbox(Base):
     subject: Mapped[str] = mapped_column(String(300))
     body: Mapped[str] = mapped_column(String(5000))
     created_at: Mapped[datetime] = mapped_column(DateTime)
-    sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Klasa bledu (bez tresci odpowiedzi serwera), np. "SMTPAuthenticationError".
+    last_error: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    failed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
