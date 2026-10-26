@@ -502,6 +502,7 @@ Dostęp awaryjny bez zgody klienta. Domyślnie jest **wyłączony**
 | `SECURITY_TEAM_EMAILS` | — | adresy zespołu bezpieczeństwa (po przecinku) |
 | `BREAK_GLASS_AUDIT_PATH` | — | niezależny strumień zdarzeń Break Glass |
 | `AUDIT_EXPORT_PATH`, `AUDIT_EXPORT_URL`, `AUDIT_EXPORT_HMAC_KEY`, `AUDIT_EXPORT_INTERVAL_SECONDS` | —, —, —, 30 | eksport audytu |
+| `AUDIT_SIEM_TYPE`, `AUDIT_SIEM_URL`, `AUDIT_SIEM_TOKEN`, `AUDIT_SIEM_INDEX`, `AUDIT_SIEM_CA_FILE` | — | SIEM: Splunk HEC, Elastic (ECS) albo syslog (Wazuh) - [deploy/siem/README.md](deploy/siem/README.md) |
 | `DATA_KEYS_WRAPPED`, `VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_TRANSIT_KEY` | —, —, —, `forvium-data` | klucze danych z Vault Transit |
 | `DATA_KEYS`, `DATA_KEY_ID` | — | klucze danych wprost (`kid:base64,...`) i aktywny klucz |
 | `ALLOW_INSECURE_DEV_KEY` | `false` | tylko lokalnie: stały klucz deweloperski |

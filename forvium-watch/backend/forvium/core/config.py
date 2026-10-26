@@ -59,6 +59,12 @@ class Settings:
     audit_export_path: str = field(default_factory=lambda: _env("AUDIT_EXPORT_PATH", ""))
     audit_export_url: str = field(default_factory=lambda: _env("AUDIT_EXPORT_URL", ""))
     audit_export_hmac_key: str = field(default_factory=lambda: _env("AUDIT_EXPORT_HMAC_KEY", ""), repr=False)
+    # SIEM (audit/siem.py): splunk | elastic | syslog
+    audit_siem_type: str = field(default_factory=lambda: _env("AUDIT_SIEM_TYPE", ""))
+    audit_siem_url: str = field(default_factory=lambda: _env("AUDIT_SIEM_URL", ""))
+    audit_siem_token: str = field(default_factory=lambda: _env("AUDIT_SIEM_TOKEN", ""), repr=False)
+    audit_siem_index: str = field(default_factory=lambda: _env("AUDIT_SIEM_INDEX", ""))
+    audit_siem_ca_file: str = field(default_factory=lambda: _env("AUDIT_SIEM_CA_FILE", ""))
     audit_export_interval_seconds: int = field(
         default_factory=lambda: int(_env("AUDIT_EXPORT_INTERVAL_SECONDS", "30"))
     )

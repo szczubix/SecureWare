@@ -4,8 +4,10 @@ Proces w tle co `FORVIUM_AUDIT_EXPORT_INTERVAL_SECONDS` wysyla nowe zdarzenia do
 
 * pliku JSONL z lancuchem skrotow (`FORVIUM_AUDIT_EXPORT_PATH`) - np. wolumen
   WORM / bucket z object lock, zbierany dalej przez agenta logow,
-* endpointu HTTP (`FORVIUM_AUDIT_EXPORT_URL`, np. SIEM) - partie JSON podpisane
-  naglowkiem `X-Forvium-Signature: sha256=<HMAC(body)>`.
+* endpointu HTTP (`FORVIUM_AUDIT_EXPORT_URL`) - partie JSON podpisane
+  naglowkiem `X-Forvium-Signature: sha256=<HMAC(body)>`,
+* SIEM: Splunk HEC, Elastic (Bulk API, ECS) albo syslog RFC 5424 przez TLS/TCP
+  (np. Wazuh) - patrz audit/siem.py.
 
 Zdarzenie jest oznaczane jako wyeksportowane (`audit_exports`) dopiero, gdy
 trafi do wszystkich skonfigurowanych miejsc. Ponowienie po bledzie moze
@@ -81,6 +83,11 @@ def sinks_from_settings(settings) -> list[AuditSink]:
         sinks.append(HttpSink(settings.audit_export_url, key))
     if settings.audit_export_path:
         sinks.append(FileSink(settings.audit_export_path, key))
+    from forvium.audit.siem import sink_from_settings
+
+    siem = sink_from_settings(settings)
+    if siem is not None:
+        sinks.append(siem)
     return sinks
 
 

@@ -1,0 +1,15 @@
+<!--
+  Forvium Watch - dekoder audytu dla Wazuh (syslog RFC 5424, tresc: dokument ECS w JSON).
+  Instalacja: /var/ossec/etc/decoders/forvium_decoders.xml, potem restart managera.
+  Przyklad komunikatu:
+  1 2026-10-26T10:00:00Z watch01 forvium-watch - support.api_call - {"@timestamp":"...","event":{...}}
+-->
+<decoder name="forvium-watch">
+  <prematch>forvium-watch - </prematch>
+</decoder>
+
+<decoder name="forvium-watch-json">
+  <parent>forvium-watch</parent>
+  <prematch offset="after_parent">^\S+ - </prematch>
+  <plugin_decoder offset="after_prematch">JSON_Decoder</plugin_decoder>
+</decoder>

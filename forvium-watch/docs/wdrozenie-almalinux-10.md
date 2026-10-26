@@ -232,6 +232,7 @@ Co uzupełnić ręcznie:
 | `BACKUP_AGE_RECIPIENT` | klucz publiczny z punktu 6.2 |
 | `FORVIUM_OPERATOR_LOGIN_WEBAUTHN_ONLY` | `true` (domyślnie): operator z kluczem bezpieczeństwa loguje się tylko kluczem |
 | `FORVIUM_BREAK_GLASS_ENABLED` | `false`, dopóki procedura awaryjna nie zostanie formalnie przyjęta |
+| `FORVIUM_AUDIT_SIEM_*` | opcjonalnie wysyłka audytu do Splunk / Elastic / Wazuh: `deploy/siem/README.md` |
 | `COMPOSE_PROFILES` | `monitoring`, jeśli uruchamiasz Prometheus/Grafanę na tym serwerze |
 
 **Klucze danych:** `FORVIUM_DATA_KEYS` szyfruje w bazie sekrety MFA, sekrety organizacji,

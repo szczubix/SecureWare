@@ -1,0 +1,68 @@
+<!--
+  Forvium Watch - reguly Wazuh dla audytu dostepu serwisowego.
+  Instalacja: /var/ossec/etc/rules/forvium_rules.xml, potem restart managera.
+  Zakres identyfikatorow: 100700-100719.
+-->
+<group name="forvium,audit,">
+
+  <rule id="100700" level="3">
+    <decoded_as>forvium-watch</decoded_as>
+    <field name="event.provider">forvium-watch</field>
+    <description>Forvium Watch: $(event.action)</description>
+  </rule>
+
+  <rule id="100701" level="5">
+    <if_sid>100700</if_sid>
+    <field name="event.outcome">^failure$</field>
+    <description>Forvium Watch: odmowa - $(event.action)</description>
+    <group>access_denied,</group>
+  </rule>
+
+  <rule id="100702" level="5">
+    <if_sid>100701</if_sid>
+    <field name="event.category">authentication</field>
+    <description>Forvium Watch: nieudane uwierzytelnienie ($(event.action)) z $(source.ip)</description>
+    <group>authentication_failed,</group>
+  </rule>
+
+  <rule id="100703" level="10" frequency="5" timeframe="120">
+    <if_matched_sid>100702</if_matched_sid>
+    <same_field>source.ip</same_field>
+    <description>Forvium Watch: wiele nieudanych logowań z $(source.ip)</description>
+    <group>authentication_failures,</group>
+  </rule>
+
+  <rule id="100704" level="6">
+    <if_sid>100700</if_sid>
+    <field name="event.action">^support.session.started$</field>
+    <description>Forvium Watch: rozpoczęto sesję wsparcia w organizacji $(organization.id)</description>
+  </rule>
+
+  <rule id="100705" level="12">
+    <if_sid>100700, 100701, 100704</if_sid>
+    <field name="labels.forvium_break_glass">^true$</field>
+    <description>Forvium Watch: procedura awaryjna Break Glass - $(event.action)</description>
+    <group>break_glass,</group>
+  </rule>
+
+  <rule id="100706" level="10">
+    <if_sid>100700</if_sid>
+    <field name="event.action">^security.alert.raised$</field>
+    <description>Forvium Watch: alert bezpieczeństwa ($(forvium.details.rule))</description>
+  </rule>
+
+  <rule id="100707" level="8">
+    <if_sid>100700</if_sid>
+    <field name="event.action">^platform.operator.role_changed$|^platform.operator.blocked$|^platform.user.blocked$|^platform.user.access_reset$</field>
+    <description>Forvium Watch: zmiana uprawnień/konta - $(event.action)</description>
+    <group>iam,</group>
+  </rule>
+
+  <rule id="100708" level="7">
+    <if_sid>100700, 100701</if_sid>
+    <field name="event.action">^support.api_call$</field>
+    <field name="event.outcome">^failure$</field>
+    <description>Forvium Watch: sesja wsparcia próbowała operacji poza zgodą ($(url.path))</description>
+    <group>policy_violation,</group>
+  </rule>
+</group>
