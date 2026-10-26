@@ -26,7 +26,7 @@ forvium-watch/
 │   ├── migrations/            Alembic: 0001 schemat (+ trigger audytu), 0002 RLS i uprawnienia,
 │   │                          0003 szyfrowanie, WebAuthn, dwie osoby, przedłużenia, alerty, nagrania,
 │   │                          0004 heartbeat zadań w tle, 0005 raporty dostępu,
-│   │                          0006 aktywacja kont, blokady, zatwierdzanie ról
+│   │                          0006 aktywacja kont, blokady, zatwierdzanie ról, 0007 zgłoszenia klientów
 │   └── tests/
 ├── deploy/             role PostgreSQL, gateway (routing po hoście, limity zapytań), kopie zapasowe,
 │                       monitoring (Prometheus, reguły alertów, Alertmanager, Grafana)
@@ -213,6 +213,24 @@ Zasady:
 * Każda zmiana (oprócz statusu zgłoszenia) wymaga ponownej weryfikacji: klucz WebAuthn
   albo jednorazowy kod TOTP. Każda trafia do audytu (`platform.*`, `identity.activation.*`),
   a zainteresowane osoby dostają powiadomienie.
+
+## Zgłoszenia (Support Tickets)
+
+* **Klient** (app → Zgłoszenia): nowe zgłoszenie (temat, opis, priorytet), rozmowa z
+  supportem, lista próśb o dostęp serwisowy złożonych w ramach zgłoszenia, zamknięcie.
+  Czytać mogą wszyscy członkowie (`org.tickets.read`), pisać właściciel, administrator
+  i członek (`org.tickets.create`).
+* **Forvium** (admin → Zgłoszenia → Otwórz): rozmowa z klientem i **notatki wewnętrzne**
+  (klient ich nie widzi), zmiana statusu. Odpowiedź supportu przestawia nowe zgłoszenie
+  na „w toku”.
+* Dostęp serwisowy zawsze wymaga otwartego zgłoszenia danej organizacji. Zamknięcie
+  zgłoszenia (przez klienta albo Forvium) kończy oparte na nim sesje wsparcia.
+* Sesja wsparcia nie ma uprawnień do zgłoszeń, więc operator nie pisze w imieniu klienta.
+  Opis i wiadomości są szyfrowane w bazie, a wiadomości chroni RLS jak resztę danych
+  organizacji.
+* Powiadomienia (w aplikacji i e-mailem): nowe zgłoszenie trafia do kierownika supportu
+  i administratora. Odpowiedzi trafiają do drugiej strony rozmowy, a zmiana statusu do
+  zgłaszającego.
 
 ## Logowanie operatora
 

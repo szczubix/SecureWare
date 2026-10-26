@@ -35,6 +35,9 @@ class Permission(StrEnum):
     # Support Access po stronie klienta
     SUPPORT_ACCESS_VIEW = "org.support_access.view"
     SUPPORT_ACCESS_APPROVE = "org.support_access.approve"
+    # Zgloszenia do supportu Forvium (Support Tickets)
+    TICKETS_READ = "org.tickets.read"
+    TICKETS_CREATE = "org.tickets.create"
 
 
 class OrgRole(StrEnum):
@@ -53,12 +56,13 @@ _READ = {
     Permission.ERRORS_READ,
     Permission.MEMBERS_READ,
     Permission.SUPPORT_ACCESS_VIEW,
+    Permission.TICKETS_READ,
 }
 
 ROLE_PERMISSIONS: dict[OrgRole, frozenset[Permission]] = {
     OrgRole.OWNER: frozenset(Permission),
     OrgRole.ADMIN: frozenset(set(Permission) - {Permission.ORG_DELETE}),
-    OrgRole.MEMBER: frozenset(_READ | {Permission.DATA_EXPORT}),
+    OrgRole.MEMBER: frozenset(_READ | {Permission.DATA_EXPORT, Permission.TICKETS_CREATE}),
     OrgRole.VIEWER: frozenset(_READ - {Permission.MEMBERS_READ}),
 }
 

@@ -31,7 +31,8 @@ from forvium.organizations.models import Membership, Organization, OrgUnit
 from forvium.organizations.rbac import OrgRole
 from forvium.platform_admin.rbac import PRIVILEGED_ROLES, PlatformPermission as PP, PlatformRole, platform_permissions
 from forvium.support_access.models import SessionStatus, SupportSession
-from forvium.support_tickets.models import SupportTicket, TicketStatus
+from forvium.support_tickets import service as tickets
+from forvium.support_tickets.models import SupportTicket, TicketPriority, TicketStatus
 
 router = APIRouter(prefix="/api/admin", tags=["platform management (admin)"])
 
@@ -538,6 +539,8 @@ def unblock_operator(user_id: str, body: StepUp,
 class TicketCreateIn(StepUp):
     organization_id: str
     subject: str = Field(min_length=3, max_length=300)
+    description: str | None = Field(default=None, max_length=10_000)
+    priority: TicketPriority = TicketPriority.NORMAL
     reporter_user_id: str | None = None
 
 
@@ -546,14 +549,7 @@ class TicketStatusIn(BaseModel):
 
 
 def _ticket_out(t: SupportTicket) -> dict:
-    return {"id": t.id, "number": t.number, "organization_id": t.organization_id, "subject": t.subject,
-            "status": t.status, "reporter_user_id": t.reporter_user_id, "created_at": _iso(t.created_at)}
-
-
-def _next_ticket_number(ctx: Ctx) -> str:
-    numbers = [int(n.split("-", 1)[1]) for n in ctx.db.scalars(select(SupportTicket.number))
-               if n.startswith("FW-") and n[3:].isdigit()]
-    return f"FW-{max(numbers, default=1000) + 1}"
+    return tickets.ticket_out(t)
 
 
 @router.get("/tickets/all")
@@ -566,8 +562,11 @@ def list_all_tickets(status: str | None = None, q: str = "",
         stmt = stmt.where(SupportTicket.status == status)
     if q:
         stmt = stmt.where(or_(SupportTicket.number.ilike(f"%{q}%"), SupportTicket.subject.ilike(f"%{q}%")))
-    return {"tickets": [{**_ticket_out(t), "organization_name": names.get(t.organization_id)}
-                        for t in ctx.db.scalars(stmt)]}
+    rows = list(ctx.db.scalars(stmt))
+    emails = dict(ctx.db.execute(select(User.id, User.email).where(
+        User.id.in_({t.reporter_user_id for t in rows if t.reporter_user_id}))).all())
+    return {"tickets": [tickets.ticket_out(t, organization_name=names.get(t.organization_id), emails=emails)
+                        for t in rows]}
 
 
 @router.post("/tickets")
@@ -581,10 +580,8 @@ def create_ticket(body: TicketCreateIn, op: OperatorPrincipal = Depends(require_
             Membership.organization_id == org.id, Membership.user_id == body.reporter_user_id)):
         raise _deny(ctx, op, action, 422, "reporter_not_member", "Zgłaszający nie należy do tej organizacji.")
     _step_up(ctx, op, body, action)
-    ticket = SupportTicket(number=_next_ticket_number(ctx), organization_id=org.id, subject=body.subject.strip(),
-                           reporter_user_id=body.reporter_user_id, created_at=clock.now())
-    ctx.db.add(ticket)
-    ctx.db.flush()
+    ticket = tickets.create(ctx, organization_id=org.id, subject=body.subject, description=body.description,
+                            priority=body.priority, reporter_user_id=body.reporter_user_id, by_customer=False)
     _log(ctx, op, "platform.ticket.created", organization_id=org.id, ticket=ticket.number, subject=ticket.subject)
     ctx.notifications.notify(ctx.db, _org_admins(ctx, org.id), event="platform.ticket.created",
                              title=f"Forvium otworzyło zgłoszenie {ticket.number}", body=ticket.subject,
@@ -606,9 +603,14 @@ def set_ticket_status(ticket_id: str, body: TicketStatusIn,
         raise DomainError(422, "status_invalid", "Nieznany status zgłoszenia.") from None
     if status == ticket.status:
         return {"ticket": _ticket_out(ticket)}
-    previous, ticket.status = ticket.status, status
-    ended = _end_support_sessions(ctx, op, "ticket_closed", SupportSession.ticket_id == ticket.id) \
-        if status == TicketStatus.CLOSED else 0
+    previous = ticket.status
+    ended = tickets.set_status(ctx, ticket, status, by_user_id=op.user.id, actor_type="operator")
     _log(ctx, op, "platform.ticket.status_changed", organization_id=ticket.organization_id, ticket=ticket.number,
          status_from=previous, status_to=status, support_sessions_ended=ended)
+    reporter = ctx.db.get(User, ticket.reporter_user_id) if ticket.reporter_user_id else None
+    if reporter is not None and reporter.is_active:
+        ctx.notifications.notify(ctx.db, [reporter], event="support_tickets.status_changed",
+                                 title=f"Zgłoszenie {ticket.number}: {tickets.STATUS_LABELS[status]}",
+                                 body=ticket.subject, organization_id=ticket.organization_id,
+                                 data={"ticket_id": ticket.id})
     return {"ticket": _ticket_out(ticket), "support_sessions_ended": ended}

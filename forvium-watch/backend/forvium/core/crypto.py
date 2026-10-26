@@ -197,6 +197,8 @@ ENCRYPTED_COLUMNS = [
     ("forvium.support_access.recording", "SupportSessionSnapshot", ["html"]),
     ("forvium.reports.service", "AccessReport", ["pdf"]),
     ("forvium.identity.activation", "AccountActivation", ["pending_mfa_secret"]),
+    ("forvium.support_tickets.models", "SupportTicket", ["description"]),
+    ("forvium.support_tickets.models", "SupportTicketMessage", ["body"]),
 ]
 
 

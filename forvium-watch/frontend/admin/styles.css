@@ -47,3 +47,7 @@ input.slider { padding: 0; }
 .button-link { display: inline-block; padding: 8px 14px; border-radius: 6px; background: var(--accent); color: #fff; text-decoration: none; }
 .snapshot-body nav > span { margin-right: 12px; color: var(--accent); }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }
+.pre { white-space: pre-wrap; }
+.msg { border-left: 3px solid #cbd5e1; padding: 4px 10px; margin: 8px 0; }
+.msg.forvium { border-color: #2563eb; }
+.msg.internal { border-color: #d97706; background: #fffbeb; }

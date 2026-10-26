@@ -26,6 +26,8 @@ from forvium.notifications.service import NotificationEngine
 from forvium.organizations.router import router as organizations_app
 from forvium.platform_admin.manage import router as platform_manage
 from forvium.platform_admin.router import router as platform_admin
+from forvium.support_tickets.router import admin_router as tickets_admin
+from forvium.support_tickets.router import app_router as tickets_app
 from forvium.support_access.policy import DEFAULT_POLICY, SupportAccessPolicy
 from forvium.support_access.router_admin import bg_router as break_glass_admin
 from forvium.support_access.router_admin import router as support_admin
@@ -91,7 +93,8 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
     )
 
     for router in (identity_app, organizations_app, support_app, notifications_app,
-                   identity_admin, platform_admin, platform_manage, support_admin, break_glass_admin,
+                   identity_admin, platform_admin, platform_manage, tickets_admin, tickets_app,
+                   support_admin, break_glass_admin,
                    audit_admin, security_admin, reports_app, reports_admin):
         app.include_router(router)
 

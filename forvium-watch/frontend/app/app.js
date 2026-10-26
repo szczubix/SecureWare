@@ -151,6 +151,7 @@
       "Diagnostyka": (pane) => viewDiagnostics(org, pane),
     };
     if (!supportPermissions) {
+      views["Zgłoszenia"] = (pane) => viewTickets(org, pane);
       views["Członkowie"] = (pane) => viewMembers(org, pane);
       views["Dostęp serwisowy"] = (pane) => viewSupportAccess(org, pane);
       views["Powiadomienia"] = (pane) => viewNotifications(pane);
@@ -170,6 +171,75 @@
 
   const STATE_LABELS = { active: "aktywne", pending_activation: "czeka na aktywację", blocked: "zablokowane przez Forvium", inactive: "nieaktywne" };
   const ORG_ROLE_LABELS = { owner: "właściciel", admin: "administrator", member: "członek", viewer: "podgląd" };
+
+  const TICKET_STATUS = { open: "otwarte", in_progress: "w toku", closed: "zamknięte" };
+  const PRIORITY = { low: "niski", normal: "normalny", high: "wysoki", critical: "krytyczny" };
+  const REQUEST_STATUS = { pending: "czeka na decyzję", pending_customer_confirmation: "czeka na drugą osobę", approved: "zatwierdzona",
+    rejected: "odrzucona", cancelled: "anulowana", expired: "wygasła", pending_second_approval: "procedura awaryjna" };
+
+  // Zgloszenia do supportu Forvium: lista, nowe zgloszenie, rozmowa, zamkniecie.
+  function viewTickets(org, content) {
+    return guarded(content, async () => {
+      const { tickets, can_create: canCreate } = await api(`/api/app/orgs/${org.id}/tickets`);
+      const msg = el("p");
+      const form = el("form", { onsubmit: async (e) => {
+        e.preventDefault();
+        try {
+          const r = await api(`/api/app/orgs/${org.id}/tickets`, { method: "POST", body: Object.fromEntries(new FormData(form)) });
+          viewTicket(org, content, r.ticket.id);
+        } catch (err) { msg.className = "error"; msg.textContent = err.message; }
+      } },
+        el("label", {}, "Temat"), el("input", { name: "subject", required: true, minlength: 3, maxlength: 300 }),
+        el("label", {}, "Opis problemu"), el("textarea", { name: "description", required: true, minlength: 10, rows: 5 }),
+        el("label", {}, "Priorytet"), el("select", { name: "priority" },
+          ...Object.entries(PRIORITY).map(([v, l]) => el("option", { value: v, selected: v === "normal" }, l))),
+        el("p", { class: "muted" }, "Jeśli support będzie potrzebował wglądu w Twoje dane, poprosi o zgodę na dostęp tylko do odczytu, przypiętą do tego zgłoszenia."),
+        msg, el("button", { type: "submit" }, "Wyślij zgłoszenie"));
+      content.replaceChildren(
+        card(el("h2", {}, "Zgłoszenia do supportu Forvium"), el("table", {},
+          el("tr", {}, ...["Numer", "Temat", "Priorytet", "Status", "Zgłosił(a)", "Aktualizacja", ""].map((t) => el("th", {}, t))),
+          ...tickets.map((t) => el("tr", {}, el("td", {}, t.number), el("td", {}, t.subject), el("td", {}, PRIORITY[t.priority] || t.priority),
+            el("td", {}, el("span", { class: "pill" }, TICKET_STATUS[t.status] || t.status)), el("td", {}, t.reporter_email || "Forvium"),
+            el("td", {}, fmt(t.updated_at)),
+            el("td", {}, el("button", { class: "secondary", onclick: () => viewTicket(org, content, t.id) }, "Otwórz")))))),
+        canCreate ? card(el("h3", {}, "Nowe zgłoszenie"), form) : "");
+    });
+  }
+
+  function viewTicket(org, content, ticketId) {
+    return guarded(content, async () => {
+      const d = await api(`/api/app/orgs/${org.id}/tickets/${ticketId}`);
+      const t = d.ticket;
+      const reply = el("form", { onsubmit: async (e) => {
+        e.preventDefault();
+        try {
+          await api(`/api/app/orgs/${org.id}/tickets/${t.id}/messages`, { method: "POST", body: Object.fromEntries(new FormData(reply)) });
+          viewTicket(org, content, t.id);
+        } catch (err) { alert(err.message); }
+      } }, el("label", {}, "Odpowiedź"), el("textarea", { name: "body", required: true, rows: 3 }),
+        el("div", { class: "row" }, el("button", { type: "submit" }, "Wyślij"),
+          el("button", { type: "button", class: "secondary", onclick: async () => {
+            if (!confirm(`Zamknąć ${t.number}? Trwające sesje wsparcia oparte na tym zgłoszeniu zostaną zakończone.`)) return;
+            await api(`/api/app/orgs/${org.id}/tickets/${t.id}/close`, { method: "POST" }).catch((e) => alert(e.message));
+            viewTicket(org, content, t.id);
+          } }, "Zamknij zgłoszenie")));
+      content.replaceChildren(
+        card(el("a", { onclick: () => viewTickets(org, content) }, "← Zgłoszenia"),
+          el("h2", {}, t.number, " · ", t.subject),
+          el("p", { class: "muted" }, "Priorytet: ", PRIORITY[t.priority] || t.priority, " · status: ", TICKET_STATUS[t.status] || t.status,
+            " · zgłosił(a): ", t.reporter_email || "Forvium", " · ", fmt(t.created_at)),
+          t.description ? el("p", { class: "pre" }, t.description) : ""),
+        card(el("h3", {}, "Rozmowa"), d.messages.length ? el("div", {}, ...d.messages.map((m) => el("div", { class: "msg " + m.author_side },
+          el("div", { class: "muted" }, m.author_side === "forvium" ? "Support Forvium" : m.author_email, " · ", fmt(m.created_at)),
+          el("p", { class: "pre" }, m.body)))) : el("p", { class: "muted" }, "Brak wiadomości."),
+          d.can_reply ? reply : ""),
+        card(el("h3", {}, "Dostęp serwisowy w tym zgłoszeniu"), d.access_requests.length ? el("table", {},
+          el("tr", {}, ...["Data", "Operator", "Zakres", "Status"].map((x) => el("th", {}, x))),
+          ...d.access_requests.map((a) => el("tr", {}, el("td", {}, fmt(a.created_at)), el("td", {}, a.operator_email || "—"),
+            el("td", {}, (a.scopes || []).join(", ")), el("td", {}, REQUEST_STATUS[a.status] || a.status))))
+          : el("p", { class: "muted" }, "Forvium nie prosiło o dostęp w ramach tego zgłoszenia.")));
+    });
+  }
 
   // Czlonkowie organizacji i zaproszenia (nowa osoba aktywuje konto linkiem z e-maila).
   function viewMembers(org, content) {

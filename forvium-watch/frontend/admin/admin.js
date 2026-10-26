@@ -33,6 +33,7 @@
   };
   const STATE_LABELS = { active: "aktywne", pending_activation: "czeka na aktywację", blocked: "zablokowane", inactive: "nieaktywne" };
   const TICKET_LABELS = { open: "otwarte", in_progress: "w toku", closed: "zamknięte" };
+  const PRIORITY_LABELS = { low: "niski", normal: "normalny", high: "wysoki", critical: "krytyczny" };
   let me = null;
 
   function el(tag, attrs = {}, ...children) {
@@ -416,8 +417,11 @@
         } catch (e) { alert(e.message); }
       };
       const rows = tickets.map((t) => el("tr", {}, el("td", {}, t.number), el("td", {}, t.organization_name || t.organization_id),
-        el("td", {}, t.subject), el("td", {}, el("span", { class: "pill" }, TICKET_LABELS[t.status] || t.status)), el("td", {}, fmt(t.created_at)),
-        el("td", { class: "row" }, ...(!can(P.ticketsManage) ? [] : t.status === "closed"
+        el("td", {}, t.subject, t.created_by_customer ? el("div", { class: "muted" }, "od klienta: ", t.reporter_email || "") : ""),
+        el("td", { class: t.priority === "critical" || t.priority === "high" ? "sev-high" : "" }, PRIORITY_LABELS[t.priority] || t.priority),
+        el("td", {}, el("span", { class: "pill" }, TICKET_LABELS[t.status] || t.status)), el("td", {}, fmt(t.updated_at)),
+        el("td", { class: "row" }, el("button", { class: "secondary", onclick: () => renderTicketDetail(t.id) }, "Otwórz"),
+          ...(!can(P.ticketsManage) ? [] : t.status === "closed"
           ? [el("button", { class: "secondary", onclick: setStatus(t, "open") }, "Otwórz ponownie")]
           : [t.status === "open" ? el("button", { class: "secondary", onclick: setStatus(t, "in_progress") }, "W toku") : "",
              el("button", { class: "danger", onclick: setStatus(t, "closed") }, "Zamknij")]))));
@@ -438,7 +442,47 @@
         createCard = card(el("h3", {}, "Nowe zgłoszenie"), form);
       }
       show(card(el("h2", {}, "Zgłoszenia"), el("label", {}, "Status"), sel),
-        card(table(["Numer", "Organizacja", "Temat", "Status", "Utworzono", ""], rows)), createCard);
+        card(table(["Numer", "Organizacja", "Temat", "Priorytet", "Status", "Aktualizacja", ""], rows)), createCard);
+    } catch (e) { show(errorCard(e)); }
+  }
+
+  async function renderTicketDetail(ticketId) {
+    const show = begin();
+    try {
+      const d = await api("/api/admin/tickets/" + ticketId);
+      const t = d.ticket;
+      const reload = () => renderTicketDetail(ticketId);
+      const internal = el("input", { type: "checkbox", name: "internal" });
+      const reply = el("form", { onsubmit: async (e) => {
+        e.preventDefault();
+        try {
+          await api(`/api/admin/tickets/${t.id}/messages`, { method: "POST", body: { body: reply.elements.body.value, internal: internal.checked } });
+          reload();
+        } catch (err) { alert(err.message); }
+      } }, el("label", {}, "Wiadomość"), el("textarea", { name: "body", required: true, rows: 4 }),
+        el("label", {}, internal, " notatka wewnętrzna (klient jej nie zobaczy)"),
+        el("button", { type: "submit" }, "Wyślij"));
+      const setStatus = async (st) => {
+        if (st === "closed" && !confirm(`Zamknąć ${t.number}? Aktywne sesje wsparcia na tym zgłoszeniu zostaną zakończone.`)) return;
+        try {
+          const r = await api(`/api/admin/tickets/${t.id}/status`, { method: "PUT", body: { status: st } });
+          if (r.support_sessions_ended) alert(`Zakończono sesje wsparcia: ${r.support_sessions_ended}.`);
+          reload();
+        } catch (err) { alert(err.message); }
+      };
+      show(
+        card(el("a", { onclick: () => renderTickets() }, "← Zgłoszenia"), el("h2", {}, t.number, " · ", t.subject),
+          el("p", { class: "muted" }, t.organization_name, " · priorytet: ", PRIORITY_LABELS[t.priority] || t.priority,
+            " · status: ", TICKET_LABELS[t.status] || t.status, " · zgłosił(a): ", t.reporter_email || "Forvium", " · ", fmt(t.created_at)),
+          t.description ? el("p", { class: "pre" }, t.description) : "",
+          can(P.ticketsManage) ? el("div", { class: "row" }, ...Object.entries(TICKET_LABELS).filter(([v]) => v !== t.status)
+            .map(([v, l]) => el("button", { class: v === "closed" ? "danger" : "secondary", onclick: () => setStatus(v) }, "Status: " + l))) : ""),
+        card(el("h3", {}, "Rozmowa z klientem"), d.messages.length ? el("div", {}, ...d.messages.map((m) => el("div", { class: "msg " + m.author_side + (m.internal ? " internal" : "") },
+          el("div", { class: "muted" }, m.author_email || "—", m.internal ? " · NOTATKA WEWNĘTRZNA" : "", " · ", fmt(m.created_at)),
+          el("p", { class: "pre" }, m.body)))) : el("p", { class: "muted" }, "Brak wiadomości."), reply),
+        card(el("h3", {}, "Prośby o dostęp w tym zgłoszeniu"), d.access_requests.length ? table(["Data", "Operator", "Tryb", "Status"],
+          d.access_requests.map((a) => el("tr", {}, el("td", {}, fmt(a.created_at)), el("td", {}, a.operator_email || "—"),
+            el("td", {}, a.mode), el("td", {}, a.status)))) : el("p", { class: "muted" }, "Brak.")));
     } catch (e) { show(errorCard(e)); }
   }
 

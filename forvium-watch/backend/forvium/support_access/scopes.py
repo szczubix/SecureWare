@@ -54,6 +54,8 @@ SUPPORT_FORBIDDEN_PERMISSIONS: frozenset[Permission] = frozenset(
         Permission.SUPPORT_ACCESS_APPROVE,
         Permission.SUPPORT_ACCESS_VIEW,
         Permission.MEMBERS_READ,
+        Permission.TICKETS_READ,
+        Permission.TICKETS_CREATE,
     }
 )
 
