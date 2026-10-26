@@ -8,6 +8,7 @@ from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, UniqueConstr
 from sqlalchemy.orm import Mapped, mapped_column
 
 from forvium.core.crypto import EncryptedJSON
+from forvium.core.i18n import default_lang
 from forvium.core.db import Base, new_id
 
 
@@ -27,6 +28,8 @@ class Organization(Base):
     support_dual_approval: Mapped[bool] = mapped_column(Boolean, default=False)
     # Wylaczenie tej ochrony tez wymaga drugiej osoby: kto zainicjowal wylaczenie.
     support_dual_approval_disable_requested_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    # Domyslny jezyk czlonkow organizacji (powiadomienia, e-maile) i raportow dostepu.
+    locale: Mapped[str] = mapped_column(String(5), default=default_lang, server_default="pl")
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime)
 

@@ -36,6 +36,7 @@ from forvium.core.clock import clock
 from forvium.core.context import Ctx, DomainError
 from forvium.core.db import Base, new_id
 from forvium.identity.models import User
+from forvium.core.i18n import L
 
 CHALLENGE_TTL = timedelta(minutes=2)
 PURPOSE_REGISTER = "register"
@@ -150,7 +151,7 @@ def finish_registration(ctx: Ctx, user: User, credential: dict, name: str) -> We
     except InvalidRegistrationResponse as exc:
         ctx.audit.record("identity.webauthn.register", outcome="denied", actor_user_id=user.id,
                          actor_type="operator", ip_address=ctx.ip, details={"reason": "invalid_attestation"})
-        raise DomainError(400, "webauthn_invalid", f"Nie udało się zweryfikować klucza: {exc}") from exc
+        raise DomainError(400, "webauthn_invalid", L("Nie udało się zweryfikować klucza: {error}", error=str(exc))) from exc
     cred = WebAuthnCredential(
         user_id=user.id,
         credential_id=bytes_to_base64url(verified.credential_id),
@@ -167,8 +168,8 @@ def finish_registration(ctx: Ctx, user: User, credential: dict, name: str) -> We
                   ip_address=ctx.ip, details={"credential": cred.id, "name": cred.name, "aaguid": cred.aaguid})
     ctx.notifications.notify(ctx.db, [user], event="identity.webauthn.registered",
                              title="Dodano klucz bezpieczeństwa do konta Forvium",
-                             body=f"Do Twojego konta dodano klucz '{cred.name}'. Jeśli to nie Ty, "
-                                  "natychmiast skontaktuj się z zespołem bezpieczeństwa.")
+                             body=L("Do Twojego konta dodano klucz '{name}'. Jeśli to nie Ty, "
+                                    "natychmiast skontaktuj się z zespołem bezpieczeństwa.", name=cred.name))
     return cred
 
 
@@ -181,7 +182,7 @@ def remove_credential(ctx: Ctx, user: User, credential_pk: str) -> None:
                   ip_address=ctx.ip, details={"credential": credential_pk, "name": cred.name})
     ctx.notifications.notify(ctx.db, [user], event="identity.webauthn.removed",
                              title="Usunięto klucz bezpieczeństwa z konta Forvium",
-                             body=f"Z Twojego konta usunięto klucz '{cred.name}'.")
+                             body=L("Z Twojego konta usunięto klucz '{name}'.", name=cred.name))
 
 
 # ------------------------------------------------------------- asercja (step-up)

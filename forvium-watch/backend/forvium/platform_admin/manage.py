@@ -16,6 +16,7 @@ Kolejnosc w kazdej operacji: walidacja i odmowy -> ponowna weryfikacja MFA -> za
 from __future__ import annotations
 
 import re
+from typing import Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -33,6 +34,7 @@ from forvium.platform_admin.rbac import PRIVILEGED_ROLES, PlatformPermission as 
 from forvium.support_access.models import SessionStatus, SupportSession
 from forvium.support_tickets import service as tickets
 from forvium.support_tickets.models import SupportTicket, TicketPriority, TicketStatus
+from forvium.core.i18n import L, default_lang, join, tr
 
 router = APIRouter(prefix="/api/admin", tags=["platform management (admin)"])
 
@@ -117,6 +119,7 @@ def _check_email(ctx: Ctx, op: OperatorPrincipal, action: str, email: str) -> st
 class OrganizationCreateIn(StepUp):
     name: str = Field(min_length=2, max_length=200)
     subscription_plan: str = "standard"
+    locale: Literal["pl", "en"] | None = None  # domyslnie FORVIUM_DEFAULT_LOCALE
     owner_email: str
     owner_name: str = Field(min_length=2, max_length=200)
 
@@ -124,12 +127,13 @@ class OrganizationCreateIn(StepUp):
 class OrganizationUpdateIn(StepUp):
     name: str | None = Field(default=None, min_length=2, max_length=200)
     subscription_plan: str | None = None
+    locale: Literal["pl", "en"] | None = None
 
 
 def _org_out(o: Organization, members: int = 0, open_tickets: int = 0) -> dict:
     return {"id": o.id, "name": o.name, "subscription_plan": o.subscription_plan, "created_at": _iso(o.created_at),
             "deleted_at": _iso(o.deleted_at), "members": members, "open_tickets": open_tickets,
-            "dual_approval": bool(o.support_dual_approval)}
+            "dual_approval": bool(o.support_dual_approval), "locale": o.locale}
 
 
 @router.get("/organizations")
@@ -185,10 +189,10 @@ def create_organization(body: OrganizationCreateIn,
 
     now = clock.now()
     org = Organization(name=body.name.strip(), subscription_plan=body.subscription_plan, created_at=now,
-                       settings={}, smtp_config={}, webhooks=[], secrets={})
+                       locale=body.locale or default_lang(), settings={}, smtp_config={}, webhooks=[], secrets={})
     ctx.db.add(org)
     ctx.db.flush()
-    ctx.db.add(OrgUnit(organization_id=org.id, name="Centrala"))
+    ctx.db.add(OrgUnit(organization_id=org.id, name=tr("Centrala", org.locale)))
     new_account = owner is None
     if new_account:
         owner = User(email=email, display_name=body.owner_name.strip(), password_hash=activation.unusable_password_hash(),
@@ -201,11 +205,11 @@ def create_organization(body: OrganizationCreateIn,
         activation.issue(ctx, owner, kind="user", created_by=op.user.id)
     else:
         ctx.notifications.notify(ctx.db, [owner], event="platform.organization.owner_added",
-                                 title=f"Jesteś właścicielem organizacji {org.name} w Forvium Watch",
-                                 body="Forvium założyło organizację i wskazało Cię jako właściciela.",
+                                 title=L("Jesteś właścicielem organizacji {org} w Forvium Watch", org=org.name),
+                                 body=L("Forvium założyło organizację i wskazało Cię jako właściciela."),
                                  organization_id=org.id)
     _log(ctx, op, "platform.organization.created", organization_id=org.id, name=org.name,
-         plan=org.subscription_plan, owner_user_id=owner.id, owner_new_account=new_account)
+         plan=org.subscription_plan, locale=org.locale, owner_user_id=owner.id, owner_new_account=new_account)
     return {"organization": _org_out(org, 1), "owner": {"id": owner.id, "email": owner.email,
                                                          "state": _account_state(owner)}}
 
@@ -225,6 +229,8 @@ def update_organization(org_id: str, body: OrganizationUpdateIn,
         changes["name"] = {"from": org.name, "to": body.name.strip()}
     if body.subscription_plan is not None and body.subscription_plan != org.subscription_plan:
         changes["subscription_plan"] = {"from": org.subscription_plan, "to": body.subscription_plan}
+    if body.locale is not None and body.locale != org.locale:
+        changes["locale"] = {"from": org.locale, "to": body.locale}
     if not changes:
         return {"organization": _org_out(org)}
     _step_up(ctx, op, body, action)
@@ -232,11 +238,13 @@ def update_organization(org_id: str, body: OrganizationUpdateIn,
         org.name = changes["name"]["to"]
     if "subscription_plan" in changes:
         org.subscription_plan = changes["subscription_plan"]["to"]
+    if "locale" in changes:
+        org.locale = changes["locale"]["to"]
     _log(ctx, op, "platform.organization.updated", organization_id=org.id, changes=changes)
     described = ", ".join(f"{k}: {v['from']} -> {v['to']}" for k, v in changes.items())
     ctx.notifications.notify(ctx.db, _org_admins(ctx, org.id), event="platform.organization.updated",
-                             title=f"Forvium zmieniło dane organizacji {org.name}",
-                             body=f"Zmiany: {described}.", organization_id=org.id)
+                             title=L("Forvium zmieniło dane organizacji {org}", org=org.name),
+                             body=L("Zmiany: {changes}.", changes=described), organization_id=org.id)
     return {"organization": _org_out(org)}
 
 
@@ -275,12 +283,13 @@ def block_user(user_id: str, body: BlockIn, op: OperatorPrincipal = Depends(requ
         _log(ctx, op, "platform.user.blocked", organization_id=org_id, user_id=user.id, reason=user.blocked_reason,
              support_sessions_ended=ended)
         ctx.notifications.notify(ctx.db, _org_admins(ctx, org_id, exclude=user.id), event="platform.user.blocked",
-                                 title=f"Forvium zablokowało konto {user.email}",
-                                 body=f"Powód: {user.blocked_reason}", organization_id=org_id)
+                                 title=L("Forvium zablokowało konto {email}", email=user.email),
+                                 body=L("Powód: {reason}", reason=user.blocked_reason), organization_id=org_id)
     if not orgs:
         _log(ctx, op, "platform.user.blocked", user_id=user.id, reason=user.blocked_reason)
-    ctx.notifications.email_only(ctx.db, user, subject="Twoje konto Forvium Watch zostało zablokowane",
-                                 body=f"Powód: {user.blocked_reason}\nW razie pytań skontaktuj się z supportem Forvium.")
+    ctx.notifications.email_only(ctx.db, user, subject=L("Twoje konto Forvium Watch zostało zablokowane"),
+                                 body=L("Powód: {reason}\nW razie pytań skontaktuj się z supportem Forvium.",
+                                        reason=user.blocked_reason))
     return {"user": {"id": user.id, "state": _account_state(user)}}
 
 
@@ -299,7 +308,8 @@ def unblock_user(user_id: str, body: StepUp,
         _log(ctx, op, "platform.user.unblocked", organization_id=org_id, user_id=user.id)
         if org_id:
             ctx.notifications.notify(ctx.db, _org_admins(ctx, org_id, exclude=user.id), event="platform.user.unblocked",
-                                     title=f"Forvium odblokowało konto {user.email}", body="Konto znów może się logować.",
+                                     title=L("Forvium odblokowało konto {email}", email=user.email),
+                                     body=L("Konto znów może się logować."),
                                      organization_id=org_id)
     return {"user": {"id": user.id, "state": _account_state(user)}}
 
@@ -320,8 +330,9 @@ def reset_user_access(user_id: str, body: BlockIn,
         _log(ctx, op, "platform.user.access_reset", organization_id=org_id, user_id=user.id, reason=body.reason)
         if org_id:
             ctx.notifications.notify(ctx.db, _org_admins(ctx, org_id, exclude=user.id), event="platform.user.access_reset",
-                                     title=f"Forvium zresetowało dostęp {user.email}",
-                                     body=f"Powód: {body.reason}. Link aktywacyjny wysłano na adres tej osoby.",
+                                     title=L("Forvium zresetowało dostęp {email}", email=user.email),
+                                     body=L("Powód: {reason}. Link aktywacyjny wysłano na adres tej osoby.",
+                                            reason=body.reason),
                                      organization_id=org_id)
     return {"user": {"id": user.id, "state": _account_state(user)}}
 
@@ -363,7 +374,7 @@ class RejectIn(StepUp):
 
 def _operator_out(u: User, keys: set[str]) -> dict:
     return {"id": u.id, "email": u.email, "display_name": u.display_name, "role": u.platform_role,
-            "role_label": ROLE_LABELS.get(u.platform_role or "", u.platform_role), "state": _account_state(u),
+            "role_label": tr(ROLE_LABELS.get(u.platform_role or "", u.platform_role)), "state": _account_state(u),
             "has_security_key": u.id in keys, "pending_role": u.pending_platform_role,
             "pending_role_requested_by": u.pending_role_requested_by,
             "pending_role_requested_at": _iso(u.pending_role_requested_at), "created_at": _iso(u.created_at)}
@@ -395,7 +406,7 @@ def list_operators(op: OperatorPrincipal = Depends(require_platform_permission(P
         raise DomainError(403, "operator_not_permitted", "Brak uprawnień operatora.")
     keys = set(ctx.db.scalars(select(WebAuthnCredential.user_id)))
     rows = ctx.db.scalars(select(User).where(User.platform_role.is_not(None)).order_by(User.email))
-    return {"operators": [_operator_out(u, keys) for u in rows], "roles": ROLE_LABELS,
+    return {"operators": [_operator_out(u, keys) for u in rows], "roles": {k: tr(v) for k, v in ROLE_LABELS.items()},
             "privileged_roles": sorted(PRIVILEGED_ROLES)}
 
 
@@ -448,16 +459,18 @@ def change_operator_role(user_id: str, body: RoleIn,
         _log(ctx, op, "platform.operator.role_change_requested", user_id=target.id, role_from=target.platform_role,
              role_to=role)
         ctx.notifications.notify(ctx.db, officers, event="platform.operator.role_approval_required",
-                                 title=f"Do zatwierdzenia: rola {ROLE_LABELS[role]} dla {target.email}",
-                                 body=f"Zlecił: {op.user.email}. Zatwierdź albo odrzuć w panelu: Operatorzy.")
+                                 title=L("Do zatwierdzenia: rola {role} dla {email}", role=ROLE_LABELS[role],
+                                         email=target.email),
+                                 body=L("Zlecił: {who}. Zatwierdź albo odrzuć w panelu: Operatorzy.", who=op.user.email))
         return {"status": "pending_approval", "operator": _operator_out(target, set())}
     previous = target.platform_role
     target.platform_role = role
     target.pending_platform_role = target.pending_role_requested_by = target.pending_role_requested_at = None
     _log(ctx, op, "platform.operator.role_changed", user_id=target.id, role_from=previous, role_to=role)
     ctx.notifications.notify(ctx.db, [target, *officers], event="platform.operator.role_changed",
-                             title=f"Zmieniono rolę operatora {target.email}",
-                             body=f"{ROLE_LABELS.get(previous, previous)} -> {ROLE_LABELS[role]} (zmienił: {op.user.email}).")
+                             title=L("Zmieniono rolę operatora {email}", email=target.email),
+                             body=L("{old} -> {new} (zmienił: {who}).", old=ROLE_LABELS.get(previous, previous),
+                                    new=ROLE_LABELS[role], who=op.user.email))
     return {"status": "changed", "operator": _operator_out(target, set())}
 
 
@@ -486,8 +499,8 @@ def approve_role(user_id: str, body: StepUp,
     recipients = [u for u in (target, ctx.db.get(User, requester)) if u is not None]
     recipients += _operators_with(ctx, PP.OPERATORS_APPROVE, exclude={op.user.id, *(u.id for u in recipients)})
     ctx.notifications.notify(ctx.db, recipients, event="platform.operator.role_changed",
-                             title=f"Zatwierdzono rolę {ROLE_LABELS[role]} dla {target.email}",
-                             body=f"Zlecił: {requester}, zatwierdził: {op.user.email}.")
+                             title=L("Zatwierdzono rolę {role} dla {email}", role=ROLE_LABELS[role], email=target.email),
+                             body=L("Zlecił: {requester}, zatwierdził: {who}.", requester=requester, who=op.user.email))
     return {"status": "changed", "operator": _operator_out(target, set())}
 
 
@@ -505,8 +518,10 @@ def reject_role(user_id: str, body: RejectIn,
     requester_user = ctx.db.get(User, requester) if requester else None
     if requester_user:
         ctx.notifications.notify(ctx.db, [requester_user], event="platform.operator.role_rejected",
-                                 title=f"Odrzucono rolę {ROLE_LABELS.get(role, role)} dla {target.email}",
-                                 body=f"Odrzucił: {op.user.email}. {body.reason or ''}".strip())
+                                 title=L("Odrzucono rolę {role} dla {email}", role=ROLE_LABELS.get(role, role),
+                                         email=target.email),
+                                 body=join(" ", [L("Odrzucił: {who}.", who=op.user.email),
+                                                 *([body.reason.strip()] if (body.reason or "").strip() else [])]))
     return {"status": "rejected", "operator": _operator_out(target, set())}
 
 
@@ -529,9 +544,9 @@ def block_operator(user_id: str, body: BlockIn,
     _log(ctx, op, "platform.operator.blocked", user_id=target.id, reason=target.blocked_reason,
          support_sessions_ended=ended)
     ctx.notifications.notify(ctx.db, _operators_with(ctx, PP.OPERATORS_APPROVE, exclude={op.user.id}),
-                             event="platform.operator.blocked", title=f"Zablokowano operatora {target.email}",
-                             body=f"Zablokował: {op.user.email}. Powód: {target.blocked_reason}. "
-                                  f"Zakończone sesje wsparcia: {ended}.")
+                             event="platform.operator.blocked", title=L("Zablokowano operatora {email}", email=target.email),
+                             body=L("Zablokował: {who}. Powód: {reason}. Zakończone sesje wsparcia: {ended}.",
+                                    who=op.user.email, reason=target.blocked_reason, ended=ended))
     return {"operator": _operator_out(target, set())}
 
 
@@ -550,8 +565,8 @@ def unblock_operator(user_id: str, body: StepUp,
     target.is_active = target.activated_at is not None
     _log(ctx, op, "platform.operator.unblocked", user_id=target.id)
     ctx.notifications.notify(ctx.db, _operators_with(ctx, PP.OPERATORS_APPROVE, exclude={op.user.id}),
-                             event="platform.operator.unblocked", title=f"Odblokowano operatora {target.email}",
-                             body=f"Odblokował: {op.user.email}.")
+                             event="platform.operator.unblocked", title=L("Odblokowano operatora {email}", email=target.email),
+                             body=L("Odblokował: {who}.", who=op.user.email))
     return {"operator": _operator_out(target, set())}
 
 
@@ -606,7 +621,7 @@ def create_ticket(body: TicketCreateIn, op: OperatorPrincipal = Depends(require_
                             priority=body.priority, reporter_user_id=body.reporter_user_id, by_customer=False)
     _log(ctx, op, "platform.ticket.created", organization_id=org.id, ticket=ticket.number, subject=ticket.subject)
     ctx.notifications.notify(ctx.db, _org_admins(ctx, org.id), event="platform.ticket.created",
-                             title=f"Forvium otworzyło zgłoszenie {ticket.number}", body=ticket.subject,
+                             title=L("Forvium otworzyło zgłoszenie {ticket}", ticket=ticket.number), body=ticket.subject,
                              organization_id=org.id, data={"ticket_id": ticket.id})
     return {"ticket": _ticket_out(ticket)}
 
@@ -632,7 +647,7 @@ def set_ticket_status(ticket_id: str, body: TicketStatusIn,
     reporter = ctx.db.get(User, ticket.reporter_user_id) if ticket.reporter_user_id else None
     if reporter is not None and reporter.is_active:
         ctx.notifications.notify(ctx.db, [reporter], event="support_tickets.status_changed",
-                                 title=f"Zgłoszenie {ticket.number}: {tickets.STATUS_LABELS[status]}",
+                                 title=L("Zgłoszenie {ticket}: {status}", ticket=ticket.number, status=tickets.STATUS_LABELS[status]),
                                  body=ticket.subject, organization_id=ticket.organization_id,
                                  data={"ticket_id": ticket.id})
     return {"ticket": _ticket_out(ticket), "support_sessions_ended": ended}

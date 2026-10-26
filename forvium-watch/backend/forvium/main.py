@@ -18,6 +18,7 @@ from forvium.audit.service import AuditLog
 from forvium.core.concurrency import ConcurrencyLimitMiddleware
 from forvium.core.config import Settings, get_settings
 from forvium.core.context import DomainError
+from forvium.core.i18n import LanguageMiddleware, tr
 from forvium.core.crypto import keyring_from_settings, set_keyring
 from forvium.core.db import Database
 from forvium.identity.router import admin_router as identity_admin
@@ -81,9 +82,10 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
 
     @app.exception_handler(DomainError)
     async def domain_error_handler(_: Request, exc: DomainError):
-        return JSONResponse(status_code=exc.status_code, content={"error": exc.code, "message": exc.message})
+        return JSONResponse(status_code=exc.status_code, content={"error": exc.code, "message": tr(exc.message)})
 
     app.add_middleware(SupportAuditMiddleware)
+    app.add_middleware(LanguageMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

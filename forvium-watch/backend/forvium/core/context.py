@@ -20,8 +20,9 @@ if TYPE_CHECKING:
 class DomainError(Exception):
     """Blad domenowy mapowany na odpowiedz HTTP (status + kod + komunikat)."""
 
-    def __init__(self, status_code: int, code: str, message: str) -> None:
-        super().__init__(message)
+    def __init__(self, status_code: int, code: str, message) -> None:
+        # message: tekst zrodlowy (pl) albo L(...); tlumaczony przy odpowiedzi (core/i18n.py).
+        super().__init__(str(message))
         self.status_code = status_code
         self.code = code
         self.message = message

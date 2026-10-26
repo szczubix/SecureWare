@@ -92,10 +92,12 @@ jobs:
         with:
           node-version: "22"
       - name: Skladnia JS
-        run: for f in app/*.js admin/*.js; do node --check "$f"; done
+        run: for f in app/*.js admin/*.js shared/*.js; do node --check "$f"; done
       - name: Brak skryptow i stylow inline (wymog CSP)
         run: |
-          ! grep -nE "<script>|style=\"|style: \"" app/*.html admin/*.html app/*.js admin/*.js
+          ! grep -nE "<script>|style=\"|style: \"" app/*.html admin/*.html app/*.js admin/*.js shared/*.js
+      - name: Tlumaczenia (wersja angielska kompletna, slownik aktualny)
+        run: python3 tools/check_i18n.py
 
   docker:
     runs-on: ubuntu-latest

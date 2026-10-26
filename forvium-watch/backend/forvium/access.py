@@ -57,8 +57,8 @@ def _load_user_session(ctx: Ctx, token: str, kind: str) -> tuple[UserSession, Us
 
 # Jedyne trasy dostepne, dopoki uzytkownik nie zmieni hasla niespelniajacego polityki.
 PASSWORD_CHANGE_ROUTES = frozenset({
-    "/api/app/me", "/api/app/account/password", "/api/app/auth/logout",
-    "/api/admin/me", "/api/admin/account/password", "/api/admin/auth/logout",
+    "/api/app/me", "/api/app/account/password", "/api/app/account/locale", "/api/app/auth/logout",
+    "/api/admin/me", "/api/admin/account/password", "/api/admin/account/locale", "/api/admin/auth/logout",
     "/api/admin/webauthn/credentials", "/api/admin/webauthn/assertion/options",
 })
 

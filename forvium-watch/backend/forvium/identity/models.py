@@ -42,6 +42,8 @@ class User(Base):
     pending_platform_role: Mapped[str | None] = mapped_column(String(40), nullable=True)
     pending_role_requested_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     pending_role_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Jezyk powiadomien i e-maili ("pl" / "en"); None = jezyk organizacji, potem FORVIUM_DEFAULT_LOCALE.
+    locale: Mapped[str | None] = mapped_column(String(5), nullable=True)
     # Haslo nie spelnia polityki (np. pojawilo sie w wycieku) - do zmiany konto moze tylko zmienic haslo.
     password_change_required: Mapped[bool] = mapped_column(Boolean, default=False)
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

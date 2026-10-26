@@ -17,6 +17,8 @@ import json
 
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from forvium.core.i18n import lang_from_scope, tr
+
 _EXEMPT = ("/healthz", "/metrics")
 
 
@@ -38,8 +40,8 @@ class ConcurrencyLimitMiddleware:
             await asyncio.wait_for(self._semaphore.acquire(), timeout=self.queue_timeout)
         except TimeoutError:
             self.rejected += 1
-            body = json.dumps({"error": "overloaded",
-                               "message": "Serwer jest chwilowo przeciążony - spróbuj ponownie."}).encode()
+            message = tr("Serwer jest chwilowo przeciążony - spróbuj ponownie.", lang_from_scope(scope))
+            body = json.dumps({"error": "overloaded", "message": message}).encode()
             await send({"type": "http.response.start", "status": 503,
                         "headers": [(b"content-type", b"application/json"), (b"retry-after", b"5"),
                                     (b"content-length", str(len(body)).encode())]})

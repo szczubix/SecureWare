@@ -15,6 +15,7 @@ from forvium.platform_admin.rbac import PlatformRole
 from forvium.support_access.models import SupportConsent, SupportStandingConsent
 from forvium.support_access.scopes import parse_scopes
 from forvium.support_access.service import _deny, _org_approvers, revoke_consent
+from forvium.core.i18n import L, join
 
 
 def create_standing_consent(
@@ -43,10 +44,10 @@ def create_standing_consent(
         raise _deny(ctx, action, "scope_empty", "Wybierz co najmniej jeden zakres.", status=422, **base)
     if not 1 <= max_session_minutes <= ctx.policy.max_session_minutes:
         raise _deny(ctx, action, "duration_invalid",
-                    f"Czas sesji: 1-{ctx.policy.max_session_minutes} min.", status=422, **base)
+                    L("Czas sesji: 1-{n} min.", n=ctx.policy.max_session_minutes), status=422, **base)
     if not 1 <= valid_days <= ctx.policy.max_standing_consent_days:
         raise _deny(ctx, action, "validity_invalid",
-                    f"Ważność zgody stałej: 1-{ctx.policy.max_standing_consent_days} dni.", status=422, **base)
+                    L("Ważność zgody stałej: 1-{n} dni.", n=ctx.policy.max_standing_consent_days), status=422, **base)
     if allowed_platform_roles:
         try:
             allowed_platform_roles = sorted({PlatformRole(r).value for r in allowed_platform_roles})
@@ -59,7 +60,7 @@ def create_standing_consent(
             raise _deny(ctx, action, "unit_invalid", "Nieprawidłowe jednostki.", status=422, **base)
     # Zgoda stala jest silniejsza niz pojedyncza decyzja - wymaga MFA przedstawiciela klienta.
     if user.mfa_secret and not consume_totp(user, mfa_code):
-        raise _deny(ctx, action, "mfa_required", "Potwierdź zgodę stała kodem MFA.", status=401, **base)
+        raise _deny(ctx, action, "mfa_required", "Potwierdź zgodę stałą kodem MFA.", status=401, **base)
 
     now = clock.now()
     org = ctx.db.get(Organization, organization_id)
@@ -88,12 +89,15 @@ def create_standing_consent(
     ctx.notifications.notify(
         ctx.db, _org_approvers(ctx, organization_id, exclude_user_id=user.id),
         event="support_access.standing_consent_created",
-        title=("Potwierdź zgodę stała na dostęp serwisowy Forvium" if dual
-               else "Utworzono zgodę stała na dostęp serwisowy Forvium"),
-        body=(f"{user.display_name} udzielił(a) zgody stałej (zakres: {', '.join(standing.scopes)}, "
-              f"do {max_session_minutes} min na sesje, ważna do {standing.valid_until.date()}). "
-              + ("Zgoda zacznie obowiązywać po potwierdzeniu przez druga osobę. " if dual else "")
-              + "Można ją cofnąć w Ustawienia -> Dostęp serwisowy."),
+        title=(L("Potwierdź zgodę stałą na dostęp serwisowy Forvium") if dual
+               else L("Utworzono zgodę stałą na dostęp serwisowy Forvium")),
+        body=join(" ", [
+            L("{name} udzielił(a) zgody stałej (zakres: {scopes}, do {minutes} min na sesję, ważna do {until}).",
+              name=user.display_name, scopes=", ".join(standing.scopes), minutes=max_session_minutes,
+              until=standing.valid_until.date().isoformat()),
+            *([L("Zgoda zacznie obowiązywać po potwierdzeniu przez drugą osobę.")] if dual else []),
+            L("Można ją cofnąć w Ustawienia -> Dostęp serwisowy."),
+        ]),
         organization_id=organization_id, data={"standing_consent_id": standing.id},
     )
     return standing
@@ -111,11 +115,11 @@ def confirm_standing_consent(ctx: Ctx, user: User, *, organization_id: str, stan
         raise _deny(ctx, action, "not_pending", "Zgoda stała nie czeka na potwierdzenie.", status=409, **base)
     if user.id == standing.granted_by_user_id:
         raise _deny(ctx, action, "second_approver_required",
-                    "Zgodę stała musi potwierdzić inna osoba niż tworząca.", **base)
+                    "Zgodę stałą musi potwierdzić inna osoba niż tworząca.", **base)
     if user.platform_role is not None:
         raise _deny(ctx, action, "operator_cannot_approve", "Konto operatora Forvium nie może udzielać zgód.", **base)
     if user.mfa_secret and not consume_totp(user, mfa_code):
-        raise _deny(ctx, action, "mfa_required", "Potwierdź zgodę stała kodem MFA.", status=401, **base)
+        raise _deny(ctx, action, "mfa_required", "Potwierdź zgodę stałą kodem MFA.", status=401, **base)
     standing.confirmed_by_user_id = user.id
     standing.confirmed_at = clock.now()
     ctx.audit.log(ctx.db, "support.standing_consent.confirmed", ip_address=ctx.ip,

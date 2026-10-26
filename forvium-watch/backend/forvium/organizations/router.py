@@ -16,6 +16,7 @@ from forvium.core.context import Ctx, DomainError, get_ctx
 from forvium.organizations.models import DiagnosticEvent, Membership, OrgUnit, Technology
 from forvium.organizations.rbac import OrgRole
 from forvium.organizations.rbac import Permission as P
+from forvium.core.i18n import L
 
 router = APIRouter(prefix="/api/app/orgs/{org_id}", tags=["organizations"])
 
@@ -180,8 +181,9 @@ def invite_member(body: InviteIn, access: OrgAccess = Depends(require_org_permis
         activation.issue(ctx, user, kind="user", created_by=actor.id, actor_type="user")
     else:
         ctx.notifications.notify(ctx.db, [user], event="organizations.member_added",
-                                 title=f"Dodano Cię do organizacji {org.name}",
-                                 body=f"Rola: {body.role}. Dodał(a): {actor.email}.", organization_id=org.id)
+                                 title=L("Dodano Cię do organizacji {org}", org=org.name),
+                                 body=L("Rola: {role}. Dodał(a): {who}.", role=body.role, who=actor.email),
+                                 organization_id=org.id)
     ctx.audit.log(ctx.db, "organizations.member.invited", actor_user_id=actor.id, actor_type="user",
                   organization_id=org.id, ip_address=ctx.ip,
                   details={"user_id": user.id, "role": body.role, "new_account": new_account})
@@ -240,8 +242,9 @@ def reset_member_access(user_id: str, body: ResetAccessIn,
     from forvium.support_access.service import _org_approvers
 
     ctx.notifications.notify(ctx.db, _org_approvers(ctx, org.id, exclude_user_id=actor.id),
-                             event="organizations.member.access_reset", title=f"Zresetowano dostęp {target.email}",
-                             body=f"Zresetował(a): {actor.email}. Nowy link aktywacyjny wysłano na adres tej osoby.",
+                             event="organizations.member.access_reset", title=L("Zresetowano dostęp {email}", email=target.email),
+                             body=L("Zresetował(a): {who}. Nowy link aktywacyjny wysłano na adres tej osoby.",
+                                    who=actor.email),
                              organization_id=org.id)
     return {"member": {"user_id": target.id, "email": target.email, "state": "pending_activation"}}
 

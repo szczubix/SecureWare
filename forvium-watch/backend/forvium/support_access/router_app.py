@@ -8,6 +8,7 @@ from sqlalchemy import select
 from forvium.access import AppPrincipal, OrgAccess, get_app_principal, require_org_permission
 from forvium.audit.models import AuditEvent
 from forvium.core.context import Ctx, DomainError, get_ctx
+from forvium.core.i18n import tr
 from forvium.organizations.rbac import Permission as P
 from forvium.support_access import service
 from forvium.support_access import org_settings, recording
@@ -55,8 +56,8 @@ def current_support_session(principal: AppPrincipal = Depends(_support_only)):
     """Dane do stalego banera trybu wsparcia."""
     s = principal.support
     return {
-        "banner": ("TRYB AWARYJNY FORVIUM (BREAK GLASS) — TYLKO ODCZYT" if s.mode == "break_glass"
-                   else "TRYB WSPARCIA FORVIUM — TYLKO ODCZYT"),
+        "banner": tr("TRYB AWARYJNY FORVIUM (BREAK GLASS) — TYLKO ODCZYT" if s.mode == "break_glass"
+                     else "TRYB WSPARCIA FORVIUM — TYLKO ODCZYT"),
         "mode": s.mode,
         "session_id": s.session.id,
         "organization": {"id": s.organization.id, "name": s.organization.name},

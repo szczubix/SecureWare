@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -35,7 +37,20 @@ class TokenOut(BaseModel):
 
 
 def _user_out(user: User) -> dict:
-    return {"id": user.id, "email": user.email, "display_name": user.display_name}
+    return {"id": user.id, "email": user.email, "display_name": user.display_name, "locale": user.locale}
+
+
+class LocaleIn(BaseModel):
+    locale: Literal["pl", "en"]
+
+
+def _set_locale(ctx: Ctx, user: User, locale: str, actor_type: str) -> dict:
+    """Jezyk powiadomien i e-maili konta (panel zapamietuje tez wybor w przegladarce)."""
+    if user.locale != locale:
+        ctx.audit.log(ctx.db, "identity.locale.changed", actor_user_id=user.id, actor_type=actor_type,
+                      ip_address=ctx.ip, details={"from": user.locale, "to": locale})
+        user.locale = locale
+    return {"locale": locale}
 
 
 # ------------------------------------------------------------------- app
@@ -99,6 +114,12 @@ def _set_password(ctx: Ctx, user: User, session: UserSession | None, new_passwor
     ctx.notifications.notify(ctx.db, [user], event="identity.password.changed", title="Zmieniono hasło",
                              body="Hasło do Twojego konta zostało zmienione, a pozostałe sesje wylogowane. "
                                   "Jeśli to nie Ty - natychmiast skontaktuj się z administratorem.")
+
+
+@app_router.put("/account/locale")
+def set_app_locale(body: LocaleIn, principal: AppPrincipal = Depends(require_user_principal),
+                   ctx: Ctx = Depends(get_ctx)):
+    return _set_locale(ctx, principal.actor, body.locale, "user")
 
 
 @app_router.post("/account/password")
@@ -184,6 +205,11 @@ def admin_logout(op: OperatorPrincipal = Depends(get_operator), ctx: Ctx = Depen
 def admin_me(op: OperatorPrincipal = Depends(get_operator)):
     return {"user": _user_out(op.user), "platform_role": op.user.platform_role,
             "permissions": sorted(op.permissions), "password_change_required": bool(op.user.password_change_required)}
+
+
+@admin_router.put("/account/locale")
+def set_admin_locale(body: LocaleIn, op: OperatorPrincipal = Depends(get_operator), ctx: Ctx = Depends(get_ctx)):
+    return _set_locale(ctx, op.user, body.locale, "operator")
 
 
 class OperatorPasswordIn(PasswordChangeIn):

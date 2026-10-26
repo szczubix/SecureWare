@@ -19,9 +19,11 @@ from forvium.core.clock import clock
 from forvium.core.context import Ctx, DomainError
 from forvium.core.crypto import EncryptedString
 from forvium.core.db import Base, new_id
+from forvium.core.i18n import L
 from forvium.core.security import hash_password, match_totp_step, new_token, new_totp_secret, token_digest
 from forvium.identity.models import User, UserSession
 from forvium.identity.passwords import min_length
+from forvium.notifications.service import recipient_lang
 
 ACTIVATION_TTL = timedelta(hours=72)
 TOKEN_PREFIX = "fwa_"
@@ -63,14 +65,16 @@ def issue(ctx: Ctx, user: User, *, kind: str, created_by: str, actor_type: str =
     ctx.db.add(AccountActivation(user_id=user.id, kind=kind, token_hash=token_digest(token), created_at=now,
                                  created_by=created_by, expires_at=now + ACTIVATION_TTL))
     origin = ctx.settings.admin_origin if kind == "operator" else ctx.settings.app_origin
-    link = f"{origin}/activate.html#token={token}"
-    panel = "panelu operatorów Forvium" if kind == "operator" else "Forvium Watch"
+    lang = recipient_lang(ctx.db, user)
+    link = f"{origin}/activate.html?lang={lang}#token={token}"
+    panel = L("panelu operatorów Forvium") if kind == "operator" else "Forvium Watch"
     # Tylko e-mail (bez kopii w powiadomieniu w aplikacji i bez zwracania linku w API).
     ctx.notifications.email_only(
-        ctx.db, user, subject=f"Aktywuj konto w {panel}",
-        body=(f"Dzień dobry {user.display_name},\n\nzałożono dla Ciebie konto w {panel}. Aby je aktywować, "
-              f"otwórz link (ważny 72 godziny, jednorazowy) i ustaw hasło oraz aplikację uwierzytelniającą:\n\n"
-              f"{link}\n\nJeśli nie spodziewasz się tej wiadomości, zignoruj ją."))
+        ctx.db, user, subject=L("Aktywuj konto w {panel}", panel=panel),
+        body=L("Dzień dobry {name},\n\nzałożono dla Ciebie konto w {panel}. Aby je aktywować, "
+               "otwórz link (ważny 72 godziny, jednorazowy) i ustaw hasło oraz aplikację uwierzytelniającą:\n\n"
+               "{link}\n\nJeśli nie spodziewasz się tej wiadomości, zignoruj ją.",
+               name=user.display_name, panel=panel, link=link))
     ctx.audit.log(ctx.db, "identity.activation.issued", actor_user_id=None if actor_type == "system" else created_by,
                   actor_type=actor_type, ip_address=ctx.ip, details={"user_id": user.id, "kind": kind})
     return link

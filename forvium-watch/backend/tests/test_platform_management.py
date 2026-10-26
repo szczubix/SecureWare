@@ -259,7 +259,7 @@ def test_bootstrap_only_when_role_missing(env):
                         json={"reason": "test bootstrapu", "mfa_code": env.otp("adam")})
     link = bootstrap(env.app, "oficer@forvium.com", "Nowy Oficer", "security_officer")
     token = link.split("#token=", 1)[1]
-    assert link.startswith("https://admin.forvium.test/activate.html#token=")
+    assert link.startswith("https://admin.forvium.test/activate.html?lang=pl#token=")
     _activate(env, token, panel="admin")
     with pytest.raises(SystemExit):
         bootstrap(env.app, "kolejny@forvium.com", "Kolejny", "security_officer")

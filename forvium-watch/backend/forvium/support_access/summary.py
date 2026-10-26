@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from forvium.audit.models import AuditEvent
+from forvium.core.i18n import Joined, L, join
 from forvium.support_access.models import SupportSession
 
 # Przyjazne nazwy widokow (szablon trasy -> etykieta).
@@ -48,13 +49,13 @@ def session_summary(db: Session, session: SupportSession) -> dict:
     }
 
 
-def summary_text(summary: dict) -> str:
+def summary_text(summary: dict) -> Joined:
     minutes, seconds = divmod(summary["duration_seconds"], 60)
-    lines = [
-        f"Czas trwania: {minutes} min {seconds} s",
-        f"Powód zakończenia: {END_REASON_LABELS.get(summary['end_reason'] or '', summary['end_reason'])}",
-        f"Liczba operacji (tylko odczyt): {summary['api_calls']}",
-        f"Zablokowane próby: {summary['denied_calls']}",
-        "Oglądane widoki: " + (", ".join(summary["views"]) or "brak"),
-    ]
-    return "\n".join(lines)
+    reason = summary["end_reason"] or ""
+    return join("\n", [
+        L("Czas trwania: {minutes} min {seconds} s", minutes=minutes, seconds=seconds),
+        L("Powód zakończenia: {reason}", reason=END_REASON_LABELS.get(reason, reason)),
+        L("Liczba operacji (tylko odczyt): {n}", n=summary["api_calls"]),
+        L("Zablokowane próby: {n}", n=summary["denied_calls"]),
+        L("Oglądane widoki: {views}", views=join(", ", summary["views"]) if summary["views"] else L("brak")),
+    ])

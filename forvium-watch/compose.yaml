@@ -35,6 +35,7 @@ x-runtime-env: &runtime-env
   FORVIUM_SMTP_STARTTLS: "false"
   FORVIUM_SMTP_FROM: "Forvium Watch <no-reply@forvium.local>"
   FORVIUM_SECURITY_TEAM_EMAILS: security@forvium.local
+  FORVIUM_DEFAULT_LOCALE: ${FORVIUM_DEFAULT_LOCALE:-pl}
   FORVIUM_BREAK_GLASS_ENABLED: ${FORVIUM_BREAK_GLASS_ENABLED:-false}
   FORVIUM_BREAK_GLASS_AUDIT_PATH: /var/forvium/audit/break-glass.jsonl
   FORVIUM_AUDIT_EXPORT_PATH: /var/forvium/audit/audit.jsonl

@@ -34,6 +34,7 @@ from forvium.core.context import Ctx, DomainError
 from forvium.core.db import Base, new_id
 from forvium.identity.models import User
 from forvium.platform_admin.rbac import PlatformPermission, platform_permissions
+from forvium.core.i18n import L, join, tr_stored
 
 SEVERITY_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
 
@@ -75,7 +76,7 @@ class AnomalyPolicy:
 class Finding:
     rule: str
     severity: str
-    title: str
+    title: L  # zapisywany po polsku, tlumaczony przy wyswietleniu (tr_stored)
     dedup_key: str
     operator_user_id: str | None = None
     organization_id: str | None = None
@@ -106,7 +107,7 @@ def detect(ctx: Ctx, policy: AnomalyPolicy) -> list[Finding]:
         if len(events) >= policy.denial_burst_count:
             e = events[-1]
             findings.append(Finding(
-                "denial_burst", "high", f"Seria {len(events)} zablokowanych operacji w sesji wsparcia",
+                "denial_burst", "high", L("Seria {n} zablokowanych operacji w sesji wsparcia", n=len(events)),
                 f"denial_burst:{session_id}", e.actor_user_id, e.organization_id, session_id,
                 {"denied": len(events), "routes": sorted({x.route or "" for x in events})}))
 
@@ -119,7 +120,7 @@ def detect(ctx: Ctx, policy: AnomalyPolicy) -> list[Finding]:
         if len(events) >= policy.post_session_attempts:
             e = events[-1]
             findings.append(Finding(
-                "post_session_access", "high", "Próby użycia tokenu zakończonej sesji wsparcia",
+                "post_session_access", "high", L("Próby użycia tokenu zakończonej sesji wsparcia"),
                 f"post_session_access:{session_id}", e.actor_user_id, e.organization_id, session_id,
                 {"attempts": len(events), "ips": sorted({x.ip_address or "" for x in events})}))
 
@@ -132,12 +133,12 @@ def detect(ctx: Ctx, policy: AnomalyPolicy) -> list[Finding]:
     for operator_id, events in started.items():
         if len(events) >= policy.session_volume_count:
             findings.append(Finding(
-                "session_volume", "medium", f"{len(events)} sesji wsparcia operatora w ciagu godziny",
+                "session_volume", "medium", L("{n} sesji wsparcia operatora w ciągu godziny", n=len(events)),
                 f"session_volume:{operator_id}:{bucket}", operator_id, details={"sessions": len(events)}))
         orgs = {e.organization_id for e in events}
         if len(orgs) >= policy.multi_org_count:
             findings.append(Finding(
-                "multi_org", "medium", f"Sesje operatora w {len(orgs)} organizacjach w ciagu godziny",
+                "multi_org", "medium", L("Sesje operatora w {n} organizacjach w ciągu godziny", n=len(orgs)),
                 f"multi_org:{operator_id}:{bucket}", operator_id, details={"organizations": sorted(orgs)}))
 
     # 5. Sesje poza godzinami pracy.
@@ -148,7 +149,7 @@ def detect(ctx: Ctx, policy: AnomalyPolicy) -> list[Finding]:
             local = e.occurred_at.replace(tzinfo=ZoneInfo("UTC")).astimezone(tz)
             if local.weekday() >= 5 or not start_h <= local.hour < end_h:
                 findings.append(Finding(
-                    "off_hours", "low", "Sesja wsparcia rozpoczęta poza godzinami pracy",
+                    "off_hours", "low", L("Sesja wsparcia rozpoczęta poza godzinami pracy"),
                     f"off_hours:{e.support_session_id}", e.actor_user_id, e.organization_id, e.support_session_id,
                     {"local_time": local.strftime("%Y-%m-%d %H:%M %Z")}))
 
@@ -156,13 +157,13 @@ def detect(ctx: Ctx, policy: AnomalyPolicy) -> list[Finding]:
     for e in _events(ctx, now - policy.window, "security.lockout"):
         if e.actor_type == "operator" and e.actor_user_id:
             findings.append(Finding(
-                "mfa_lockout", "medium", "Blokada konta operatora po nieudanych próbach weryfikacji",
+                "mfa_lockout", "medium", L("Blokada konta operatora po nieudanych próbach weryfikacji"),
                 f"mfa_lockout:{e.id}", e.actor_user_id, details=e.details))
 
     # 7. Uzycie Break Glass.
     for e in _events(ctx, now - policy.window, "break_glass.approved"):
         findings.append(Finding(
-            "break_glass_used", "high", "Zatwierdzono procedurę Break Glass",
+            "break_glass_used", "high", L("Zatwierdzono procedurę Break Glass"),
             f"break_glass_used:{e.support_request_id}", None, e.organization_id,
             details={"request_id": e.support_request_id, "approved_by": e.actor_user_id}))
     return findings
@@ -185,7 +186,7 @@ def run_detection(ctx: Ctx, policy: AnomalyPolicy) -> list[SecurityAlert]:
         if f.dedup_key in existing:
             continue
         existing.add(f.dedup_key)
-        alert = SecurityAlert(rule=f.rule, severity=f.severity, title=f.title, dedup_key=f.dedup_key,
+        alert = SecurityAlert(rule=f.rule, severity=f.severity, title=str(f.title), dedup_key=f.dedup_key,
                               operator_user_id=f.operator_user_id, organization_id=f.organization_id,
                               support_session_id=f.support_session_id, details=f.details or {},
                               created_at=clock.now())
@@ -205,16 +206,20 @@ def run_detection(ctx: Ctx, policy: AnomalyPolicy) -> list[SecurityAlert]:
                       details={"rule": f.rule, "severity": f.severity, "alert_id": alert.id,
                                "auto_action": alert.auto_action})
         if SEVERITY_ORDER[f.severity] >= SEVERITY_ORDER["medium"]:
-            body = (f"[{f.severity.upper()}] {f.title}\nOperator: {f.operator_user_id or '-'}\n"
-                    f"Organizacja: {f.organization_id or '-'}\nSesja: {f.support_session_id or '-'}\n"
-                    + (f"Automatyczna akcja: {alert.auto_action}\n" if alert.auto_action else "")
-                    + "Szczegóły: admin.forvium.com -> Alerty.")
+            body = join("\n", [
+                L("[{severity}] {title}", severity=f.severity.upper(), title=f.title),
+                L("Operator: {operator}", operator=f.operator_user_id or "-"),
+                L("Organizacja: {org}", org=f.organization_id or "-"),
+                L("Sesja: {session}", session=f.support_session_id or "-"),
+                *([L("Automatyczna akcja: {action}", action=alert.auto_action)] if alert.auto_action else []),
+                L("Szczegóły: admin.forvium.com -> Alerty."),
+            ])
             ctx.notifications.notify(ctx.db, _recipients(ctx), event="security.alert",
-                                     title=f"Alert bezpieczeństwa: {f.title}", body=body,
+                                     title=L("Alert bezpieczeństwa: {title}", title=f.title), body=body,
                                      organization_id=f.organization_id, data={"alert_id": alert.id},
                                      email=SEVERITY_ORDER[f.severity] >= SEVERITY_ORDER["high"])
             if SEVERITY_ORDER[f.severity] >= SEVERITY_ORDER["high"]:
-                notify_security_team(ctx, f"Alert: {f.title}", body)
+                notify_security_team(ctx, L("Alert: {title}", title=f.title), body)
     return created
 
 
@@ -240,7 +245,7 @@ def handle_alert(ctx: Ctx, user: User, alert_id: str, status: str, notes: str | 
 
 def alert_out(a: SecurityAlert) -> dict:
     iso = lambda d: d.isoformat() + "Z" if d else None  # noqa: E731
-    return {"id": a.id, "rule": a.rule, "severity": a.severity, "title": a.title, "status": a.status,
+    return {"id": a.id, "rule": a.rule, "severity": a.severity, "title": tr_stored(a.title), "status": a.status,
             "operator_user_id": a.operator_user_id, "organization_id": a.organization_id,
             "support_session_id": a.support_session_id, "details": a.details, "auto_action": a.auto_action,
             "created_at": iso(a.created_at), "handled_by_user_id": a.handled_by_user_id,

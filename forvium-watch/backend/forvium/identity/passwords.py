@@ -23,6 +23,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from forvium.core.context import DomainError
+from forvium.core.i18n import L, join
 
 MAX_LENGTH = 128
 _DATA = Path(__file__).parent / "data" / "common-passwords.txt.gz"
@@ -105,7 +106,7 @@ def problems(password: str, *, email: str = "", display_name: str = "") -> list[
 
 MESSAGES = {
     "too_short": "Hasło musi mieć co najmniej {n} znaków.",
-    "too_long": f"Hasło może mieć najwyżej {MAX_LENGTH} znaków.",
+    "too_long": "Hasło może mieć najwyżej {max} znaków.",
     "breached": "To hasło występuje w znanych wyciekach danych - wybierz inne.",
     "personal": "Hasło nie może zawierać adresu e-mail, imienia, nazwiska ani nazwy Forvium.",
     "trivial": "Hasło jest zbyt proste (powtórzenia albo sekwencje znaków).",
@@ -115,4 +116,4 @@ MESSAGES = {
 def validate(password: str, *, email: str = "", display_name: str = "") -> None:
     found = problems(password or "", email=email, display_name=display_name)
     if found:
-        raise DomainError(422, "password_policy", " ".join(MESSAGES[p].format(n=min_length()) for p in found))
+        raise DomainError(422, "password_policy", join(" ", [L(MESSAGES[p], n=min_length(), max=MAX_LENGTH) for p in found]))

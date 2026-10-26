@@ -26,11 +26,16 @@ from forvium.core.clock import clock
 from forvium.core.context import Ctx, DomainError
 from forvium.core.crypto import EncryptedString
 from forvium.core.db import Base, new_id
+from forvium.core.i18n import L, current_lang, default_lang, join, normalize
 
 KIND_CUSTOMER = "customer"
 KIND_AUDITOR = "auditor"
-MONTHS = ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec", "sierpień", "wrzesień",
-          "październik", "listopad", "grudzień"]
+MONTHS = {
+    "pl": ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec", "sierpień", "wrzesień",
+           "październik", "listopad", "grudzień"],
+    "en": ["January", "February", "March", "April", "May", "June", "July", "August", "September",
+           "October", "November", "December"],
+}
 
 
 class AccessReport(Base):
@@ -62,8 +67,9 @@ def previous_month(now: datetime) -> tuple[datetime, datetime]:
     return month_bounds(year, month)
 
 
-def period_label(start: datetime) -> str:
-    return f"{MONTHS[start.month - 1]} {start.year}"
+def period_label(start: datetime, lang: str | None = None) -> str:
+    names = MONTHS.get(lang or current_lang(), MONTHS["pl"])
+    return f"{names[start.month - 1]} {start.year}"
 
 
 # ------------------------------------------------------------------- dane raportu
@@ -75,6 +81,7 @@ class ReportData:
     period_start: datetime
     period_end: datetime
     organization_name: str | None
+    lang: str = "pl"
     requests: list[dict] = field(default_factory=list)
     sessions: list[dict] = field(default_factory=list)
     standing: list[dict] = field(default_factory=list)
@@ -95,7 +102,7 @@ def collect(ctx: Ctx, kind: str, organization_id: str | None, start: datetime, e
     from forvium.organizations.models import Organization
     from forvium.security.anomalies import SecurityAlert
     from forvium.support_access.models import AccessMode, SupportAccessRequest, SupportSession
-    from forvium.support_access.summary import END_REASON_LABELS, session_summary
+    from forvium.support_access.summary import session_summary
 
     db = ctx.db
     emails = dict(db.execute(select(User.id, User.email)).all())
@@ -105,8 +112,10 @@ def collect(ctx: Ctx, kind: str, organization_id: str | None, start: datetime, e
     def scoped(stmt, column):
         return stmt.where(column == organization_id) if organization_id else stmt
 
+    org = db.get(Organization, organization_id) if organization_id else None
     data = ReportData(kind=kind, period_start=start, period_end=end,
-                      organization_name=orgs.get(organization_id) if organization_id else None)
+                      organization_name=org.name if org else None,
+                      lang=normalize(org.locale if org else None) or default_lang())
     for r in db.scalars(scoped(select(SupportAccessRequest).where(SupportAccessRequest.created_at >= start,
                                                                  SupportAccessRequest.created_at < end),
                                SupportAccessRequest.organization_id).order_by(SupportAccessRequest.created_at)):
@@ -124,9 +133,8 @@ def collect(ctx: Ctx, kind: str, organization_id: str | None, start: datetime, e
         data.sessions.append({
             "started_at": _fmt(s.started_at), "ticket": s.ticket_number, "organization": orgs.get(s.organization_id),
             "operator": who(s.operator_user_id), "minutes": round(summary["duration_seconds"] / 60, 1),
-            "extensions": s.extensions_count or 0, "views": ", ".join(summary["views"]) or "—",
-            "api_calls": summary["api_calls"], "denied": summary["denied_calls"],
-            "end_reason": END_REASON_LABELS.get(s.end_reason or "", s.end_reason or "trwa"),
+            "extensions": s.extensions_count or 0, "views": summary["views"],
+            "api_calls": summary["api_calls"], "denied": summary["denied_calls"], "end_reason": s.end_reason,
         })
     events = list(db.scalars(scoped(select(AuditEvent).where(AuditEvent.occurred_at >= start,
                                                              AuditEvent.occurred_at < end),
@@ -187,22 +195,35 @@ def _notify(ctx: Ctx, report: AccessReport, data: ReportData) -> None:
     from forvium.platform_admin.rbac import PlatformPermission, platform_permissions
     from forvium.support_access.service import _org_approvers
 
-    label = period_label(report.period_start)
-    body = (f"Sesje wsparcia: {len(data.sessions)}, prośby o dostęp: {len(data.requests)}, "
-            f"zablokowane próby: {data.denied_attempts}.\n"
-            f"SHA-256 pliku: {report.sha256}\n")
+    stats = L("Sesje wsparcia: {sessions}, prośby o dostęp: {requests}, zablokowane próby: {denied}.\n"
+              "SHA-256 pliku: {sha256}", sessions=len(data.sessions), requests=len(data.requests),
+              denied=data.denied_attempts, sha256=report.sha256)
     if report.kind == KIND_CUSTOMER:
         recipients = _org_approvers(ctx, report.organization_id)
-        body += "Raport pobierzesz w aplikacji: Ustawienia -> Dostęp serwisowy -> Raporty dostępu."
+        where = L("Raport pobierzesz w aplikacji: Ustawienia -> Dostęp serwisowy -> Raporty dostępu.")
     else:
         recipients = [u for u in ctx.db.scalars(select(User).where(User.platform_role.is_not(None),
                                                                    User.is_active.is_(True)))
                       if PlatformPermission.AUDIT_READ in platform_permissions(u.platform_role)]
-        body += "Raport pobierzesz w panelu admin: zakładka Raporty."
+        where = L("Raport pobierzesz w panelu admin: zakładka Raporty.")
     ctx.notifications.notify(
         ctx.db, recipients, event="reports.access_report_ready",
-        title=f"Raport dostępu serwisowego Forvium za {label}", body=body,
+        title=_PeriodTitle(report.period_start), body=join("\n", [stats, where]),
         organization_id=report.organization_id, data={"report_id": report.id})
+
+
+class _PeriodTitle(L):
+    """Tytul z nazwa miesiaca w jezyku odbiorcy."""
+
+    __slots__ = ("start",)
+
+    def __init__(self, start: datetime) -> None:
+        super().__init__("Raport dostępu serwisowego Forvium za {period}")
+        self.start = start
+
+    def render(self, lang: str | None = None) -> str:
+        lang = lang or current_lang()
+        return L(self.template, period=period_label(self.start, lang)).render(lang)
 
 
 def report_out(r: AccessReport) -> dict:

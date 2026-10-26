@@ -7,6 +7,7 @@ from forvium.identity.models import User
 from forvium.identity.service import consume_totp
 from forvium.organizations.models import Organization
 from forvium.support_access.service import _deny, _org_approvers
+from forvium.core.i18n import L
 
 
 def settings_out(org: Organization) -> dict:
@@ -37,7 +38,7 @@ def set_dual_approval(ctx: Ctx, user: User, org: Organization, *, enabled: bool,
             ctx.audit.log(ctx.db, "support.settings.dual_approval_enabled", ip_address=ctx.ip, **base)
             ctx.notifications.notify(ctx.db, others, event="support_access.settings_changed",
                                      title="Włączono zatwierdzanie dostępu serwisowego przez dwie osoby",
-                                     body=f"{user.display_name} włączył(a) wymóg dwóch zatwierdzeń.",
+                                     body=L("{name} włączył(a) wymóg dwóch zatwierdzeń.", name=user.display_name),
                                      organization_id=org.id)
         return settings_out(org)
 
@@ -49,9 +50,9 @@ def set_dual_approval(ctx: Ctx, user: User, org: Organization, *, enabled: bool,
         ctx.audit.log(ctx.db, "support.settings.dual_approval_disable_requested", ip_address=ctx.ip, **base)
         ctx.notifications.notify(ctx.db, others, event="support_access.settings_change_requested",
                                  title="Prośba o wyłączenie zatwierdzania przez dwie osoby",
-                                 body=(f"{user.display_name} chce wyłączyć wymóg dwóch zatwierdzeń dostępu "
-                                       "serwisowego Forvium. Zmiana wymaga potwierdzenia przez inna osobę: "
-                                       "Ustawienia -> Dostęp serwisowy."),
+                                 body=L("{name} chce wyłączyć wymóg dwóch zatwierdzeń dostępu "
+                                        "serwisowego Forvium. Zmiana wymaga potwierdzenia przez inną osobę: "
+                                        "Ustawienia -> Dostęp serwisowy.", name=user.display_name),
                                  organization_id=org.id)
         return settings_out(org)
     org.support_dual_approval = False
@@ -60,6 +61,6 @@ def set_dual_approval(ctx: Ctx, user: User, org: Organization, *, enabled: bool,
                   details={"requested_by": requested_by}, **base)
     ctx.notifications.notify(ctx.db, others, event="support_access.settings_changed",
                              title="Wyłączono zatwierdzanie dostępu serwisowego przez dwie osoby",
-                             body=f"{user.display_name} potwierdził(a) wyłączenie wymogu dwóch zatwierdzeń.",
+                             body=L("{name} potwierdził(a) wyłączenie wymogu dwóch zatwierdzeń.", name=user.display_name),
                              organization_id=org.id)
     return settings_out(org)

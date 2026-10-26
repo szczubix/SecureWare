@@ -19,6 +19,7 @@ from forvium.organizations.rbac import Permission as P
 from forvium.platform_admin.rbac import PlatformPermission as PP, platform_permissions
 from forvium.support_tickets import service
 from forvium.support_tickets.models import SupportTicket, TicketPriority, TicketStatus
+from forvium.core.i18n import L
 
 app_router = APIRouter(prefix="/api/app/orgs/{org_id}/tickets", tags=["support tickets (app)"])
 admin_router = APIRouter(prefix="/api/admin/tickets", tags=["support tickets (admin)"])
@@ -109,8 +110,10 @@ def create_ticket(body: TicketIn, access: OrgAccess = Depends(require_org_permis
     _log(ctx, "support_tickets.created", ticket, actor, "user", priority=ticket.priority, side="customer")
     label = service.PRIORITY_LABELS[ticket.priority]
     ctx.notifications.notify(ctx.db, _forvium_staff(ctx, PP.TICKETS_MANAGE), event="support_tickets.created",
-                             title=f"Nowe zgłoszenie {ticket.number} ({access.organization.name}, priorytet: {label})",
-                             body=f"{ticket.subject}\nZgłasza: {actor.email}. Szczegóły w panelu: Zgłoszenia.",
+                             title=L("Nowe zgłoszenie {ticket} ({org}, priorytet: {priority})", ticket=ticket.number,
+                                     org=access.organization.name, priority=label),
+                             body=L("{subject}\nZgłasza: {who}. Szczegóły w panelu: Zgłoszenia.",
+                                    subject=ticket.subject, who=actor.email),
                              data={"ticket_id": ticket.id})
     return {"ticket": service.ticket_out(ticket)}
 
@@ -137,8 +140,8 @@ def customer_reply(ticket_id: str, body: MessageIn, access: OrgAccess = Depends(
     msg = service.add_message(ctx, ticket, author_user_id=actor.id, side="customer", body=body.body)
     _log(ctx, "support_tickets.message_added", ticket, actor, "user", side="customer")
     ctx.notifications.notify(ctx.db, _forvium_participants(ctx, ticket), event="support_tickets.customer_reply",
-                             title=f"Odpowiedź klienta w {ticket.number}",
-                             body=f"{actor.email}: {msg.body[:500]}", data={"ticket_id": ticket.id})
+                             title=L("Odpowiedź klienta w {ticket}", ticket=ticket.number),
+                             body=actor.email + ": " + msg.body[:500], data={"ticket_id": ticket.id})
     return {"message": service.message_out(msg, {actor.id: actor.email})}
 
 
@@ -152,8 +155,8 @@ def customer_close(ticket_id: str, access: OrgAccess = Depends(require_org_permi
     ended = service.set_status(ctx, ticket, TicketStatus.CLOSED, by_user_id=actor.id, actor_type="user")
     _log(ctx, "support_tickets.closed", ticket, actor, "user", side="customer", support_sessions_ended=ended)
     ctx.notifications.notify(ctx.db, _forvium_participants(ctx, ticket), event="support_tickets.closed",
-                             title=f"Klient zamknął zgłoszenie {ticket.number}",
-                             body=f"Zamknął: {actor.email}. Zakończone sesje wsparcia: {ended}.",
+                             title=L("Klient zamknął zgłoszenie {ticket}", ticket=ticket.number),
+                             body=L("Zamknął: {who}. Zakończone sesje wsparcia: {ended}.", who=actor.email, ended=ended),
                              data={"ticket_id": ticket.id})
     return {"ticket": service.ticket_out(ticket), "support_sessions_ended": ended}
 
@@ -190,7 +193,7 @@ def forvium_reply(ticket_id: str, body: AdminMessageIn,
     _log(ctx, "support_tickets.message_added", ticket, op.user, "operator", side="forvium", internal=body.internal)
     if not body.internal:
         ctx.notifications.notify(ctx.db, _customers(ctx, ticket), event="support_tickets.forvium_reply",
-                                 title=f"Odpowiedź supportu Forvium w {ticket.number}",
-                                 body=f"{msg.body[:1000]}\n\nOdpowiesz w aplikacji: Zgłoszenia.",
+                                 title=L("Odpowiedź supportu Forvium w {ticket}", ticket=ticket.number),
+                                 body=L("{message}\n\nOdpowiesz w aplikacji: Zgłoszenia.", message=msg.body[:1000]),
                                  organization_id=ticket.organization_id, data={"ticket_id": ticket.id})
     return {"message": service.message_out(msg, {op.user.id: op.user.email})}

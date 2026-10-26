@@ -30,6 +30,7 @@ from forvium.support_access.service import (
     _verify_operator_mfa,
 )
 from forvium.support_access.summary import session_summary, summary_text
+from forvium.core.i18n import L, default_lang, join, tr
 
 
 def _platform_users_with(ctx: Ctx, permission: PlatformPermission, exclude: set[str] = frozenset()) -> list[User]:
@@ -37,12 +38,12 @@ def _platform_users_with(ctx: Ctx, permission: PlatformPermission, exclude: set[
     return [u for u in users if permission in platform_permissions(u.platform_role) and u.id not in exclude]
 
 
-def notify_security_team(ctx: Ctx, subject: str, body: str) -> None:
-    """E-mail na adresy zespolu bezpieczenstwa (FORVIUM_SECURITY_TEAM_EMAILS)."""
-    now = clock.now()
+def notify_security_team(ctx: Ctx, subject, body) -> None:
+    """E-mail na adresy zespolu bezpieczenstwa (FORVIUM_SECURITY_TEAM_EMAILS), w jezyku domyslnym."""
+    now, lang = clock.now(), default_lang()
     for address in ctx.break_glass.security_team_emails:
-        ctx.db.add(EmailOutbox(to_address=address, subject=f"[Forvium SECURITY] {subject}", body=body,
-                               created_at=now))
+        ctx.db.add(EmailOutbox(to_address=address, subject="[Forvium SECURITY] " + tr(subject, lang),
+                               body=tr(body, lang), created_at=now))
 
 
 def on_break_glass_requested(ctx: Ctx, req: SupportAccessRequest, operator: User, org: Organization) -> None:
@@ -54,16 +55,19 @@ def on_break_glass_requested(ctx: Ctx, req: SupportAccessRequest, operator: User
                  "scopes": req.requested_scopes, "duration_minutes": req.requested_duration_minutes,
                  "justification": req.reason},
     )
-    body = (f"Operator {operator.id} wnioskuje o dostęp awaryjny (Break Glass) do organizacji {org.name} "
-            f"({req.organization_id}), zgłoszenie {req.ticket_number}, kategoria {req.incident_category}, "
-            f"{req.requested_duration_minutes} min.\nUzasadnienie: {req.reason}\n"
-            f"Wniosek wygasa {req.decision_deadline.isoformat()} UTC. Decyzja: admin.forvium.com -> Break Glass.")
+    body = L("Operator {operator} wnioskuje o dostęp awaryjny (Break Glass) do organizacji {org} "
+             "({org_id}), zgłoszenie {ticket}, kategoria {category}, {minutes} min.\nUzasadnienie: {reason}\n"
+             "Wniosek wygasa {deadline} UTC. Decyzja: admin.forvium.com -> Break Glass.",
+             operator=operator.id, org=org.name, org_id=req.organization_id, ticket=req.ticket_number,
+             category=req.incident_category, minutes=req.requested_duration_minutes, reason=req.reason,
+             deadline=req.decision_deadline.isoformat())
+    title = L("Wniosek Break Glass ({ticket})", ticket=req.ticket_number)
     ctx.notifications.notify(
         ctx.db, _platform_users_with(ctx, PlatformPermission.BREAK_GLASS_APPROVE, {operator.id}),
-        event="break_glass.requested", title=f"Wniosek Break Glass ({req.ticket_number})", body=body,
+        event="break_glass.requested", title=title, body=body,
         organization_id=req.organization_id, data={"request_id": req.id},
     )
-    notify_security_team(ctx, f"Wniosek Break Glass ({req.ticket_number})", body)
+    notify_security_team(ctx, title, body)
 
 
 def _load(ctx: Ctx, request_id: str) -> SupportAccessRequest:
@@ -114,24 +118,25 @@ def approve_break_glass(ctx: Ctx, officer: User, *, request_id: str, mfa_code: s
                   details={"consent_id": consent.id, "valid_until": consent.valid_until.isoformat()}, **base)
 
     org = ctx.db.get(Organization, req.organization_id)
-    body = (f"Forvium uruchomiło procedurę awaryjną (Break Glass) dla organizacji {org.name}: "
-            f"operator {req.operator_user_id} może otworzyć sesję TYLKO DO ODCZYTU do "
-            f"{req.requested_duration_minutes} min, zgłoszenie {req.ticket_number}.\n"
-            f"Kategoria incydentu: {req.incident_category}\nUzasadnienie: {req.reason}\n"
-            f"Wniosek zatwierdził oficer bezpieczeństwa Forvium ({officer.id}). Możecie natychmiast cofnąć te "
-            "zgodę: Ustawienia -> Dostęp serwisowy. Po incydencie otrzymacie raport z przeglądu.")
+    body = L("Forvium uruchomiło procedurę awaryjną (Break Glass) dla organizacji {org}: "
+             "operator {operator} może otworzyć sesję TYLKO DO ODCZYTU do {minutes} min, zgłoszenie {ticket}.\n"
+             "Kategoria incydentu: {category}\nUzasadnienie: {reason}\n"
+             "Wniosek zatwierdził oficer bezpieczeństwa Forvium ({officer}). Możecie natychmiast cofnąć tę "
+             "zgodę: Ustawienia -> Dostęp serwisowy. Po incydencie otrzymacie raport z przeglądu.",
+             org=org.name, operator=req.operator_user_id, minutes=req.requested_duration_minutes,
+             ticket=req.ticket_number, category=req.incident_category, reason=req.reason, officer=officer.id)
     ctx.notifications.notify(ctx.db, _org_approvers(ctx, req.organization_id),
                              event="break_glass.approved",
-                             title=f"PROCEDURA AWARYJNA Forvium ({req.ticket_number})", body=body,
+                             title=L("PROCEDURA AWARYJNA Forvium ({ticket})", ticket=req.ticket_number), body=body,
                              organization_id=req.organization_id,
                              data={"request_id": req.id, "consent_id": consent.id})
     operator = ctx.db.get(User, req.operator_user_id)
     if operator:
         ctx.notifications.notify(ctx.db, [operator], event="break_glass.approved",
-                                 title=f"Break Glass zatwierdzony ({req.ticket_number})",
-                                 body=f"Zgoda awaryjna ważna do {consent.valid_until.isoformat()} UTC.",
+                                 title=L("Break Glass zatwierdzony ({ticket})", ticket=req.ticket_number),
+                                 body=L("Zgoda awaryjna ważna do {until} UTC.", until=consent.valid_until.isoformat()),
                                  organization_id=req.organization_id, data={"request_id": req.id})
-    notify_security_team(ctx, f"Break Glass zatwierdzony ({req.ticket_number})", body)
+    notify_security_team(ctx, L("Break Glass zatwierdzony ({ticket})", ticket=req.ticket_number), body)
     return consent
 
 
@@ -153,8 +158,8 @@ def reject_break_glass(ctx: Ctx, officer: User, *, request_id: str, note: str | 
     operator = ctx.db.get(User, req.operator_user_id)
     if operator:
         ctx.notifications.notify(ctx.db, [operator], event="break_glass.rejected",
-                                 title=f"Break Glass odrzucony ({req.ticket_number})",
-                                 body=req.decision_note or "Wniosek odrzucony.",
+                                 title=L("Break Glass odrzucony ({ticket})", ticket=req.ticket_number),
+                                 body=req.decision_note or L("Wniosek odrzucony."),
                                  organization_id=req.organization_id, data={"request_id": req.id})
 
 
@@ -183,16 +188,17 @@ def review_break_glass(ctx: Ctx, reviewer: User, *, request_id: str, notes: str)
     summaries = [session_summary(ctx.db, s) for s in sessions]
     ctx.audit.log(ctx.db, "break_glass.reviewed", ip_address=ctx.ip,
                   details={"sessions": len(sessions), "notes": req.review_notes}, **base)
-    body = "\n\n".join(
-        [f"Przegląd procedury awaryjnej Forvium ({req.ticket_number}) został zakończony.",
-         f"Ustalenia: {req.review_notes}"]
-        + [f"Sesja {i + 1}:\n{summary_text(sm)}" for i, sm in enumerate(summaries)]
-        + ["Szczegółowa lista operacji: Ustawienia -> Dostęp serwisowy -> Historia sesji."]
-    )
+    body = join("\n\n", [
+        L("Przegląd procedury awaryjnej Forvium ({ticket}) został zakończony.", ticket=req.ticket_number),
+        L("Ustalenia: {notes}", notes=req.review_notes),
+        *(L("Sesja {n}:\n{summary}", n=i + 1, summary=summary_text(sm)) for i, sm in enumerate(summaries)),
+        L("Szczegółowa lista operacji: Ustawienia -> Dostęp serwisowy -> Historia sesji."),
+    ])
     ctx.notifications.notify(ctx.db, _org_approvers(ctx, req.organization_id), event="break_glass.reviewed",
-                             title=f"Raport z procedury awaryjnej Forvium ({req.ticket_number})", body=body,
+                             title=L("Raport z procedury awaryjnej Forvium ({ticket})", ticket=req.ticket_number),
+                             body=body,
                              organization_id=req.organization_id, data={"request_id": req.id})
-    notify_security_team(ctx, f"Break Glass - przegląd zakończony ({req.ticket_number})", body)
+    notify_security_team(ctx, L("Break Glass - przegląd zakończony ({ticket})", ticket=req.ticket_number), body)
     return req
 
 

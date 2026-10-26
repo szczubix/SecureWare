@@ -260,6 +260,32 @@ długość, a nie wymuszone znaki specjalne. Wszystko działa offline.
   Forvium (admin → Użytkownicy → Konto → Resetuj dostęp, z powodem i ponowną weryfikacją).
   Administratorzy organizacji dostają powiadomienie.
 
+## Wersje językowe (PL / EN)
+
+Oba panele, komunikaty API, powiadomienia, e-maile i raporty PDF są dostępne po polsku i po
+angielsku.
+
+| Co | Język |
+|---|---|
+| Interfejs panelu | przełącznik **PL / EN** w nagłówku; bez wyboru: język przeglądarki (polski albo angielski) |
+| Komunikaty błędów API | nagłówek `Accept-Language` (panel wysyła wybrany język) |
+| Powiadomienia i e-maile | język odbiorcy: wybór na koncie (zapisywany przełącznikiem), potem język organizacji, potem `FORVIUM_DEFAULT_LOCALE` |
+| Link aktywacyjny | otwiera stronę aktywacji w języku odbiorcy (`?lang=`) |
+| Raport dostępu klienta (PDF) | język organizacji (admin → Organizacje → Dane organizacji) |
+| Raport audytora, e-maile do zespołu bezpieczeństwa | `FORVIUM_DEFAULT_LOCALE` (domyślnie `pl`) |
+
+Tekst źródłowy (polski) jest kluczem tłumaczenia:
+
+* **Backend:** `L("Czas sesji: 1-{n} min.", n=15)` i katalog `forvium/locales/en.py`.
+  Teksty zapisane w bazie po polsku (np. tytuły alertów) są tłumaczone przy wyświetleniu.
+* **Panele:** `tr("Dodano {email} do organizacji.", { email })` i słownik `frontend/tools/en.py`.
+  Plik `shared/i18n-en.js` generuje `python3 tools/en.py > shared/i18n-en.js`.
+
+Kompletność sprawdza CI: `tests/test_i18n.py` (każdy polski tekst w kodzie backendu ma
+tłumaczenie, a tekst z parametrami jest szablonem `L(...)`, nie f-stringiem) oraz
+`frontend/tools/check_i18n.py` (każde `tr()` ma tłumaczenie, w kodzie nie ma polskiego tekstu
+poza `tr()`, parametry `{...}` się zgadzają). Nowy język to nowy słownik i wpis w `LANGS`.
+
 ## Logowanie operatora
 
 Hasło + drugi składnik: kod TOTP albo **klucz bezpieczeństwa (WebAuthn)**. Przy kluczu
@@ -517,6 +543,7 @@ Dostęp awaryjny bez zgody klienta. Domyślnie jest **wyłączony**
 | `METRICS_TOKEN` | — | wymagany `Authorization: Bearer …` dla `/metrics` |
 | `PASSWORD_MIN_LENGTH` | 12 | minimalna długość hasła (nie mniej niż 8) |
 | `BREACHED_PASSWORDS_FILE` | — | opcjonalnie pełna baza Pwned Passwords (posortowane skróty SHA-1) |
+| `DEFAULT_LOCALE` | `pl` | język domyślny: `pl` albo `en` (patrz [Wersje językowe](#wersje-językowe-pl--en)) |
 | `REPORT_INTERVAL_SECONDS` | 3600 | sprawdzanie, czy są raporty dostępu za poprzedni miesiąc do utworzenia (0 = wyłączone) |
 
 ### Wdrożenie

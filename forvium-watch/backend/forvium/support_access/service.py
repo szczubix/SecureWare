@@ -40,6 +40,7 @@ from forvium.support_access.scopes import (
 )
 from forvium.support_access.summary import session_summary, summary_text
 from forvium.support_tickets.service import find_active_ticket, is_ticket_active
+from forvium.core.i18n import L, join
 
 # ---------------------------------------------------------------- pomocnicze
 
@@ -152,7 +153,7 @@ def create_request(
     min_reason = ctx.break_glass.min_justification_length if break_glass else ctx.policy.min_reason_length
     if len((reason or "").strip()) < min_reason:
         raise _deny(ctx, action, "reason_too_short",
-                    f"Podaj szczegółowe uzasadnienie (min. {min_reason} znaków).", status=422, **base)
+                    L("Podaj szczegółowe uzasadnienie (min. {n} znaków).", n=min_reason), status=422, **base)
     if break_glass:
         try:
             incident_category = IncidentCategory(incident_category or "").value
@@ -180,7 +181,7 @@ def create_request(
     duration = duration_minutes or ctx.policy.default_session_minutes
     if duration < 1 or duration > max_minutes:
         raise _deny(ctx, action, "duration_invalid",
-                    f"Czas dostępu musi mieścić się w 1-{max_minutes} min.", status=422, **base)
+                    L("Czas dostępu musi mieścić się w 1-{n} min.", n=max_minutes), status=422, **base)
 
     # Ponowna weryfikacja MFA jako ostatni krok przed zapisem (kod jest jednorazowy).
     _verify_operator_mfa(ctx, operator, mfa_code, action, webauthn=webauthn,
@@ -232,11 +233,12 @@ def create_request(
             ctx.db,
             approvers,
             event="support_access.auto_approved",
-            title=f"Dostęp serwisowy Forvium zatwierdzony automatycznie ({ticket.number})",
-            body=(
-                f"Operator Forvium ({operator.id}) uzyskał dostęp READ_ONLY do organizacji {org.name} "
-                f"na podstawie Waszej zgody stałej. Powód: {req.reason}. Zgoda ważna do "
-                f"{consent.valid_until.isoformat()} UTC. Możesz ją cofnąć: Ustawienia -> Dostęp serwisowy."
+            title=L("Dostęp serwisowy Forvium zatwierdzony automatycznie ({ticket})", ticket=ticket.number),
+            body=L(
+                "Operator Forvium ({operator}) uzyskał dostęp READ_ONLY do organizacji {org} "
+                "na podstawie Waszej zgody stałej. Powód: {reason}. Zgoda ważna do "
+                "{until} UTC. Możesz ją cofnąć: Ustawienia -> Dostęp serwisowy.",
+                operator=operator.id, org=org.name, reason=req.reason, until=consent.valid_until.isoformat(),
             ),
             organization_id=organization_id,
             data={"request_id": req.id, "consent_id": consent.id, "standing_consent_id": standing.id},
@@ -247,11 +249,12 @@ def create_request(
         ctx.db,
         approvers,
         event="support_access.requested",
-        title=f"Forvium prosi o dostęp serwisowy ({ticket.number})",
-        body=(
-            f"Operator Forvium ({operator.id}) prosi o dostęp serwisowy READ_ONLY do organizacji "
-            f"{org.name} na {duration} min. Powód: {req.reason}. Zatwierdź lub odrzuć prośbę "
-            "w aplikacji: Ustawienia -> Dostęp serwisowy."
+        title=L("Forvium prosi o dostęp serwisowy ({ticket})", ticket=ticket.number),
+        body=L(
+            "Operator Forvium ({operator}) prosi o dostęp serwisowy READ_ONLY do organizacji "
+            "{org} na {minutes} min. Powód: {reason}. Zatwierdź lub odrzuć prośbę "
+            "w aplikacji: Ustawienia -> Dostęp serwisowy.",
+            operator=operator.id, org=org.name, minutes=duration, reason=req.reason,
         ),
         organization_id=organization_id,
         data={"request_id": req.id},
@@ -287,7 +290,7 @@ def _auto_approve_from_standing(ctx: Ctx, req: SupportAccessRequest, standing: S
     req.status = RequestStatus.APPROVED
     req.decided_by_user_id = standing.granted_by_user_id
     req.decided_at = now
-    req.decision_note = f"Zatwierdzono automatycznie (zgoda stała {standing.id})"
+    req.decision_note = str(L("Zatwierdzono automatycznie (zgoda stała {id})", id=standing.id))
     consent = SupportConsent(
         request_id=req.id,
         organization_id=req.organization_id,
@@ -404,7 +407,7 @@ def approve_request(
     hours = valid_hours or ctx.policy.default_consent_hours
     if hours < 1 or hours > ctx.policy.max_consent_hours:
         raise _deny(ctx, action, "validity_invalid",
-                    f"Ważność zgody: 1-{ctx.policy.max_consent_hours} h.", status=422, **base)
+                    L("Ważność zgody: 1-{n} h.", n=ctx.policy.max_consent_hours), status=422, **base)
 
     now = clock.now()
     org = ctx.db.get(Organization, organization_id)
@@ -420,10 +423,10 @@ def approve_request(
         ctx.notifications.notify(
             ctx.db, _org_approvers(ctx, organization_id, exclude_user_id=approver.id),
             event="support_access.confirmation_required",
-            title=f"Potwierdź dostęp serwisowy Forvium ({req.ticket_number})",
-            body=(f"{approver.display_name} zatwierdził(a) dostęp serwisowy (zakres: "
-                  f"{', '.join(req.pending_grant['scopes'])}). Wasza organizacja wymaga drugiego potwierdzenia: "
-                  "Ustawienia -> Dostęp serwisowy."),
+            title=L("Potwierdź dostęp serwisowy Forvium ({ticket})", ticket=req.ticket_number),
+            body=L("{name} zatwierdził(a) dostęp serwisowy (zakres: {scopes}). Wasza organizacja wymaga "
+                   "drugiego potwierdzenia: Ustawienia -> Dostęp serwisowy.",
+                   name=approver.display_name, scopes=", ".join(req.pending_grant["scopes"])),
             organization_id=organization_id, data={"request_id": req.id},
         )
         return None
@@ -455,8 +458,9 @@ def approve_request(
     if operator:
         ctx.notifications.notify(
             ctx.db, [operator], event="support_access.approved",
-            title=f"Zgoda na dostęp serwisowy ({req.ticket_number}) udzielona",
-            body=f"Zgoda ważna do {consent.valid_until.isoformat()} UTC, zakres: {', '.join(consent.scopes)}.",
+            title=L("Zgoda na dostęp serwisowy ({ticket}) udzielona", ticket=req.ticket_number),
+            body=L("Zgoda ważna do {until} UTC, zakres: {scopes}.", until=consent.valid_until.isoformat(),
+                   scopes=", ".join(consent.scopes)),
             organization_id=organization_id, data={"request_id": req.id, "consent_id": consent.id},
         )
     ctx.audit.log(
@@ -489,7 +493,7 @@ def reject_request(ctx: Ctx, user: User, *, organization_id: str, request_id: st
     if operator:
         ctx.notifications.notify(
             ctx.db, [operator], event="support_access.rejected",
-            title=f"Prośba o dostęp serwisowy ({req.ticket_number}) odrzucona",
+            title=L("Prośba o dostęp serwisowy ({ticket}) odrzucona", ticket=req.ticket_number),
             body="Klient odrzucił prośbę o dostęp serwisowy.", organization_id=organization_id,
             data={"request_id": req.id},
         )
@@ -548,10 +552,13 @@ def _notify_session_summary(ctx: Ctx, session: SupportSession) -> None:
         ctx.db,
         _org_approvers(ctx, session.organization_id, exclude_user_id=session.operator_user_id),
         event="support_access.session_ended",
-        title=f"Zakończono sesję wsparcia Forvium ({session.ticket_number})",
-        body=(f"Operator Forvium {session.operator_user_id} zakończył sesję wsparcia w trybie tylko do odczytu.\n"
-              + summary_text(summary)
-              + "\nPełna lista operacji: Ustawienia -> Dostęp serwisowy -> Historia sesji."),
+        title=L("Zakończono sesję wsparcia Forvium ({ticket})", ticket=session.ticket_number),
+        body=join("\n", [
+            L("Operator Forvium {operator} zakończył sesję wsparcia w trybie tylko do odczytu.",
+              operator=session.operator_user_id),
+            summary_text(summary),
+            L("Pełna lista operacji: Ustawienia -> Dostęp serwisowy -> Historia sesji."),
+        ]),
         organization_id=session.organization_id,
         data={"session_id": session.id, "summary": summary},
     )
@@ -669,19 +676,22 @@ def start_session(
     ctx.notifications.notify(
         ctx.db, _org_approvers(ctx, req.organization_id, exclude_user_id=operator.id),
         event="support_access.session_started",
-        title=(f"PROCEDURA AWARYJNA: rozpoczęto sesję Forvium Break Glass ({req.ticket_number})"
-               if req.mode == AccessMode.BREAK_GLASS else f"Rozpoczęto sesję wsparcia Forvium ({req.ticket_number})"),
-        body=(f"Operator Forvium {operator.id} rozpoczął sesję wsparcia w trybie tylko do odczytu "
-              f"(zgłoszenie {req.ticket_number}). Sesja wygasa {expires_at.isoformat()} UTC. "
-              "Możesz ją zakończyć lub cofnąć zgodę w każdej chwili: Ustawienia -> Dostęp serwisowy."),
+        title=(L("PROCEDURA AWARYJNA: rozpoczęto sesję Forvium Break Glass ({ticket})", ticket=req.ticket_number)
+               if req.mode == AccessMode.BREAK_GLASS
+               else L("Rozpoczęto sesję wsparcia Forvium ({ticket})", ticket=req.ticket_number)),
+        body=L("Operator Forvium {operator} rozpoczął sesję wsparcia w trybie tylko do odczytu "
+               "(zgłoszenie {ticket}). Sesja wygasa {until} UTC. "
+               "Możesz ją zakończyć lub cofnąć zgodę w każdej chwili: Ustawienia -> Dostęp serwisowy.",
+               operator=operator.id, ticket=req.ticket_number, until=expires_at.isoformat()),
         organization_id=req.organization_id, data={"session_id": session.id},
     )
     if req.mode == AccessMode.BREAK_GLASS:
         from forvium.support_access.break_glass_service import notify_security_team
 
-        notify_security_team(ctx, f"Break Glass: start sesji ({req.ticket_number})",
-                             f"Operator {operator.id} rozpoczął sesję awaryjną {session.id} w organizacji "
-                             f"{req.organization_id} do {expires_at.isoformat()} UTC.")
+        notify_security_team(ctx, L("Break Glass: start sesji ({ticket})", ticket=req.ticket_number),
+                             L("Operator {operator} rozpoczął sesję awaryjną {session} w organizacji "
+                               "{org} do {until} UTC.", operator=operator.id, session=session.id,
+                               org=req.organization_id, until=expires_at.isoformat()))
     ctx.audit.log(
         ctx.db,
         "support.session.started",
@@ -824,7 +834,7 @@ def extend_session(ctx: Ctx, operator: User, *, session_id: str, minutes: int, r
         raise _deny(ctx, action, "extension_limit", "Wykorzystano limit przedłużeń tej sesji.", status=409, **base)
     if not 1 <= minutes <= ctx.policy.max_extension_minutes:
         raise _deny(ctx, action, "duration_invalid",
-                    f"Przedłużenie: 1-{ctx.policy.max_extension_minutes} min.", status=422, **base)
+                    L("Przedłużenie: 1-{n} min.", n=ctx.policy.max_extension_minutes), status=422, **base)
     if len((reason or "").strip()) < ctx.policy.min_reason_length:
         raise _deny(ctx, action, "reason_too_short", "Podaj powód przedłużenia.", status=422, **base)
     total_max = ctx.break_glass.max_total_session_minutes if break_glass else ctx.policy.max_total_session_minutes
@@ -848,17 +858,19 @@ def extend_session(ctx: Ctx, operator: User, *, session_id: str, minutes: int, r
     ctx.notifications.notify(
         ctx.db, _org_approvers(ctx, session.organization_id, exclude_user_id=operator.id),
         event="support_access.session_extended",
-        title=f"Przedłużono sesję wsparcia Forvium ({session.ticket_number})",
-        body=(f"Operator {operator.id} przedłużył sesję tylko do odczytu o {added} min (do "
-              f"{new_expires.isoformat()} UTC). Powód: {reason.strip()}. Możesz ją zakończyć w każdej chwili: "
-              "Ustawienia -> Dostęp serwisowy."),
+        title=L("Przedłużono sesję wsparcia Forvium ({ticket})", ticket=session.ticket_number),
+        body=L("Operator {operator} przedłużył sesję tylko do odczytu o {minutes} min (do "
+               "{until} UTC). Powód: {reason}. Możesz ją zakończyć w każdej chwili: "
+               "Ustawienia -> Dostęp serwisowy.", operator=operator.id, minutes=added,
+               until=new_expires.isoformat(), reason=reason.strip()),
         organization_id=session.organization_id, data={"session_id": session.id},
     )
     if break_glass:
         from forvium.support_access.break_glass_service import notify_security_team
 
-        notify_security_team(ctx, f"Break Glass: przedłużenie sesji ({session.ticket_number})",
-                             f"Sesja {session.id} przedłużona do {new_expires.isoformat()} UTC. Powód: {reason.strip()}")
+        notify_security_team(ctx, L("Break Glass: przedłużenie sesji ({ticket})", ticket=session.ticket_number),
+                             L("Sesja {session} przedłużona do {until} UTC. Powód: {reason}", session=session.id,
+                               until=new_expires.isoformat(), reason=reason.strip()))
     return session
 
 
