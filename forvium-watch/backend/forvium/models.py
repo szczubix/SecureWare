@@ -24,3 +24,4 @@ from forvium.security.anomalies import SecurityAlert  # noqa: F401
 from forvium.support_access.recording import SupportSessionSnapshot  # noqa: F401
 from forvium.support_tickets.models import SupportTicket  # noqa: F401
 from forvium.reports.service import AccessReport  # noqa: F401
+from forvium.identity.activation import AccountActivation  # noqa: F401

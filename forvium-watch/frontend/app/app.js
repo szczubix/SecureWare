@@ -151,6 +151,7 @@
       "Diagnostyka": (pane) => viewDiagnostics(org, pane),
     };
     if (!supportPermissions) {
+      views["Członkowie"] = (pane) => viewMembers(org, pane);
       views["Dostęp serwisowy"] = (pane) => viewSupportAccess(org, pane);
       views["Powiadomienia"] = (pane) => viewNotifications(pane);
     }
@@ -165,6 +166,43 @@
       content.replaceChildren(el("div", { class: "card error" },
         e.code === "forbidden_in_support_mode" ? "Ta sekcja nie jest objęta zgoda na dostęp serwisowy." : e.message));
     }
+  }
+
+  const STATE_LABELS = { active: "aktywne", pending_activation: "czeka na aktywację", blocked: "zablokowane przez Forvium", inactive: "nieaktywne" };
+  const ORG_ROLE_LABELS = { owner: "właściciel", admin: "administrator", member: "członek", viewer: "podgląd" };
+
+  // Czlonkowie organizacji i zaproszenia (nowa osoba aktywuje konto linkiem z e-maila).
+  function viewMembers(org, content) {
+    return guarded(content, async () => {
+      const { members } = await api(`/api/app/orgs/${org.id}/members`);
+      const manage = org.role === "owner" || org.role === "admin";
+      const msg = el("p");
+      const form = el("form", { onsubmit: async (e) => {
+        e.preventDefault();
+        const f = Object.fromEntries(new FormData(form));
+        try {
+          const r = await api(`/api/app/orgs/${org.id}/members`, { method: "POST", body: f });
+          msg.className = "";
+          msg.textContent = r.member.state === "pending_activation"
+            ? `Wysłano zaproszenie na ${r.member.email}. Link aktywacyjny jest ważny 72 godziny.`
+            : `Dodano ${r.member.email} do organizacji.`;
+          viewMembers(org, content);
+        } catch (err) { msg.className = "error"; msg.textContent = err.message; }
+      } },
+        el("label", {}, "E-mail"), el("input", { name: "email", type: "email", required: true }),
+        el("label", {}, "Imię i nazwisko"), el("input", { name: "display_name", required: true, minlength: 2 }),
+        el("label", {}, "Rola"), el("select", { name: "role" },
+          ...["member", "viewer", "admin", ...(org.role === "owner" ? ["owner"] : [])].map((r) => el("option", { value: r }, ORG_ROLE_LABELS[r]))),
+        msg, el("button", { type: "submit" }, "Zaproś"));
+      content.replaceChildren(
+        card(el("h2", {}, "Członkowie"), el("table", {},
+          el("tr", {}, ...["E-mail", "Nazwa", "Rola", "Konto"].map((t) => el("th", {}, t))),
+          ...members.map((m) => el("tr", {}, el("td", {}, m.email), el("td", {}, m.display_name),
+            el("td", {}, ORG_ROLE_LABELS[m.role] || m.role), el("td", {}, STATE_LABELS[m.state] || m.state || "—"))))),
+        manage ? card(el("h3", {}, "Zaproś osobę"),
+          el("p", { class: "muted" }, "Nowa osoba dostanie e-mail z linkiem, ustawi hasło i aplikację uwierzytelniającą. Konta pracowników Forvium nie da się dodać."),
+          form) : "");
+    });
   }
 
   function viewDashboard(org, content) {

@@ -25,7 +25,8 @@ forvium-watch/
 │   │   └── access.py          jedno miejsce uwierzytelniania i autoryzacji (RBAC + RLS)
 │   ├── migrations/            Alembic: 0001 schemat (+ trigger audytu), 0002 RLS i uprawnienia,
 │   │                          0003 szyfrowanie, WebAuthn, dwie osoby, przedłużenia, alerty, nagrania,
-│   │                          0004 heartbeat zadań w tle, 0005 raporty dostępu
+│   │                          0004 heartbeat zadań w tle, 0005 raporty dostępu,
+│   │                          0006 aktywacja kont, blokady, zatwierdzanie ról
 │   └── tests/
 ├── deploy/             role PostgreSQL, gateway (routing po hoście, limity zapytań), kopie zapasowe,
 │                       monitoring (Prometheus, reguły alertów, Alertmanager, Grafana)
@@ -79,7 +80,8 @@ w aplikacji uwierzytelniającej są w `docker compose logs migrate`.
 | `ola@forvium.com` | Support L2 (prośby, Break Glass) |
 | `piotr@forvium.com` | Support L1 (bez CVE) |
 | `marta@forvium.com` | kierownik supportu (nadzór sesji, audyt) |
-| `ewa@forvium.com`, `tomasz@forvium.com` | oficerowie bezpieczeństwa (zatwierdzanie i przegląd Break Glass) |
+| `ewa@forvium.com`, `tomasz@forvium.com` | oficerowie bezpieczeństwa (zatwierdzanie i przegląd Break Glass, zatwierdzanie ról uprzywilejowanych) |
+| `adam@forvium.com` | administrator platformy (organizacje, konta, operatorzy, zgłoszenia) |
 
 Break Glass jest domyślnie wyłączony. Żeby go włączyć lokalnie, uruchom
 `FORVIUM_BREAK_GLASS_ENABLED=true docker compose up`.
@@ -177,6 +179,34 @@ docker compose exec backup python3 /usr/local/bin/forvium_backup.py restore 2026
 Odtwarzanie na nowym klastrze: najpierw `deploy/postgres/roles.sql` (role muszą istnieć,
 żeby zachować właściciela i uprawnienia), potem `restore`, a na koniec przełącz
 `FORVIUM_DATABASE_URL` na odtworzoną bazę.
+
+## Zarządzanie platformą (panel admin)
+
+| Zakładka | Kto | Co |
+|---|---|---|
+| Organizacje | `platform.users.read`; zmiany: `platform.orgs.manage` | lista, szczegóły (członkowie, jednostki, zgłoszenia), nowa organizacja z pierwszym właścicielem, zmiana nazwy i planu |
+| Użytkownicy → Konto | `platform.users.manage` | blokada/odblokowanie konta klienta (z powodem), ponowny link aktywacyjny |
+| Zgłoszenia | `platform.tickets.read`; zmiany: `platform.tickets.manage` (kierownik supportu, administrator) | lista, nowe zgłoszenie, statusy; zamknięcie kończy sesje wsparcia na tym zgłoszeniu |
+| Operatorzy | `platform.operators.manage` (administrator), `platform.operators.approve` (oficer bezpieczeństwa) | nowi operatorzy, zmiana roli, blokada, zatwierdzanie ról uprzywilejowanych |
+
+Zasady:
+
+* **Forvium nie zna haseł ani MFA.** Nowe konto (właściciel organizacji, operator, osoba
+  zaproszona przez klienta) dostaje e-mailem jednorazowy link (`activate.html`, ważny 72 h).
+  Link nie wraca w API do operatora, który zakłada konto. Użytkownik sam ustawia hasło i
+  aplikację uwierzytelniającą (sekret potwierdzony kodem).
+* **Członkami istniejącej organizacji zarządza klient** (app → Członkowie → Zaproś). Forvium
+  może tylko zablokować konto, np. przy przejęciu. Blokada wylogowuje użytkownika i kończy
+  sesje wsparcia, w których jest on użytkownikiem referencyjnym, a administratorzy
+  organizacji dostają powiadomienie. Konta operatora nie da się dodać do organizacji klienta.
+* **Role uprzywilejowane** (administrator platformy, oficer bezpieczeństwa) nadaje się
+  istniejącemu operatorowi. Zmiana czeka na zatwierdzenie przez oficera bezpieczeństwa
+  (inna osoba niż zlecający i niż operator, którego dotyczy). Odebranie roli działa od razu.
+* Nikt nie zmienia własnej roli ani nie blokuje własnego konta. Ostatniego aktywnego
+  administratora platformy nie da się zablokować ani zdegradować.
+* Każda zmiana (oprócz statusu zgłoszenia) wymaga ponownej weryfikacji: klucz WebAuthn
+  albo jednorazowy kod TOTP. Każda trafia do audytu (`platform.*`, `identity.activation.*`),
+  a zainteresowane osoby dostają powiadomienie.
 
 ## Logowanie operatora
 

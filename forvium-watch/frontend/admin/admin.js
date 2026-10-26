@@ -23,7 +23,16 @@
     bgRequest: "platform.break_glass.request",
     bgApprove: "platform.break_glass.approve",
     bgReview: "platform.break_glass.review",
+    usersRead: "platform.users.read",
+    usersManage: "platform.users.manage",
+    orgsManage: "platform.orgs.manage",
+    ticketsRead: "platform.tickets.read",
+    ticketsManage: "platform.tickets.manage",
+    operatorsManage: "platform.operators.manage",
+    operatorsApprove: "platform.operators.approve",
   };
+  const STATE_LABELS = { active: "aktywne", pending_activation: "czeka na aktywację", blocked: "zablokowane", inactive: "nieaktywne" };
+  const TICKET_LABELS = { open: "otwarte", in_progress: "w toku", closed: "zamknięte" };
   let me = null;
 
   function el(tag, attrs = {}, ...children) {
@@ -155,7 +164,11 @@
   };
   function tabs() {
     const items = [];
-    if (can(P.request)) items.push(["Użytkownicy", () => renderUsers()], ["Moje prośby", () => renderMyRequestsPage()]);
+    if (can(P.usersRead)) items.push(["Użytkownicy", () => renderUsers()]);
+    if (can(P.request)) items.push(["Moje prośby", () => renderMyRequestsPage()]);
+    if (can(P.usersRead)) items.push(["Organizacje", () => renderOrganizations()]);
+    if (can(P.ticketsRead)) items.push(["Zgłoszenia", () => renderTickets()]);
+    if (can(P.operatorsManage) || can(P.operatorsApprove)) items.push(["Operatorzy", () => renderOperators()]);
     if (can(P.oversight)) items.push(["Nadzór sesji", () => renderOversight()], ["Alerty", () => renderAlerts()]);
     if (can(P.audit)) items.push(["Audyt", () => renderAudit()], ["Raporty", () => renderReports()]);
     if (can(P.bgApprove) || can(P.bgReview)) items.push(["Break Glass", () => renderBreakGlass()]);
@@ -195,7 +208,8 @@
     search.onchange = () => renderUsers(search.value);
     show(
       card(el("h2", {}, "Użytkownicy"), search),
-      card(table(["E-mail", "Nazwa", ""], users.map((u) => el("tr", {}, el("td", {}, u.email), el("td", {}, u.display_name),
+      card(table(["E-mail", "Nazwa", "Konto", ""], users.map((u) => el("tr", {}, el("td", {}, u.email), el("td", {}, u.display_name),
+        el("td", {}, el("span", { class: "pill" + (u.state === "blocked" ? " sev-high" : "") }, STATE_LABELS[u.state] || u.state)),
         el("td", {}, el("button", { class: "secondary", onclick: () => renderUserDetail(u.id) }, "Szczegóły")))))));
   }
 
@@ -274,9 +288,219 @@
 
     show(
       card(el("a", { onclick: () => renderUsers() }, "← Użytkownicy"),
-        el("h2", {}, u.display_name), el("p", { class: "muted" }, u.email, " · ID ", u.id)),
-      detail.organizations.length ? form : el("div", { class: "card muted" }, "Użytkownik nie należy do żadnej organizacji."));
-    if (detail.organizations.length) await loadTickets();
+        el("h2", {}, u.display_name), el("p", { class: "muted" }, u.email, " · ID ", u.id),
+        el("p", {}, "Konto: ", el("strong", {}, STATE_LABELS[u.state] || u.state), u.blocked_reason ? ` (powód: ${u.blocked_reason})` : "")),
+      accountCard(u, () => renderUserDetail(userId)),
+      !can(P.request) ? "" : u.state !== "active" ? el("div", { class: "card muted" }, "Konto nie jest aktywne - dostęp serwisowy niedostępny.")
+        : detail.organizations.length ? form : el("div", { class: "card muted" }, "Użytkownik nie należy do żadnej organizacji."));
+    if (detail.organizations.length && can(P.request) && u.state === "active") await loadTickets();
+  }
+
+  // Wspolne wywolanie operacji wymagajacej ponownej weryfikacji (klucz albo kod MFA).
+  async function guarded(what, path, method, body, done) {
+    try {
+      const proof = await stepUp(what);
+      if (!proof) return null;
+      const r = await api(path, { method, body: { ...body, ...proof } });
+      if (done) done(r);
+      return r;
+    } catch (e) { alert(e.message); return null; }
+  }
+
+  // Blokada / odblokowanie / ponowna aktywacja konta klienta (platform.users.manage).
+  function accountCard(u, reload) {
+    if (!can(P.usersManage)) return "";
+    const actions = el("div", { class: "row" });
+    if (u.state === "blocked") {
+      actions.append(el("button", { class: "secondary", onclick: () => guarded("Odblokowanie konta " + u.email,
+        `/api/admin/users/${u.id}/unblock`, "POST", {}, reload) }, "Odblokuj konto"));
+    } else {
+      actions.append(el("button", { class: "danger", onclick: () => {
+        const reason = prompt("Powód blokady (zobaczą go administratorzy organizacji klienta):");
+        if (reason) guarded("Blokada konta " + u.email, `/api/admin/users/${u.id}/block`, "POST", { reason }, reload);
+      } }, "Zablokuj konto"));
+    }
+    if (u.state === "pending_activation") {
+      actions.append(el("button", { class: "secondary", onclick: () => guarded("Nowy link aktywacyjny dla " + u.email,
+        `/api/admin/users/${u.id}/resend-activation`, "POST", {}, () => alert("Wysłano nowy link na adres " + u.email)) }, "Wyślij ponownie link aktywacyjny"));
+    }
+    return card(el("h3", {}, "Konto"),
+      el("p", { class: "muted" }, "Blokada wylogowuje użytkownika i kończy sesje wsparcia, w których jest użytkownikiem referencyjnym. Forvium nie zmienia haseł ani MFA klientów."),
+      actions);
+  }
+
+  // ---------------------------------------------------------------- organizacje
+  async function renderOrganizations(q = "") {
+    const show = begin();
+    try {
+      const { organizations, plans } = await api("/api/admin/organizations?q=" + encodeURIComponent(q));
+      const search = el("input", { placeholder: "Szukaj po nazwie", value: q });
+      search.onchange = () => renderOrganizations(search.value);
+      const rows = organizations.map((o) => el("tr", {}, el("td", {}, o.name), el("td", {}, o.subscription_plan),
+        el("td", {}, String(o.members)), el("td", {}, String(o.open_tickets)), el("td", {}, o.dual_approval ? "tak" : "nie"),
+        el("td", {}, el("button", { class: "secondary", onclick: () => renderOrganizationDetail(o.id) }, "Szczegóły"))));
+      let createCard = "";
+      if (can(P.orgsManage)) {
+        const form = el("form", { onsubmit: async (e) => {
+          e.preventDefault();
+          const f = Object.fromEntries(new FormData(form));
+          const r = await guarded(`Utworzenie organizacji ${f.name}`, "/api/admin/organizations", "POST", f);
+          if (r) {
+            alert(r.owner.state === "pending_activation"
+              ? `Utworzono organizację. Link aktywacyjny wysłano na ${r.owner.email} (ważny 72 h).`
+              : `Utworzono organizację. ${r.owner.email} został właścicielem.`);
+            renderOrganizationDetail(r.organization.id);
+          }
+        } },
+          el("label", {}, "Nazwa"), el("input", { name: "name", required: true, minlength: 2, maxlength: 200 }),
+          el("label", {}, "Plan"), el("select", { name: "subscription_plan" }, ...plans.map((p) => el("option", { value: p }, p))),
+          el("label", {}, "E-mail właściciela"), el("input", { name: "owner_email", type: "email", required: true }),
+          el("label", {}, "Imię i nazwisko właściciela"), el("input", { name: "owner_name", required: true, minlength: 2 }),
+          el("p", { class: "muted" }, "Właściciel sam ustawi hasło i MFA (link w e-mailu). Forvium nie poznaje jego hasła."),
+          el("button", { type: "submit" }, "Utwórz organizację"));
+        createCard = card(el("h3", {}, "Nowa organizacja"), form);
+      }
+      show(card(el("h2", {}, "Organizacje"), search),
+        card(table(["Nazwa", "Plan", "Członkowie", "Otwarte zgłoszenia", "2 osoby", ""], rows)), createCard);
+    } catch (e) { show(errorCard(e)); }
+  }
+
+  async function renderOrganizationDetail(orgId) {
+    const show = begin();
+    try {
+      const d = await api("/api/admin/organizations/" + orgId);
+      const o = d.organization;
+      let editCard = "";
+      if (can(P.orgsManage)) {
+        const { plans } = await api("/api/admin/organizations?q=");
+        const form = el("form", { onsubmit: (e) => {
+          e.preventDefault();
+          const f = Object.fromEntries(new FormData(form));
+          guarded(`Zmiana danych organizacji ${o.name}`, "/api/admin/organizations/" + o.id, "PUT", f, () => renderOrganizationDetail(o.id));
+        } },
+          el("label", {}, "Nazwa"), el("input", { name: "name", value: o.name, required: true, minlength: 2 }),
+          el("label", {}, "Plan"), el("select", { name: "subscription_plan" }, ...plans.map((p) => el("option", { value: p, selected: p === o.subscription_plan }, p))),
+          el("p", { class: "muted" }, "Administratorzy organizacji dostaną powiadomienie o zmianie."),
+          el("button", { type: "submit" }, "Zapisz"));
+        editCard = card(el("h3", {}, "Dane organizacji"), form);
+      }
+      show(
+        card(el("a", { onclick: () => renderOrganizations() }, "← Organizacje"), el("h2", {}, o.name),
+          el("p", { class: "muted" }, "Plan: ", o.subscription_plan, " · utworzona ", fmt(o.created_at), " · zatwierdzanie przez dwie osoby: ", o.dual_approval ? "tak" : "nie")),
+        card(el("h3", {}, "Członkowie"), el("p", { class: "muted" }, "Członkami zarządza klient (zaproszenia w app). Forvium może zablokować konto."),
+          table(["E-mail", "Nazwa", "Rola", "Konto", ""], d.members.map((m) => el("tr", {}, el("td", {}, m.email), el("td", {}, m.display_name),
+            el("td", {}, m.role), el("td", {}, STATE_LABELS[m.state] || m.state),
+            el("td", {}, el("button", { class: "secondary", onclick: () => renderUserDetail(m.user_id) }, "Konto")))))),
+        card(el("h3", {}, "Jednostki"), el("ul", {}, ...d.units.map((u) => el("li", {}, u.name)))),
+        card(el("h3", {}, "Zgłoszenia"), table(["Numer", "Temat", "Status", "Utworzono"], d.tickets.map((t) => el("tr", {},
+          el("td", {}, t.number), el("td", {}, t.subject), el("td", {}, TICKET_LABELS[t.status] || t.status), el("td", {}, fmt(t.created_at))))),
+          can(P.ticketsManage) ? el("button", { class: "secondary", onclick: () => renderTickets(o.id) }, "Nowe zgłoszenie") : ""),
+        editCard);
+    } catch (e) { show(errorCard(e)); }
+  }
+
+  // ----------------------------------------------------------------- zgloszenia
+  async function renderTickets(newForOrg = null, status = "") {
+    const show = begin();
+    try {
+      const { tickets } = await api("/api/admin/tickets/all?status=" + encodeURIComponent(status));
+      const sel = el("select", {}, ...[["", "Wszystkie"], ["open", "Otwarte"], ["in_progress", "W toku"], ["closed", "Zamknięte"]]
+        .map(([v, l]) => el("option", { value: v, selected: v === status }, l)));
+      sel.onchange = () => renderTickets(null, sel.value);
+      const setStatus = (t, st) => async () => {
+        if (st === "closed" && !confirm(`Zamknąć ${t.number}? Aktywne sesje wsparcia na tym zgłoszeniu zostaną zakończone.`)) return;
+        try {
+          const r = await api(`/api/admin/tickets/${t.id}/status`, { method: "PUT", body: { status: st } });
+          if (r.support_sessions_ended) alert(`Zakończono sesje wsparcia: ${r.support_sessions_ended}.`);
+          renderTickets(null, status);
+        } catch (e) { alert(e.message); }
+      };
+      const rows = tickets.map((t) => el("tr", {}, el("td", {}, t.number), el("td", {}, t.organization_name || t.organization_id),
+        el("td", {}, t.subject), el("td", {}, el("span", { class: "pill" }, TICKET_LABELS[t.status] || t.status)), el("td", {}, fmt(t.created_at)),
+        el("td", { class: "row" }, ...(!can(P.ticketsManage) ? [] : t.status === "closed"
+          ? [el("button", { class: "secondary", onclick: setStatus(t, "open") }, "Otwórz ponownie")]
+          : [t.status === "open" ? el("button", { class: "secondary", onclick: setStatus(t, "in_progress") }, "W toku") : "",
+             el("button", { class: "danger", onclick: setStatus(t, "closed") }, "Zamknij")]))));
+      let createCard = "";
+      if (can(P.ticketsManage)) {
+        const { organizations } = await api("/api/admin/organizations?q=");
+        const form = el("form", { onsubmit: async (e) => {
+          e.preventDefault();
+          const f = Object.fromEntries(new FormData(form));
+          const r = await guarded("Nowe zgłoszenie", "/api/admin/tickets", "POST", f);
+          if (r) { alert(`Utworzono zgłoszenie ${r.ticket.number}.`); renderTickets(); }
+        } },
+          el("label", {}, "Organizacja"), el("select", { name: "organization_id", required: true },
+            ...organizations.map((o) => el("option", { value: o.id, selected: o.id === newForOrg }, o.name))),
+          el("label", {}, "Temat"), el("input", { name: "subject", required: true, minlength: 3, maxlength: 300 }),
+          el("p", { class: "muted" }, "Dostęp serwisowy zawsze wymaga otwartego zgłoszenia danej organizacji. Zamknięcie zgłoszenia kończy powiązane sesje."),
+          el("button", { type: "submit" }, "Utwórz zgłoszenie"));
+        createCard = card(el("h3", {}, "Nowe zgłoszenie"), form);
+      }
+      show(card(el("h2", {}, "Zgłoszenia"), el("label", {}, "Status"), sel),
+        card(table(["Numer", "Organizacja", "Temat", "Status", "Utworzono", ""], rows)), createCard);
+    } catch (e) { show(errorCard(e)); }
+  }
+
+  // ------------------------------------------------------------------ operatorzy
+  async function renderOperators() {
+    const show = begin();
+    try {
+      const { operators, roles, privileged_roles: privileged } = await api("/api/admin/operators");
+      const reload = () => renderOperators();
+      const roleSelect = (current) => el("select", {}, ...Object.entries(roles).map(([v, l]) =>
+        el("option", { value: v, selected: v === current }, l + (privileged.includes(v) ? " (wymaga zatwierdzenia)" : ""))));
+      const rows = operators.map((o) => {
+        const actions = el("td", { class: "row" });
+        const self = o.id === me.user.id;
+        if (can(P.operatorsManage) && !self) {
+          const sel = roleSelect(o.role);
+          actions.append(sel, el("button", { class: "secondary", onclick: () => guarded(`Zmiana roli ${o.email}`,
+            `/api/admin/operators/${o.id}/role`, "PUT", { role: sel.value },
+            (r) => { if (r.status === "pending_approval") alert("Rola uprzywilejowana czeka na zatwierdzenie przez oficera bezpieczeństwa."); reload(); }) }, "Zmień rolę"));
+          actions.append(o.state === "blocked"
+            ? el("button", { class: "secondary", onclick: () => guarded(`Odblokowanie ${o.email}`, `/api/admin/operators/${o.id}/unblock`, "POST", {}, reload) }, "Odblokuj")
+            : el("button", { class: "danger", onclick: () => {
+              const reason = prompt("Powód blokady operatora:");
+              if (reason) guarded(`Blokada ${o.email}`, `/api/admin/operators/${o.id}/block`, "POST", { reason }, reload);
+            } }, "Zablokuj"));
+          if (o.state === "pending_activation") {
+            actions.append(el("button", { class: "secondary", onclick: () => guarded(`Nowy link aktywacyjny dla ${o.email}`,
+              `/api/admin/users/${o.id}/resend-activation`, "POST", {}, () => alert("Wysłano nowy link.")) }, "Wyślij link ponownie"));
+          }
+        }
+        if (o.pending_role && can(P.operatorsApprove) && !self && o.pending_role_requested_by !== me.user.id) {
+          actions.append(
+            el("button", { onclick: () => guarded(`Zatwierdzenie roli ${roles[o.pending_role]} dla ${o.email}`, `/api/admin/operators/${o.id}/role/approve`, "POST", {}, reload) }, "Zatwierdź rolę"),
+            el("button", { class: "danger", onclick: () => {
+              const reason = prompt("Powód odrzucenia (opcjonalnie):");
+              if (reason !== null) guarded(`Odrzucenie roli dla ${o.email}`, `/api/admin/operators/${o.id}/role/reject`, "POST", { reason }, reload);
+            } }, "Odrzuć"));
+        }
+        return el("tr", {}, el("td", {}, o.email, self ? " (Ty)" : ""), el("td", {}, o.display_name), el("td", {}, o.role_label),
+          el("td", {}, o.pending_role ? el("span", { class: "danger-text" }, "→ ", roles[o.pending_role], " (czeka)") : "—"),
+          el("td", {}, el("span", { class: "pill" + (o.state === "blocked" ? " sev-high" : "") }, STATE_LABELS[o.state] || o.state)),
+          el("td", {}, o.has_security_key ? "tak" : "nie"), actions);
+      });
+      let createCard = "";
+      if (can(P.operatorsManage)) {
+        const form = el("form", { onsubmit: async (e) => {
+          e.preventDefault();
+          const f = Object.fromEntries(new FormData(form));
+          const r = await guarded(`Nowy operator ${f.email}`, "/api/admin/operators", "POST", f);
+          if (r) { alert(`Link aktywacyjny wysłano na ${r.operator.email}.`); reload(); }
+        } },
+          el("label", {}, "E-mail"), el("input", { name: "email", type: "email", required: true }),
+          el("label", {}, "Imię i nazwisko"), el("input", { name: "display_name", required: true, minlength: 2 }),
+          el("label", {}, "Rola"), el("select", { name: "role" }, ...Object.entries(roles).filter(([v]) => !privileged.includes(v)).map(([v, l]) => el("option", { value: v }, l))),
+          el("p", { class: "muted" }, "Operator sam ustawi hasło i MFA. Role uprzywilejowane nadaje się później - wymagają zatwierdzenia przez oficera bezpieczeństwa."),
+          el("button", { type: "submit" }, "Dodaj operatora"));
+        createCard = card(el("h3", {}, "Nowy operator"), form);
+      }
+      show(card(el("h2", {}, "Operatorzy Forvium"),
+          el("p", { class: "muted" }, "Każda zmiana wymaga ponownej weryfikacji i trafia do audytu. Nie możesz zmienić własnej roli ani zablokować własnego konta.")),
+        card(table(["E-mail", "Nazwa", "Rola", "Zmiana roli", "Konto", "Klucz", ""], rows)), createCard);
+    } catch (e) { show(errorCard(e)); }
   }
 
   // ------------------------------------------------------------ moje prosby

@@ -25,6 +25,7 @@ TOTP = {
     "marta": "JBSWY3DPEHPK3PXPMARTAMMM",
     "ewa": "JBSWY3DPEHPK3PXPEWAEEEEE",
     "tomasz": "JBSWY3DPEHPK3PXPTOMASZTT",
+    "adam": "JBSWY3DPEHPK3PXPADAMAAAA",
 }
 
 
@@ -34,7 +35,7 @@ def seed(db: Session) -> dict:
 
     def user(key: str, email: str, name: str, platform_role: str | None = None) -> User:
         u = User(email=email, display_name=name, password_hash=pw, mfa_secret=TOTP[key], is_active=True,
-                 platform_role=platform_role, created_at=now)
+                 platform_role=platform_role, created_at=now, activated_at=now)
         db.add(u)
         return u
 
@@ -47,6 +48,7 @@ def seed(db: Session) -> dict:
     marta = user("marta", "marta@forvium.com", "Marta (Kierownik supportu)", platform_role="support_lead")
     ewa = user("ewa", "ewa@forvium.com", "Ewa (Oficer bezpieczeństwa)", platform_role="security_officer")
     tomasz = user("tomasz", "tomasz@forvium.com", "Tomasz (Oficer bezpieczeństwa)", platform_role="security_officer")
+    adam = user("adam", "adam@forvium.com", "Adam (Administrator platformy)", platform_role="platform_admin")
 
     acme = Organization(name="Acme Sp. z o.o.", subscription_plan="business", created_at=now,
                         settings={"timezone": "Europe/Warsaw", "scan_interval_h": 6},
@@ -102,7 +104,7 @@ def seed(db: Session) -> dict:
 
     return {
         "users": {"alice": alice, "bob": bob, "dorota": dorota, "carol": carol, "ola": ola, "piotr": piotr,
-                  "marta": marta, "ewa": ewa, "tomasz": tomasz},
+                  "marta": marta, "ewa": ewa, "tomasz": tomasz, "adam": adam},
         "orgs": {"acme": acme, "beta": beta},
         "units": {"hq": hq, "waw": waw, "krk": krk, "beta": beta_unit},
         "tickets": {"acme": t_acme, "acme_closed": t_closed, "beta": t_beta},

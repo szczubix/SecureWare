@@ -39,3 +39,7 @@ class NotificationEngine:
             )
             if email:
                 db.add(EmailOutbox(to_address=user.email, subject=title, body=body, created_at=now))
+
+    def email_only(self, db: Session, user: User, *, subject: str, body: str) -> None:
+        """Sam e-mail, bez kopii w aplikacji (np. link aktywacyjny, ktory ma trafic tylko do skrzynki)."""
+        db.add(EmailOutbox(to_address=user.email, subject=subject, body=body, created_at=clock.now()))

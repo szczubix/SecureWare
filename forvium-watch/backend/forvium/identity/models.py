@@ -33,6 +33,15 @@ class User(Base):
     # None = zwykly klient. Wartosci: patrz platform_admin.rbac.PlatformRole
     platform_role: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime)
+    # None = konto czeka na aktywacje (haslo i MFA ustawia sam uzytkownik linkiem z e-maila).
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Blokada przez Forvium (incydent, naduzycie); is_active=False.
+    blocked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    blocked_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Nadanie roli uprzywilejowanej operatorowi czeka na zatwierdzenie oficera bezpieczenstwa.
+    pending_platform_role: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    pending_role_requested_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    pending_role_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class UserSession(Base):

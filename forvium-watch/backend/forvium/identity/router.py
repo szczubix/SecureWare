@@ -222,3 +222,46 @@ def webauthn_remove(credential_pk: str, body: StepUpIn, op: OperatorPrincipal = 
     _verify_operator_mfa(ctx, op.user, body.mfa_code, "identity.webauthn.remove", webauthn=body.webauthn)
     webauthn.remove_credential(ctx, op.user, credential_pk)
     return {"ok": True}
+
+
+# ------------------------------------------------------- aktywacja kont (bez logowania)
+
+
+class ActivationInfoIn(BaseModel):
+    token: str
+
+
+class ActivationCompleteIn(BaseModel):
+    token: str
+    password: str
+    mfa_code: str
+
+
+@app_router.post("/activation/info")
+def app_activation_info(body: ActivationInfoIn, ctx: Ctx = Depends(get_ctx)):
+    from forvium.identity import activation
+
+    return activation.info(ctx, body.token, "user")
+
+
+@app_router.post("/activation/complete")
+def app_activation_complete(body: ActivationCompleteIn, ctx: Ctx = Depends(get_ctx)):
+    from forvium.identity import activation
+
+    activation.complete(ctx, body.token, "user", body.password, body.mfa_code)
+    return {"ok": True}
+
+
+@admin_router.post("/activation/info")
+def admin_activation_info(body: ActivationInfoIn, ctx: Ctx = Depends(get_ctx)):
+    from forvium.identity import activation
+
+    return activation.info(ctx, body.token, "operator")
+
+
+@admin_router.post("/activation/complete")
+def admin_activation_complete(body: ActivationCompleteIn, ctx: Ctx = Depends(get_ctx)):
+    from forvium.identity import activation
+
+    activation.complete(ctx, body.token, "operator", body.password, body.mfa_code)
+    return {"ok": True}

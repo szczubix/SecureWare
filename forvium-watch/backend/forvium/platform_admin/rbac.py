@@ -17,6 +17,13 @@ class PlatformPermission(StrEnum):
     BREAK_GLASS_REQUEST = "platform.break_glass.request"
     BREAK_GLASS_APPROVE = "platform.break_glass.approve"
     BREAK_GLASS_REVIEW = "platform.break_glass.review"
+    # Zarzadzanie platforma (admin.forvium.com).
+    ORGS_MANAGE = "platform.orgs.manage"
+    USERS_MANAGE = "platform.users.manage"  # blokada/odblokowanie kont klientow, ponowna aktywacja
+    TICKETS_MANAGE = "platform.tickets.manage"
+    OPERATORS_MANAGE = "platform.operators.manage"
+    # Zatwierdzanie nadania roli uprzywilejowanej (4 oczy) - oficer bezpieczenstwa.
+    OPERATORS_APPROVE = "platform.operators.approve"
 
 
 class PlatformRole(StrEnum):
@@ -43,6 +50,9 @@ PLATFORM_ROLE_PERMISSIONS: dict[PlatformRole, frozenset[PlatformPermission]] = {
         PlatformPermission.AUDIT_READ,
         PlatformPermission.SUPPORT_OVERSIGHT,
         PlatformPermission.BREAK_GLASS_REQUEST,
+        # Zgloszenia zaklada i zamyka kierownik (dostep serwisowy wymaga otwartego zgloszenia,
+        # wiec operator L1/L2 nie tworzy sobie podstawy dostepu sam).
+        PlatformPermission.TICKETS_MANAGE,
     },
     # Oficer bezpieczenstwa zatwierdza i przeglada Break Glass, ale sam nie otwiera sesji.
     PlatformRole.SECURITY_OFFICER: frozenset(
@@ -53,6 +63,7 @@ PLATFORM_ROLE_PERMISSIONS: dict[PlatformRole, frozenset[PlatformPermission]] = {
             PlatformPermission.SUPPORT_OVERSIGHT,
             PlatformPermission.BREAK_GLASS_APPROVE,
             PlatformPermission.BREAK_GLASS_REVIEW,
+            PlatformPermission.OPERATORS_APPROVE,
         }
     ),
     # Administrator platformy nie uczestniczy w Break Glass (rozdzial obowiazkow).
@@ -62,9 +73,14 @@ PLATFORM_ROLE_PERMISSIONS: dict[PlatformRole, frozenset[PlatformPermission]] = {
             PlatformPermission.BREAK_GLASS_REQUEST,
             PlatformPermission.BREAK_GLASS_APPROVE,
             PlatformPermission.BREAK_GLASS_REVIEW,
+            # Nie zatwierdza nadania rol uprzywilejowanych, ktore sam zleca.
+            PlatformPermission.OPERATORS_APPROVE,
         }
     ),
 }
+
+# Role, ktorych nadanie wymaga zatwierdzenia przez oficera bezpieczenstwa.
+PRIVILEGED_ROLES = frozenset({PlatformRole.PLATFORM_ADMIN, PlatformRole.SECURITY_OFFICER})
 
 
 def platform_permissions(role: str | None) -> frozenset[PlatformPermission]:

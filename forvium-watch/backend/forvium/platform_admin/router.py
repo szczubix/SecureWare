@@ -23,8 +23,10 @@ def list_users(q: str = "", op: OperatorPrincipal = Depends(require_platform_per
     if q:
         like = f"%{q.lower()}%"
         stmt = stmt.where(or_(User.email.ilike(like), User.display_name.ilike(like)))
-    return {"users": [{"id": u.id, "email": u.email, "display_name": u.display_name, "is_active": u.is_active}
-                      for u in ctx.db.scalars(stmt)]}
+    from forvium.platform_admin.manage import _account_state
+
+    return {"users": [{"id": u.id, "email": u.email, "display_name": u.display_name, "is_active": u.is_active,
+                       "state": _account_state(u)} for u in ctx.db.scalars(stmt)]}
 
 
 @router.get("/users/{user_id}")
@@ -36,8 +38,11 @@ def user_detail(user_id: str, op: OperatorPrincipal = Depends(require_platform_p
     rows = ctx.db.execute(select(Organization, Membership.role)
                           .join(Membership, Membership.organization_id == Organization.id)
                           .where(Membership.user_id == user.id, Organization.deleted_at.is_(None))).all()
+    from forvium.platform_admin.manage import _account_state
+
     return {
-        "user": {"id": user.id, "email": user.email, "display_name": user.display_name, "is_active": user.is_active},
+        "user": {"id": user.id, "email": user.email, "display_name": user.display_name, "is_active": user.is_active,
+                 "state": _account_state(user), "blocked_reason": user.blocked_reason},
         "organizations": [{"id": o.id, "name": o.name, "role": r} for o, r in rows],
     }
 

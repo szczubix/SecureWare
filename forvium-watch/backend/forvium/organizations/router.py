@@ -7,7 +7,7 @@ Te same deklaracje obowiazuja klienta i sesje wsparcia.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from forvium.access import OrgAccess, require_org_permission
@@ -106,8 +106,10 @@ def members(access: OrgAccess = Depends(require_org_permission(P.MEMBERS_READ)),
         select(User, Membership.role).join(Membership, Membership.user_id == User.id)
         .where(Membership.organization_id == access.organization.id)
     ).all()
-    return {"members": [{"user_id": u.id, "email": u.email, "display_name": u.display_name, "role": r}
-                        for u, r in rows]}
+    from forvium.platform_admin.manage import _account_state
+
+    return {"members": [{"user_id": u.id, "email": u.email, "display_name": u.display_name, "role": r,
+                         "state": _account_state(u)} for u, r in rows]}
 
 
 # ------------------------------------------------------- zapis i operacje wrazliwe
@@ -136,6 +138,55 @@ def change_role(user_id: str, body: RoleIn, access: OrgAccess = Depends(require_
         raise DomainError(404, "member_not_found", "Nie znaleziono członka.")
     m.role = body.role
     return {"ok": True}
+
+
+class InviteIn(BaseModel):
+    email: str
+    display_name: str = Field(min_length=2, max_length=200)
+    role: OrgRole = OrgRole.MEMBER
+
+
+@router.post("/members")
+def invite_member(body: InviteIn, access: OrgAccess = Depends(require_org_permission(P.MEMBERS_MANAGE)),
+                  ctx: Ctx = Depends(get_ctx)):
+    """Zaproszenie do organizacji. Nowe konto uzytkownik aktywuje sam (link w e-mailu),
+    istniejace konto klienta zostaje dodane od razu. Konta operatorow Forvium nie mozna dodac."""
+    from forvium.identity import activation
+    from forvium.identity.models import User
+    from forvium.platform_admin.manage import EMAIL_RE
+
+    org, actor = access.organization, access.principal.actor
+    email = body.email.strip().lower()
+    if not EMAIL_RE.match(email):
+        raise DomainError(422, "email_invalid", "Nieprawidłowy adres e-mail.")
+    if body.role == OrgRole.OWNER and ctx.db.scalar(select(Membership.role).where(
+            Membership.organization_id == org.id, Membership.user_id == actor.id)) != OrgRole.OWNER:
+        raise DomainError(403, "owner_required", "Właściciela może dodać tylko właściciel.")
+    user = ctx.db.scalar(select(User).where(User.email == email))
+    if user is not None and user.platform_role is not None:
+        raise DomainError(409, "operator_account", "Konta operatora Forvium nie można dodać do organizacji.")
+    if user is not None and ctx.db.scalar(select(Membership.id).where(Membership.organization_id == org.id,
+                                                                      Membership.user_id == user.id)):
+        raise DomainError(409, "already_member", "Ta osoba już należy do organizacji.")
+    new_account = user is None
+    if new_account:
+        user = User(email=email, display_name=body.display_name.strip(),
+                    password_hash=activation.unusable_password_hash(), is_active=False, created_at=clock.now())
+        ctx.db.add(user)
+        ctx.db.flush()
+    ctx.db.add(Membership(organization_id=org.id, user_id=user.id, role=body.role))
+    ctx.db.flush()
+    if new_account:
+        activation.issue(ctx, user, kind="user", created_by=actor.id, actor_type="user")
+    else:
+        ctx.notifications.notify(ctx.db, [user], event="organizations.member_added",
+                                 title=f"Dodano Cię do organizacji {org.name}",
+                                 body=f"Rola: {body.role}. Dodał(a): {actor.email}.", organization_id=org.id)
+    ctx.audit.log(ctx.db, "organizations.member.invited", actor_user_id=actor.id, actor_type="user",
+                  organization_id=org.id, ip_address=ctx.ip,
+                  details={"user_id": user.id, "role": body.role, "new_account": new_account})
+    return {"member": {"user_id": user.id, "email": user.email, "role": body.role,
+                       "state": "pending_activation" if new_account else "active"}}
 
 
 @router.delete("/members/{user_id}")

@@ -43,6 +43,7 @@ RULES: dict[str, Rule] = {
     "mfa_stepup": Rule(5, timedelta(minutes=15), timedelta(minutes=15)),
     "launch_ip": Rule(10, timedelta(minutes=15), timedelta(minutes=15)),
     "support_token_ip": Rule(30, timedelta(minutes=15), timedelta(minutes=15)),
+    "activation_ip": Rule(10, timedelta(minutes=15), timedelta(minutes=15)),
 }
 
 
