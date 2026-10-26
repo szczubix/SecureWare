@@ -20,10 +20,10 @@ from forvium.core.context import Ctx, DomainError
 from forvium.core.crypto import EncryptedString
 from forvium.core.db import Base, new_id
 from forvium.core.security import hash_password, match_totp_step, new_token, new_totp_secret, token_digest
-from forvium.identity.models import User
+from forvium.identity.models import User, UserSession
+from forvium.identity.passwords import min_length
 
 ACTIVATION_TTL = timedelta(hours=72)
-MIN_PASSWORD_LENGTH = 12
 TOKEN_PREFIX = "fwa_"
 
 
@@ -97,14 +97,14 @@ def info(ctx: Ctx, token: str, kind: str) -> dict:
     uri = pyotp.TOTP(activation.pending_mfa_secret).provisioning_uri(name=user.email, issuer_name=issuer)
     return {"email": user.email, "display_name": user.display_name, "mfa_secret": activation.pending_mfa_secret,
             "otpauth_uri": uri, "expires_at": activation.expires_at.isoformat() + "Z",
-            "min_password_length": MIN_PASSWORD_LENGTH}
+            "min_password_length": min_length()}
 
 
 def complete(ctx: Ctx, token: str, kind: str, password: str, mfa_code: str) -> None:
     activation, user = _load(ctx, token, kind)
-    if len(password or "") < MIN_PASSWORD_LENGTH or (password or "").lower() in user.email.lower():
-        raise DomainError(422, "password_too_weak",
-                          f"Hasło musi mieć co najmniej {MIN_PASSWORD_LENGTH} znaków i nie może zawierać adresu e-mail.")
+    from forvium.identity.passwords import validate
+
+    validate(password, email=user.email, display_name=user.display_name)
     step = match_totp_step(activation.pending_mfa_secret, mfa_code, clock.now())
     if step is None:
         ctx.audit.record("identity.activation", outcome="denied", actor_user_id=user.id, actor_type="anonymous",
@@ -116,9 +116,30 @@ def complete(ctx: Ctx, token: str, kind: str, password: str, mfa_code: str) -> N
     user.mfa_secret = activation.pending_mfa_secret
     user.mfa_last_step = step
     user.activated_at = now
+    user.password_changed_at = now
+    user.password_change_required = False
     user.is_active = True
     activation.used_at = now
     activation.pending_mfa_secret = None
     ctx.audit.log(ctx.db, "identity.activation.completed", actor_user_id=user.id,
                   actor_type="operator" if kind == "operator" else "user", ip_address=ctx.ip,
                   details={"kind": kind})
+
+
+def reset_access(ctx: Ctx, user: User, *, created_by: str, actor_type: str) -> None:
+    """Utrata telefonu / hasla: konto wraca do stanu "czeka na aktywacje". Haslo i MFA sa
+    kasowane, sesje uniewaznione, a nowy link aktywacyjny trafia WYLACZNIE na e-mail konta -
+    osoba resetujaca nie moze sie na to konto zalogowac."""
+    from sqlalchemy import update
+
+    now = clock.now()
+    user.password_hash = unusable_password_hash()
+    user.mfa_secret = None
+    user.mfa_last_step = None
+    user.activated_at = None
+    user.is_active = False
+    user.password_change_required = False
+    ctx.db.execute(update(UserSession).where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None))
+                   .values(revoked_at=now))
+    ctx.db.flush()
+    issue(ctx, user, kind="operator" if user.platform_role else "user", created_by=created_by, actor_type=actor_type)

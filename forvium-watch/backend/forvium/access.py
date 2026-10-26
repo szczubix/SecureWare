@@ -55,6 +55,22 @@ def _load_user_session(ctx: Ctx, token: str, kind: str) -> tuple[UserSession, Us
     return sess, user
 
 
+# Jedyne trasy dostepne, dopoki uzytkownik nie zmieni hasla niespelniajacego polityki.
+PASSWORD_CHANGE_ROUTES = frozenset({
+    "/api/app/me", "/api/app/account/password", "/api/app/auth/logout",
+    "/api/admin/me", "/api/admin/account/password", "/api/admin/auth/logout",
+    "/api/admin/webauthn/credentials", "/api/admin/webauthn/assertion/options",
+})
+
+
+def _require_password_ok(request: Request, user: User) -> None:
+    if user.password_change_required:
+        route = getattr(request.scope.get("route"), "path", request.url.path)
+        if route not in PASSWORD_CHANGE_ROUTES:
+            raise DomainError(403, "password_change_required",
+                              "Twoje hasło nie spełnia polityki bezpieczeństwa (np. wystąpiło w wycieku) - zmień je.")
+
+
 # ----------------------------------------------------------------- app.forvium.com
 
 
@@ -110,6 +126,7 @@ def get_app_principal(request: Request, ctx: Ctx = Depends(get_ctx)) -> AppPrinc
         loaded = _load_user_session(ctx, token, "user")
         if loaded:
             sess, user = loaded
+            _require_password_ok(request, user)
             return AppPrincipal("user", user, user, user_session=sess)
 
     if token and token.startswith(OPERATOR_TOKEN_PREFIX):
@@ -189,6 +206,7 @@ def get_operator(request: Request, ctx: Ctx = Depends(get_ctx)) -> OperatorPrinc
         loaded = _load_user_session(ctx, token, "operator")
         if loaded and loaded[1].platform_role:
             sess, user = loaded
+            _require_password_ok(request, user)
             request.state.audit_actor = {
                 "action": "operator.api_call",
                 "actor_user_id": user.id,

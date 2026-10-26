@@ -6,3 +6,4 @@ __pycache__/
 
 # Konfiguracja produkcyjna z sekretami
 .env
+compose.site.yaml

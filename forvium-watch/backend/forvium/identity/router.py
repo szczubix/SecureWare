@@ -71,6 +71,7 @@ def app_me(principal: AppPrincipal = Depends(get_app_principal), ctx: Ctx = Depe
         .where(Membership.user_id == principal.actor.id, Organization.deleted_at.is_(None))
     ).all()
     out["organizations"] = [{"id": o.id, "name": o.name, "role": role} for o, role in rows]
+    out["password_change_required"] = bool(principal.actor.password_change_required)
     return out
 
 
@@ -79,14 +80,38 @@ class PasswordChangeIn(BaseModel):
     new_password: str
 
 
+def _set_password(ctx: Ctx, user: User, session: UserSession | None, new_password: str, actor_type: str) -> None:
+    """Nowe haslo: polityka, wylogowanie pozostalych sesji, powiadomienie."""
+    from forvium.identity.passwords import validate
+
+    if verify_password(user.password_hash, new_password):
+        raise DomainError(422, "password_reused", "Nowe hasło musi być inne niż obecne.")
+    validate(new_password, email=user.email, display_name=user.display_name)
+    user.password_hash = hash_password(new_password)
+    user.password_changed_at = clock.now()
+    user.password_change_required = False
+    others = select(UserSession).where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None))
+    if session is not None:
+        others = others.where(UserSession.id != session.id)
+    for other in ctx.db.scalars(others):
+        other.revoked_at = clock.now()
+    ctx.audit.log(ctx.db, "identity.password.changed", actor_user_id=user.id, actor_type=actor_type, ip_address=ctx.ip)
+    ctx.notifications.notify(ctx.db, [user], event="identity.password.changed", title="Zmieniono hasło",
+                             body="Hasło do Twojego konta zostało zmienione, a pozostałe sesje wylogowane. "
+                                  "Jeśli to nie Ty - natychmiast skontaktuj się z administratorem.")
+
+
 @app_router.post("/account/password")
 def change_password(body: PasswordChangeIn, principal: AppPrincipal = Depends(require_user_principal),
                     ctx: Ctx = Depends(get_ctx)):
     user = principal.actor
-    if not verify_password(user.password_hash, body.current_password) or len(body.new_password) < 12:
-        raise DomainError(422, "password_invalid", "Nieprawidłowe hasło.")
-    user.password_hash = hash_password(body.new_password)
-    ctx.audit.log(ctx.db, "identity.password.changed", actor_user_id=user.id, actor_type="user", ip_address=ctx.ip)
+    who = {"actor_user_id": user.id, "actor_type": "user", "ip_address": ctx.ip}
+    ctx.throttle.check("mfa_stepup", user.id, **who)
+    if not verify_password(user.password_hash, body.current_password):
+        ctx.audit.record("identity.password.change", outcome="denied", details={"reason": "invalid_current"}, **who)
+        ctx.throttle.fail("mfa_stepup", user.id, **who)
+        raise DomainError(422, "password_invalid", "Nieprawidłowe obecne hasło.")
+    _set_password(ctx, user, principal.user_session, body.new_password, "user")
     return {"ok": True}
 
 
@@ -158,7 +183,32 @@ def admin_logout(op: OperatorPrincipal = Depends(get_operator), ctx: Ctx = Depen
 @admin_router.get("/me")
 def admin_me(op: OperatorPrincipal = Depends(get_operator)):
     return {"user": _user_out(op.user), "platform_role": op.user.platform_role,
-            "permissions": sorted(op.permissions)}
+            "permissions": sorted(op.permissions), "password_change_required": bool(op.user.password_change_required)}
+
+
+class OperatorPasswordIn(PasswordChangeIn):
+    mfa_code: str | None = None
+    webauthn: dict | None = None
+
+
+@admin_router.post("/account/password")
+def operator_change_password(body: OperatorPasswordIn, op: OperatorPrincipal = Depends(get_operator),
+                             ctx: Ctx = Depends(get_ctx)):
+    """Zmiana hasla operatora: obecne haslo + ponowna weryfikacja (klucz albo kod MFA)."""
+    from forvium.support_access.service import _verify_operator_mfa
+
+    who = {"actor_user_id": op.user.id, "actor_type": "operator", "ip_address": ctx.ip}
+    ctx.throttle.check("mfa_stepup", op.user.id, **who)
+    if not verify_password(op.user.password_hash, body.current_password):
+        ctx.audit.record("identity.password.change", outcome="denied", details={"reason": "invalid_current"}, **who)
+        ctx.throttle.fail("mfa_stepup", op.user.id, **who)
+        raise DomainError(422, "password_invalid", "Nieprawidłowe obecne hasło.")
+    from forvium.identity.passwords import validate
+
+    validate(body.new_password, email=op.user.email, display_name=op.user.display_name)
+    _verify_operator_mfa(ctx, op.user, body.mfa_code, "identity.password.change", webauthn=body.webauthn)
+    _set_password(ctx, op.user, op.session, body.new_password, "operator")
+    return {"ok": True}
 
 
 # ------------------------------------------------------------- WebAuthn (admin)

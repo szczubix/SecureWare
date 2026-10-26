@@ -87,6 +87,15 @@ def login(ctx: Ctx, *, email: str, password: str, mfa_code: str | None, kind: st
         method = "totp"
 
     ctx.throttle.reset("login_account", email)
+    # Haslo sprawdzamy wobec aktualnej polityki (lista wyciekow mogla sie zmienic) - tylko tu
+    # mamy je jawnie. Naruszenie nie blokuje logowania, ale wymusza zmiane hasla.
+    from forvium.identity.passwords import problems
+
+    violations = problems(password, email=user.email, display_name=user.display_name)
+    if violations and not user.password_change_required:
+        user.password_change_required = True
+        ctx.audit.log(ctx.db, "identity.password.change_required", actor_user_id=user.id, actor_type=kind,
+                      ip_address=ctx.ip, details={"reasons": violations})
     token = new_token(OPERATOR_TOKEN_PREFIX if kind == "operator" else USER_TOKEN_PREFIX)
     now = clock.now()
     ctx.db.add(UserSession(user_id=user.id, kind=kind, token_hash=token_digest(token), created_at=now,

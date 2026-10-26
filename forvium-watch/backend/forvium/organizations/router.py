@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from forvium.access import OrgAccess, require_org_permission
 from forvium.core.clock import clock
@@ -187,6 +187,63 @@ def invite_member(body: InviteIn, access: OrgAccess = Depends(require_org_permis
                   details={"user_id": user.id, "role": body.role, "new_account": new_account})
     return {"member": {"user_id": user.id, "email": user.email, "role": body.role,
                        "state": "pending_activation" if new_account else "active"}}
+
+
+class ResetAccessIn(BaseModel):
+    mfa_code: str | None = None
+
+
+@router.post("/members/{user_id}/reset-access")
+def reset_member_access(user_id: str, body: ResetAccessIn,
+                        access: OrgAccess = Depends(require_org_permission(P.MEMBERS_MANAGE)),
+                        ctx: Ctx = Depends(get_ctx)):
+    """Pracownik zgubil telefon albo haslo: konto wraca do aktywacji, link idzie na jego e-mail.
+
+    Tylko dla osob nalezacych wylacznie do tej organizacji (inaczej wlasciciel jednej organizacji
+    moglby odciac komus dostep do innych) - pozostale przypadki obsluguje Forvium."""
+    from forvium.identity import activation
+    from forvium.identity.models import User
+    from forvium.identity.service import consume_totp
+
+    actor, org = access.principal.actor, access.organization
+    action = "organizations.member.reset_access"
+    who = {"actor_user_id": actor.id, "actor_type": "user", "organization_id": org.id, "ip_address": ctx.ip}
+
+    def deny(status: int, code: str, message: str) -> DomainError:
+        ctx.audit.record(action, outcome="denied", details={"reason": code, "user_id": user_id}, **who)
+        return DomainError(status, code, message)
+
+    member = ctx.db.scalar(select(Membership).where(Membership.organization_id == org.id,
+                                                    Membership.user_id == user_id))
+    target = ctx.db.get(User, user_id) if member else None
+    if target is None:
+        raise DomainError(404, "member_not_found", "Nie znaleziono członka.")
+    if target.id == actor.id:
+        raise deny(403, "self_reset_forbidden", "Nie możesz zresetować własnego dostępu - poproś innego administratora.")
+    actor_role = ctx.db.scalar(select(Membership.role).where(Membership.organization_id == org.id,
+                                                             Membership.user_id == actor.id))
+    if member.role == OrgRole.OWNER and actor_role != OrgRole.OWNER:
+        raise deny(403, "owner_required", "Dostęp właściciela może zresetować tylko inny właściciel.")
+    if target.blocked_at is not None or target.platform_role is not None:
+        raise deny(409, "not_resettable", "Tego konta nie można zresetować.")
+    other_orgs = ctx.db.scalar(select(func.count()).select_from(Membership).where(
+        Membership.user_id == target.id, Membership.organization_id != org.id))
+    if other_orgs:
+        raise deny(409, "member_of_other_organizations",
+                   "Ta osoba należy też do innych organizacji - reset dostępu wykona support Forvium.")
+    ctx.throttle.check("mfa_stepup", actor.id, **who)
+    if actor.mfa_secret and not consume_totp(actor, body.mfa_code):
+        ctx.throttle.fail("mfa_stepup", actor.id, **who)
+        raise deny(401, "mfa_reverification_failed", "Potwierdź operację kodem z aplikacji uwierzytelniającej.")
+    activation.reset_access(ctx, target, created_by=actor.id, actor_type="user")
+    ctx.audit.log(ctx.db, "organizations.member.access_reset", details={"user_id": target.id}, **who)
+    from forvium.support_access.service import _org_approvers
+
+    ctx.notifications.notify(ctx.db, _org_approvers(ctx, org.id, exclude_user_id=actor.id),
+                             event="organizations.member.access_reset", title=f"Zresetowano dostęp {target.email}",
+                             body=f"Zresetował(a): {actor.email}. Nowy link aktywacyjny wysłano na adres tej osoby.",
+                             organization_id=org.id)
+    return {"member": {"user_id": target.id, "email": target.email, "state": "pending_activation"}}
 
 
 @router.delete("/members/{user_id}")

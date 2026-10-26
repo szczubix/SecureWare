@@ -26,7 +26,7 @@ forvium-watch/
 │   ├── migrations/            Alembic: 0001 schemat (+ trigger audytu), 0002 RLS i uprawnienia,
 │   │                          0003 szyfrowanie, WebAuthn, dwie osoby, przedłużenia, alerty, nagrania,
 │   │                          0004 heartbeat zadań w tle, 0005 raporty dostępu,
-│   │                          0006 aktywacja kont, blokady, zatwierdzanie ról, 0007 zgłoszenia klientów
+│   │                          0006 aktywacja kont, blokady, zatwierdzanie ról, 0007 zgłoszenia klientów, 0008 polityka haseł
 │   └── tests/
 ├── deploy/             role PostgreSQL, gateway (routing po hoście, limity zapytań), kopie zapasowe,
 │                       monitoring (Prometheus, reguły alertów, Alertmanager, Grafana)
@@ -68,7 +68,7 @@ Baza, worker i API nie publikują portów: z zewnątrz dostępny jest tylko `gat
 Logi API i workera są w formacie JSON (`FORVIUM_LOG_FORMAT=json`).
 
 Kontener `migrate` uruchamia migracje jako właściciel schematu i ładuje dane demo.
-Hasło wszystkich kont to `Forvium-demo-2026!`, a sekrety TOTP do zeskanowania lub wpisania
+Hasło wszystkich kont to `Demo-Haslo-2026!`, a sekrety TOTP do zeskanowania lub wpisania
 w aplikacji uwierzytelniającej są w `docker compose logs migrate`.
 
 | Konto | Rola |
@@ -231,6 +231,33 @@ Zasady:
 * Powiadomienia (w aplikacji i e-mailem): nowe zgłoszenie trafia do kierownika supportu
   i administratora. Odpowiedzi trafiają do drugiej strony rozmowy, a zmiana statusu do
   zgłaszającego.
+
+## Hasła i reset dostępu
+
+Polityka haseł (`forvium/identity/passwords.py`) jest zgodna z NIST SP 800-63B: liczy się
+długość, a nie wymuszone znaki specjalne. Wszystko działa offline.
+
+* Minimum 12 znaków (`FORVIUM_PASSWORD_MIN_LENGTH`), maksimum 128.
+* Odrzucane są hasła z wycieków: dołączona lista ~46 tys. haseł (UK NCSC / Have I Been Pwned,
+  przez SecLists). Opcjonalnie pełna baza Pwned Passwords (`FORVIUM_BREACHED_PASSWORDS_FILE`,
+  posortowane skróty SHA-1, przeszukiwane binarnie bez wczytywania do pamięci).
+* Odrzucane są też hasła zawierające e-mail, imię lub nazwisko albo nazwę Forvium oraz
+  hasła trywialne (powtórzenia, sekwencje).
+* Polityka obowiązuje przy aktywacji konta i zmianie hasła (app → Konto, admin → Konto;
+  operator potwierdza zmianę kluczem albo kodem MFA). Zmiana hasła wylogowuje pozostałe sesje.
+* **Hasło sprawdzane jest przy każdym logowaniu.** Jeśli przestało spełniać politykę, np.
+  trafiło na listę wycieków, konto po zalogowaniu może tylko zmienić hasło: pozostałe API
+  zwraca `403 password_change_required`.
+
+**Reset dostępu** (zgubiony telefon albo hasło):
+
+* Wykonuje go właściciel lub administrator organizacji (app → Członkowie → Resetuj dostęp).
+  Konto administratora resetuje tylko właściciel. Wymagany jest kod MFA osoby resetującej.
+* Hasło i MFA osoby resetowanej są kasowane, a sesje unieważniane. Nowy link aktywacyjny
+  trafia **tylko na jej e-mail**, więc osoba resetująca nie może zalogować się na to konto.
+* Osoby należące także do innych organizacji, a także jedynego właściciela, resetuje
+  Forvium (admin → Użytkownicy → Konto → Resetuj dostęp, z powodem i ponowną weryfikacją).
+  Administratorzy organizacji dostają powiadomienie.
 
 ## Logowanie operatora
 
@@ -485,6 +512,8 @@ Dostęp awaryjny bez zgody klienta. Domyślnie jest **wyłączony**
 | `RUN_BACKGROUND_JOBS` | `true` | `false` w replikach API, gdy zadania wykonuje osobny `worker` |
 | `LOG_FORMAT`, `LOG_LEVEL` | `text`, `INFO` | `json` = jeden obiekt JSON na linię (logi aplikacji i dostępu) |
 | `METRICS_TOKEN` | — | wymagany `Authorization: Bearer …` dla `/metrics` |
+| `PASSWORD_MIN_LENGTH` | 12 | minimalna długość hasła (nie mniej niż 8) |
+| `BREACHED_PASSWORDS_FILE` | — | opcjonalnie pełna baza Pwned Passwords (posortowane skróty SHA-1) |
 | `REPORT_INTERVAL_SECONDS` | 3600 | sprawdzanie, czy są raporty dostępu za poprzedni miesiąc do utworzenia (0 = wyłączone) |
 
 ### Wdrożenie

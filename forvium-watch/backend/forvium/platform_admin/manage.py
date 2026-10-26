@@ -304,6 +304,28 @@ def unblock_user(user_id: str, body: StepUp,
     return {"user": {"id": user.id, "state": _account_state(user)}}
 
 
+@router.post("/users/{user_id}/reset-access")
+def reset_user_access(user_id: str, body: BlockIn,
+                      op: OperatorPrincipal = Depends(require_platform_permission(PP.USERS_MANAGE)),
+                      ctx: Ctx = Depends(get_ctx)):
+    """Reset dostepu klienta (np. jedyny wlasciciel zgubil telefon). Forvium nie poznaje nowego
+    hasla - link aktywacyjny trafia na e-mail konta; administratorzy organizacji dostaja informacje."""
+    action = "platform.user.reset_access"
+    user = _customer(ctx, user_id)
+    if user.blocked_at is not None or user.activated_at is None:
+        raise _deny(ctx, op, action, 409, "not_resettable", "Konto jest zablokowane albo czeka na aktywację.")
+    _step_up(ctx, op, body, action)
+    activation.reset_access(ctx, user, created_by=op.user.id, actor_type="operator")
+    for org_id in _user_org_ids(ctx, user) or [None]:
+        _log(ctx, op, "platform.user.access_reset", organization_id=org_id, user_id=user.id, reason=body.reason)
+        if org_id:
+            ctx.notifications.notify(ctx.db, _org_admins(ctx, org_id, exclude=user.id), event="platform.user.access_reset",
+                                     title=f"Forvium zresetowało dostęp {user.email}",
+                                     body=f"Powód: {body.reason}. Link aktywacyjny wysłano na adres tej osoby.",
+                                     organization_id=org_id)
+    return {"user": {"id": user.id, "state": _account_state(user)}}
+
+
 @router.post("/users/{user_id}/resend-activation")
 def resend_activation(user_id: str, body: StepUp, op: OperatorPrincipal = Depends(require_platform_permission(PP.USERS_READ)),
                       ctx: Ctx = Depends(get_ctx)):

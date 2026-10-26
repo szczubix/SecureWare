@@ -121,13 +121,41 @@
     root.replaceChildren(form);
   }
 
+  let currentUserId = null;
   async function renderHome() {
     let me;
     try { me = await api("/api/app/me"); } catch (_) { return renderLogin(); }
+    currentUserId = me.user.id;
     document.getElementById("who").textContent = me.user.display_name;
+    if (me.password_change_required) return root.replaceChildren(passwordCard(true));
     if (me.organizations.length === 1) return renderOrg(me.organizations[0]);
     root.replaceChildren(card(el("h2", {}, "Organizacje"),
       ...me.organizations.map((o) => el("p", {}, el("a", { href: "#", onclick: (e) => { e.preventDefault(); renderOrg(o); } }, o.name)))));
+  }
+
+  // Zmiana hasla (takze wymuszona, gdy haslo pojawilo sie w wycieku albo nie spelnia polityki).
+  function passwordCard(forced) {
+    const msg = el("p");
+    const form = el("form", { onsubmit: async (e) => {
+      e.preventDefault();
+      const f = Object.fromEntries(new FormData(form));
+      if (f.new_password !== f.repeat) { msg.className = "error"; msg.textContent = "Hasła nie są takie same."; return; }
+      try {
+        await api("/api/app/account/password", { method: "POST", body: { current_password: f.current_password, new_password: f.new_password } });
+        if (forced) return renderHome();
+        msg.className = ""; msg.textContent = "Hasło zmienione. Pozostałe sesje zostały wylogowane.";
+        form.reset();
+      } catch (err) { msg.className = "error"; msg.textContent = err.message; }
+    } },
+      el("label", {}, "Obecne hasło"), el("input", { name: "current_password", type: "password", required: true, autocomplete: "current-password" }),
+      el("label", {}, "Nowe hasło (min. 12 znaków)"), el("input", { name: "new_password", type: "password", required: true, minlength: 12, autocomplete: "new-password" }),
+      el("label", {}, "Powtórz nowe hasło"), el("input", { name: "repeat", type: "password", required: true, autocomplete: "new-password" }),
+      msg, el("button", { type: "submit" }, "Zmień hasło"));
+    return card(el("h2", {}, forced ? "Wymagana zmiana hasła" : "Zmiana hasła"),
+      el("p", { class: forced ? "danger-text" : "muted" }, forced
+        ? "Twoje hasło nie spełnia polityki bezpieczeństwa (np. wystąpiło w znanym wycieku danych). Ustaw nowe, aby kontynuować."
+        : "Hasło nie może pochodzić ze znanych wycieków ani zawierać Twojego adresu e-mail lub imienia. Najlepsze są długie frazy, np. kilka słów."),
+      form);
   }
 
   // --------------------------------------------------------------- organizacja
@@ -153,6 +181,7 @@
     if (!supportPermissions) {
       views["Zgłoszenia"] = (pane) => viewTickets(org, pane);
       views["Członkowie"] = (pane) => viewMembers(org, pane);
+      views["Konto"] = (pane) => pane.replaceChildren(passwordCard(false));
       views["Dostęp serwisowy"] = (pane) => viewSupportAccess(org, pane);
       views["Powiadomienia"] = (pane) => viewNotifications(pane);
     }
@@ -266,9 +295,18 @@
         msg, el("button", { type: "submit" }, "Zaproś"));
       content.replaceChildren(
         card(el("h2", {}, "Członkowie"), el("table", {},
-          el("tr", {}, ...["E-mail", "Nazwa", "Rola", "Konto"].map((t) => el("th", {}, t))),
+          el("tr", {}, ...["E-mail", "Nazwa", "Rola", "Konto", ""].map((t) => el("th", {}, t))),
           ...members.map((m) => el("tr", {}, el("td", {}, m.email), el("td", {}, m.display_name),
-            el("td", {}, ORG_ROLE_LABELS[m.role] || m.role), el("td", {}, STATE_LABELS[m.state] || m.state || "—"))))),
+            el("td", {}, ORG_ROLE_LABELS[m.role] || m.role), el("td", {}, STATE_LABELS[m.state] || m.state || "—"),
+            el("td", {}, manage && m.state === "active" && m.user_id !== currentUserId ? el("button", { class: "secondary", onclick: async () => {
+              if (!confirm(`Zresetować dostęp ${m.email}? Hasło i aplikacja uwierzytelniająca tej osoby przestaną działać, a na jej adres wyślemy nowy link aktywacyjny.`)) return;
+              const code = askMfa("Reset dostępu " + m.email + ".");
+              if (code === null) return;
+              try {
+                await api(`/api/app/orgs/${org.id}/members/${m.user_id}/reset-access`, { method: "POST", body: { mfa_code: code } });
+                viewMembers(org, content);
+              } catch (err) { alert(err.message); }
+            } }, "Resetuj dostęp") : ""))))),
         manage ? card(el("h3", {}, "Zaproś osobę"),
           el("p", { class: "muted" }, "Nowa osoba dostanie e-mail z linkiem, ustawi hasło i aplikację uwierzytelniającą. Konta pracowników Forvium nie da się dodać."),
           form) : "");

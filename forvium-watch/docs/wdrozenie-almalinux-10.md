@@ -504,6 +504,37 @@ systemctl restart forvium-watch     # migrate przeszyfruje dane ("Przepisano N p
 # 2) stary klucz usuń dopiero po pełnym cyklu retencji kopii (kopie mają dane zaszyfrowane starym kluczem)
 ```
 
+### Pełna baza haseł z wycieków (opcjonalnie)
+
+Domyślnie aplikacja odrzuca ~46 tys. najczęstszych haseł z wycieków (lista dołączona do kodu).
+Pełną bazę Pwned Passwords (setki milionów skrótów SHA-1, ~40 GB) można podłączyć offline:
+
+1. Pobierz plik skrótów SHA-1 posortowany po skrócie, w formacie `SKRÓT:liczba`, np.
+   narzędziem `haveibeenpwned-downloader` w trybie jednego pliku. Szczegóły w jego
+   dokumentacji.
+2. Umieść plik np. w `/srv/pwned/pwnedpasswords.txt` i nadaj etykietę `container_file_t`
+   (sekcja 7).
+3. Utwórz `/opt/forvium-watch/compose.site.yaml` (lokalne ustawienia serwera, plik
+   ignorowany przez git):
+
+   ```yaml
+   services:
+     api:
+       volumes: ["/srv/pwned/pwnedpasswords.txt:/srv/pwned/pwnedpasswords.txt:ro"]
+       environment: {FORVIUM_BREACHED_PASSWORDS_FILE: /srv/pwned/pwnedpasswords.txt}
+     worker:
+       volumes: ["/srv/pwned/pwnedpasswords.txt:/srv/pwned/pwnedpasswords.txt:ro"]
+       environment: {FORVIUM_BREACHED_PASSWORDS_FILE: /srv/pwned/pwnedpasswords.txt}
+   ```
+
+   Dopisz `-f compose.site.yaml` do poleceń `docker compose` i do `ExecStart`/`ExecStop`
+   w `/etc/systemd/system/forvium-watch.service`, potem `systemctl daemon-reload` i
+   `systemctl restart forvium-watch`.
+
+Wyszukiwanie jest binarne (kilkadziesiąt odczytów na sprawdzenie) i nie wysyła żadnych
+danych na zewnątrz. Konta z hasłem, które pojawi się w bazie, przy następnym logowaniu muszą
+zmienić hasło.
+
 ### Rotacja haseł ról bazy
 
 Zmień hasło w PostgreSQL (`ALTER ROLE forvium_app PASSWORD '…'`), potem w `.env`, a następnie

@@ -320,7 +320,7 @@ def test_10_all_operator_actions_are_audited(env):
 
     # Brak poufnych danych w logu.
     dump = repr([(e.details, e.route) for e in env.audit()])
-    for secret in ("smtp-super-secret", "sk-acme-secret", "fws_", "fwo_", "fwu_", "fwl_", "Forvium-demo"):
+    for secret in ("smtp-super-secret", "sk-acme-secret", "fws_", "fwo_", "fwu_", "fwl_", "Demo-Haslo-2026"):
         assert secret not in dump
 
     # Klient widzi aktywnosc operatora w historii dostepu.

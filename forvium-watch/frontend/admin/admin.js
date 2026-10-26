@@ -195,6 +195,7 @@
     try { me = await api("/api/admin/me"); } catch (_) { return renderLogin(); }
     document.getElementById("who").textContent = `${me.user.display_name} (${me.platform_role}) · ID ${me.user.id}`;
     myKeys = (await api("/api/admin/webauthn/credentials")).credentials;
+    if (me.password_change_required) return root.replaceChildren(passwordCard(true));
     const { nav, first } = tabs();
     root.replaceChildren(nav, content);
     nav.querySelector("a").classList.add("active");
@@ -320,6 +321,12 @@
         const reason = prompt("Powód blokady (zobaczą go administratorzy organizacji klienta):");
         if (reason) guarded("Blokada konta " + u.email, `/api/admin/users/${u.id}/block`, "POST", { reason }, reload);
       } }, "Zablokuj konto"));
+    }
+    if (u.state === "active") {
+      actions.append(el("button", { class: "secondary", onclick: () => {
+        const reason = prompt("Powód resetu dostępu (np. zgubiony telefon jedynego właściciela). Nowy link trafi na e-mail tej osoby:");
+        if (reason) guarded("Reset dostępu " + u.email, `/api/admin/users/${u.id}/reset-access`, "POST", { reason }, reload);
+      } }, "Resetuj dostęp"));
     }
     if (u.state === "pending_activation") {
       actions.append(el("button", { class: "secondary", onclick: () => guarded("Nowy link aktywacyjny dla " + u.email,
@@ -816,6 +823,33 @@
   }
 
   // ------------------------------------------------------- konto (klucze)
+  // Zmiana hasla operatora: obecne haslo + ponowna weryfikacja (klucz albo kod MFA).
+  function passwordCard(forced) {
+    const msg = el("p");
+    const form = el("form", { onsubmit: async (e) => {
+      e.preventDefault();
+      const f = Object.fromEntries(new FormData(form));
+      if (f.new_password !== f.repeat) { msg.className = "error"; msg.textContent = "Hasła nie są takie same."; return; }
+      try {
+        const proof = await stepUp("Zmiana hasła.");
+        if (!proof) return;
+        await api("/api/admin/account/password", { method: "POST", body: { current_password: f.current_password, new_password: f.new_password, ...proof } });
+        if (forced) return start();
+        msg.className = ""; msg.textContent = "Hasło zmienione. Pozostałe sesje zostały wylogowane.";
+        form.reset();
+      } catch (err) { msg.className = "error"; msg.textContent = err.message; }
+    } },
+      el("label", {}, "Obecne hasło"), el("input", { name: "current_password", type: "password", required: true, autocomplete: "current-password" }),
+      el("label", {}, "Nowe hasło (min. 12 znaków)"), el("input", { name: "new_password", type: "password", required: true, minlength: 12, autocomplete: "new-password" }),
+      el("label", {}, "Powtórz nowe hasło"), el("input", { name: "repeat", type: "password", required: true, autocomplete: "new-password" }),
+      msg, el("button", { type: "submit" }, "Zmień hasło"));
+    return card(el("h2", {}, forced ? "Wymagana zmiana hasła" : "Zmiana hasła"),
+      el("p", { class: forced ? "danger-text" : "muted" }, forced
+        ? "Twoje hasło nie spełnia polityki bezpieczeństwa (np. wystąpiło w znanym wycieku danych). Ustaw nowe, aby kontynuować."
+        : "Hasło nie może pochodzić ze znanych wycieków ani zawierać Twojego adresu e-mail lub imienia."),
+      form);
+  }
+
   async function renderAccount() {
     const show = begin();
     myKeys = (await api("/api/admin/webauthn/credentials")).credentials;
@@ -844,7 +878,7 @@
           await api("/api/admin/webauthn/register/verify", { method: "POST", body: { credential, name: name.value } });
           renderAccount();
         } catch (e) { msg.className = "error"; msg.textContent = e.message; }
-      } }, "Dodaj klucz")));
+      } }, "Dodaj klucz")), passwordCard(false));
   }
 
   // --------------------------------------------------------- powiadomienia

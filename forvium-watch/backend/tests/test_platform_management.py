@@ -73,7 +73,7 @@ def test_activation_rejects_weak_password_and_wrong_code(env):
     token = _activation_token(env, "gosia@gamma.example")
     env.client.post("/api/app/activation/info", json={"token": token})
     r = env.client.post("/api/app/activation/complete", json={"token": token, "password": "krotkie", "mfa_code": "1"})
-    assert r.status_code == 422 and r.json()["error"] == "password_too_weak"
+    assert r.status_code == 422 and r.json()["error"] == "password_policy"
     r = env.client.post("/api/app/activation/complete",
                         json={"token": token, "password": "Dlugie-haslo-2026!", "mfa_code": "000000"})
     assert r.status_code == 422 and r.json()["error"] == "mfa_code_invalid"

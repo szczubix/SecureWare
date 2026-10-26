@@ -42,6 +42,7 @@
     el("h2", {}, "Aktywacja konta"),
     el("p", {}, info.display_name, " · ", el("strong", {}, info.email)),
     el("label", {}, "Hasło (min. ", info.min_password_length, " znaków)"),
+    el("p", { class: "muted" }, "Najlepsza jest długa fraza z kilku słów. Hasło nie może pochodzić ze znanych wycieków ani zawierać Twojego adresu e-mail lub imienia."),
     el("input", { name: "password", type: "password", required: true, minlength: info.min_password_length, autocomplete: "new-password" }),
     el("label", {}, "Powtórz hasło"),
     el("input", { name: "password2", type: "password", required: true, autocomplete: "new-password" }),

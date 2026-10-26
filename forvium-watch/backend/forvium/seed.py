@@ -12,7 +12,7 @@ from forvium.identity.models import User
 from forvium.organizations.models import DiagnosticEvent, Membership, Organization, OrgUnit, Technology
 from forvium.support_tickets.models import SupportTicket, TicketStatus
 
-DEMO_PASSWORD = "Forvium-demo-2026!"
+DEMO_PASSWORD = "Demo-Haslo-2026!"
 
 # Stale sekrety TOTP wylacznie dla danych demo/testow.
 TOTP = {
