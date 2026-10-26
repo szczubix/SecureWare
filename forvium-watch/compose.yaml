@@ -45,6 +45,8 @@ x-runtime-env: &runtime-env
 services:
   db:
     image: postgres:16-alpine
+    # Repliki API x procesy x (pula glowna + pomocnicza) + worker - patrz deploy/loadtest/README.md
+    command: ["postgres", "-c", "max_connections=200"]
     environment:
       POSTGRES_DB: forvium
       POSTGRES_USER: postgres
@@ -82,6 +84,8 @@ services:
       FORVIUM_RUN_BACKGROUND_JOBS: "false"
       # Adres klienta z naglowkow ustawianych przez brame (limity prob, audyt).
       FORWARDED_ALLOW_IPS: "*"
+      # Procesy uvicorn na replike (deploy/loadtest/README.md).
+      WEB_CONCURRENCY: ${FORVIUM_API_WORKERS:-1}
     volumes:
       - audit-export:/var/forvium/audit
     deploy:

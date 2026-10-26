@@ -64,6 +64,11 @@ wyłącznie na `127.0.0.1`.
 | Kopie | zdalny magazyn obsługiwany przez rclone (S3, SFTP, Azure Blob, B2…) | magazyn z blokadą usuwania (object lock / WORM) |
 | Stacja administratora | `age` (generowanie klucza głównego kopii) | sejf na klucz prywatny |
 
+Dobór serwera i liczby procesów API (wyniki testów obciążeniowych):
+[deploy/loadtest/README.md](../deploy/loadtest/README.md). W skrócie: 4 vCPU obsłużą
+~150 req/s, czyli ok. 300–500 aktywnych użytkowników, przy p95 < 60 ms
+(`FORVIUM_API_WORKERS=1`). Przy 8 vCPU ustaw `FORVIUM_API_WORKERS=3`.
+
 Przykłady poniżej używają domeny `forvium.example.com`. Polecenia wykonuj jako root
 (albo przez `sudo`).
 
@@ -233,6 +238,7 @@ Co uzupełnić ręcznie:
 | `FORVIUM_OPERATOR_LOGIN_WEBAUTHN_ONLY` | `true` (domyślnie): operator z kluczem bezpieczeństwa loguje się tylko kluczem |
 | `FORVIUM_BREAK_GLASS_ENABLED` | `false`, dopóki procedura awaryjna nie zostanie formalnie przyjęta |
 | `FORVIUM_AUDIT_SIEM_*` | opcjonalnie wysyłka audytu do Splunk / Elastic / Wazuh: `deploy/siem/README.md` |
+| `FORVIUM_API_WORKERS`, `FORVIUM_RATE_API` | procesy uvicorn na replikę i limit bramy na adres IP: `deploy/loadtest/README.md` |
 | `COMPOSE_PROFILES` | `monitoring`, jeśli uruchamiasz Prometheus/Grafanę na tym serwerze |
 
 **Klucze danych:** `FORVIUM_DATA_KEYS` szyfruje w bazie sekrety MFA, sekrety organizacji,

@@ -77,6 +77,10 @@ class AuditLog:
         db.add(event)
         self._mirror(event)
 
+    def independent_session(self) -> Session:
+        """Sesja z puli pomocniczej (niezalezne transakcje w trakcie zadania)."""
+        return self._session_factory()
+
     def record(self, action: str, **kwargs: Any) -> None:
         """Zdarzenie w niezaleznej transakcji (odmowy, nieudane proby, operacje API)."""
         session: Session = self._session_factory()

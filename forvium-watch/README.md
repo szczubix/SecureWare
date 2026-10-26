@@ -29,6 +29,7 @@ forvium-watch/
 │   │                          0006 aktywacja kont, blokady, zatwierdzanie ról, 0007 zgłoszenia klientów, 0008 polityka haseł
 │   └── tests/
 ├── deploy/             role PostgreSQL, gateway (routing po hoście, limity zapytań), kopie zapasowe,
+│                       SIEM (Splunk/Elastic/Wazuh), testy obciążeniowe (k6),
 │                       monitoring (Prometheus, reguły alertów, Alertmanager, Grafana)
 └── frontend/
     ├── admin/          admin.forvium.com – użytkownicy, prośby, nadzór, alerty, audyt, Break Glass, klucze
@@ -512,6 +513,7 @@ Dostęp awaryjny bez zgody klienta. Domyślnie jest **wyłączony**
 | `AUTO_CREATE_SCHEMA` | `false` | tylko eksperymenty; schemat tworzą migracje |
 | `RUN_BACKGROUND_JOBS` | `true` | `false` w replikach API, gdy zadania wykonuje osobny `worker` |
 | `LOG_FORMAT`, `LOG_LEVEL` | `text`, `INFO` | `json` = jeden obiekt JSON na linię (logi aplikacji i dostępu) |
+| `DB_POOL_SIZE`, `DB_MAX_OVERFLOW`, `DB_AUX_POOL_SIZE` | 10, 10, 5 | pule połączeń na proces; liczba jednoczesnych żądań = pool + overflow (`deploy/loadtest/README.md`) |
 | `METRICS_TOKEN` | — | wymagany `Authorization: Bearer …` dla `/metrics` |
 | `PASSWORD_MIN_LENGTH` | 12 | minimalna długość hasła (nie mniej niż 8) |
 | `BREACHED_PASSWORDS_FILE` | — | opcjonalnie pełna baza Pwned Passwords (posortowane skróty SHA-1) |

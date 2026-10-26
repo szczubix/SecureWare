@@ -27,6 +27,10 @@ class Settings:
     # Sprawdzanie, czy sa raporty dostepu za poprzedni miesiac do utworzenia (0 = wylaczone).
     report_interval_seconds: int = field(default_factory=lambda: int(_env("REPORT_INTERVAL_SECONDS", "3600")))
     log_level: str = field(default_factory=lambda: _env("LOG_LEVEL", "INFO"))
+    # Pule polaczen z baza na proces (core/db.py) - liczba watkow obslugi = pool + overflow.
+    db_pool_size: int = field(default_factory=lambda: int(_env("DB_POOL_SIZE", "10")))
+    db_max_overflow: int = field(default_factory=lambda: int(_env("DB_MAX_OVERFLOW", "10")))
+    db_aux_pool_size: int = field(default_factory=lambda: int(_env("DB_AUX_POOL_SIZE", "5")))
     # Opcjonalny token dla /metrics (poza tym endpoint jest dostepny tylko w sieci wewnetrznej).
     metrics_token: str = field(default_factory=lambda: _env("METRICS_TOKEN", ""))
 

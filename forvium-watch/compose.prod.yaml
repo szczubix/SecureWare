@@ -73,6 +73,7 @@ services:
       <<: *runtime-env
       FORVIUM_RUN_BACKGROUND_JOBS: "false"
       FORWARDED_ALLOW_IPS: "*"
+      WEB_CONCURRENCY: ${FORVIUM_API_WORKERS:-2}
     deploy:
       replicas: ${FORVIUM_API_REPLICAS:-2}
 
@@ -104,6 +105,9 @@ services:
     logging: *logging
     environment:
       FORVIUM_DOMAIN: ${FORVIUM_DOMAIN}
+      FORVIUM_RATE_API: ${FORVIUM_RATE_API:-50r/s}
+      FORVIUM_BURST_API: ${FORVIUM_BURST_API:-100}
+      FORVIUM_RATE_AUTH: ${FORVIUM_RATE_AUTH:-10r/m}
     ports: !override
       - "80:80"
       - "443:443"

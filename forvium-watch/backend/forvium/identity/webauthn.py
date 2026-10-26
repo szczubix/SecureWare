@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
 from sqlalchemy import JSON, DateTime, ForeignKey, Integer, LargeBinary, String, select, update
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 from webauthn import (
     generate_authentication_options,
     generate_registration_options,
@@ -90,7 +90,7 @@ def _consume_challenge(ctx: Ctx, user: User, purpose: str, challenge_b64: str) -
     if not challenge_b64:
         return None
     now = clock.now()
-    with Session(ctx.db.get_bind()) as s:
+    with ctx.audit.independent_session() as s:  # osobna pula - patrz core/db.py
         result = s.execute(
             update(WebAuthnChallenge)
             .where(WebAuthnChallenge.challenge == challenge_b64, WebAuthnChallenge.user_id == user.id,

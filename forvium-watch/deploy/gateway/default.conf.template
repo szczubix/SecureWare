@@ -4,8 +4,8 @@
 #   api.${FORVIUM_DOMAIN}   -> kontener(y) api
 # W produkcji tutaj (albo na load balancerze przed brama) terminuje TLS.
 
-limit_req_zone $binary_remote_addr zone=auth:10m rate=10r/m;
-limit_req_zone $binary_remote_addr zone=api:10m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=auth:10m rate=${FORVIUM_RATE_AUTH};
+limit_req_zone $binary_remote_addr zone=api:10m rate=${FORVIUM_RATE_API};
 limit_req_status 429;
 
 upstream forvium_api {
@@ -63,7 +63,7 @@ server {
     # Metryki tylko z sieci wewnetrznej (Prometheus), nie z internetu.
     location = /metrics { return 404; }
     location / {
-        limit_req zone=api burst=40 nodelay;
+        limit_req zone=api burst=${FORVIUM_BURST_API} nodelay;
         proxy_pass http://forvium_api;
     }
 }

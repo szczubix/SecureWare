@@ -15,6 +15,7 @@ from forvium.audit.router import router as audit_admin
 from forvium.security.router import router as security_admin
 from forvium.support_access.recording import RecordingPolicy
 from forvium.audit.service import AuditLog
+from forvium.core.concurrency import ConcurrencyLimitMiddleware
 from forvium.core.config import Settings, get_settings
 from forvium.core.context import DomainError
 from forvium.core.crypto import keyring_from_settings, set_keyring
@@ -60,7 +61,7 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
 
     # Bez poprawnego klucza danych aplikacja nie startuje (patrz core/crypto.py).
     set_keyring(keyring_from_settings(settings))
-    db = Database(settings.database_url)
+    db = Database(settings.database_url, settings.db_pool_size, settings.db_max_overflow, settings.db_aux_pool_size)
     if settings.auto_create_schema:
         db.create_all()
     app.state.settings = settings
@@ -69,10 +70,10 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
     bg_sink = ChainedJsonlFile(settings.break_glass_audit_path, settings.audit_export_hmac_key.encode() or None) \
         if settings.break_glass_audit_path else None
     app.state.break_glass_policy = break_glass_policy
-    app.state.audit = AuditLog(db.sessionmaker, break_glass_sink=bg_sink)
+    app.state.audit = AuditLog(db.aux_sessionmaker, break_glass_sink=bg_sink)
     app.state.notifications = NotificationEngine()
     app.state.email_sender = sender_from_settings(settings)
-    app.state.throttle = Throttle(db.sessionmaker, app.state.audit)
+    app.state.throttle = Throttle(db.aux_sessionmaker, app.state.audit)
     app.state.audit_sinks = sinks_from_settings(settings)
     app.state.anomaly_policy = AnomalyPolicy()
     app.state.recording_policy = RecordingPolicy()
@@ -98,11 +99,13 @@ def create_app(settings: Settings | None = None, policy: SupportAccessPolicy | N
                    audit_admin, security_admin, reports_app, reports_admin):
         app.include_router(router)
 
+    # Najwyzej tyle zadan naraz, ile polaczen w glownej puli (core/concurrency.py).
+    app.add_middleware(ConcurrencyLimitMiddleware, limit=db.max_connections)
     # Na koncu, wiec jako najbardziej zewnetrzne: identyfikator zadania obejmuje tez audyt i CORS.
     install_monitoring(app)
 
     @app.get("/healthz")
-    def healthz():
+    async def healthz():  # bez puli watkow: odpowiada, dopoki dziala petla zdarzen
         return {"ok": True}
 
     return app
