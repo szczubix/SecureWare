@@ -1,0 +1,11 @@
+# /etc/systemd/system/forvium-backup-offsite.timer - codziennie, po nocnej kopii.
+[Unit]
+Description=Forvium Watch - kopia poza serwerem (codziennie)
+
+[Timer]
+OnCalendar=*-*-* 04:30:00
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

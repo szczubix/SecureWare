@@ -147,15 +147,21 @@ zestaw w wolumenie `backups`:
 * `manifest.json`: SHA-256 plików, wersja migracji i liczba wierszy każdej tabeli,
   policzona **w tej samej migawce** co zrzut.
 
-Pliki są szyfrowane strumieniowo kluczem publicznym [age](https://age-encryption.org)
-(`BACKUP_AGE_RECIPIENT`), więc niezaszyfrowany zrzut nie trafia na dysk, a host kopii nie
-potrafi ich odczytać. Klucz prywatny trzymaj poza hostem (sejf, HSM); lokalnie, bez
-`BACKUP_AGE_RECIPIENT`, para kluczy jest generowana w wolumenie `backup-keys`. Retencja:
-`BACKUP_RETENTION_DAYS` (14), ale zawsze zostają co najmniej 3 ostatnie zestawy.
+Pliki są szyfrowane strumieniowo kluczami publicznymi [age](https://age-encryption.org),
+więc niezaszyfrowany zrzut nie trafia na dysk, a zdalny magazyn kopii nie potrafi ich odczytać.
+
+* `BACKUP_AGE_RECIPIENT` to klucz główny. Jego klucz prywatny trzymaj poza serwerem (sejf, HSM).
+* Przy włączonym teście odtwarzania kopie są szyfrowane także lokalnym kluczem testu
+  (wolumen `backup-keys`).
+* `RESTORE_TEST_INTERVAL_SECONDS=0` oznacza, że serwer nie ma żadnego klucza prywatnego.
+  Test odtwarzania wykonuje się wtedy ręcznie poza serwerem.
+
+Retencja: `BACKUP_RETENTION_DAYS` (14), ale zawsze zostają co najmniej 3 ostatnie zestawy.
 
 **Test odtwarzania** (po pierwszej kopii, potem co `RESTORE_TEST_INTERVAL_SECONDS`, domyślnie
 tydzień) sprawdza sumy kontrolne, odszyfrowuje i odtwarza najnowszy zestaw do tymczasowej
-bazy `forvium_restore_check`, a potem weryfikuje:
+bazy `forvium_restore_check`. Robi to rola `forvium_restore` (tylko `CREATEDB`, bez
+superusera i bez właścicieli/uprawnień z kopii). Następnie weryfikuje:
 * wersję migracji,
 * liczbę wierszy każdej tabeli względem manifestu,
 * wymuszone RLS,
@@ -465,8 +471,17 @@ Dostęp awaryjny bez zgody klienta. Domyślnie jest **wyłączony**
 
 ### Wdrożenie
 
-1. Raz uruchom `deploy/postgres/roles.sql` jako superuser (role migratora, aplikacji i kopii).
-   W istniejącej instalacji dodaj tylko rolę `forvium_backup` (polecenie `CREATE ROLE` z tego pliku).
+Pełna instrukcja produkcyjna (AlmaLinux 10: Docker CE, SELinux, firewalld, TLS z Let's
+Encrypt, systemd, kopie poza serwerem, monitoring, aktualizacje):
+[docs/wdrozenie-almalinux-10.md](docs/wdrozenie-almalinux-10.md). Konfiguracja produkcyjna
+to nakładka `compose.prod.yaml` (sekrety z `.env`, wzór `.env.prod.example`), a pierwsze konta
+operatorów tworzy `python -m forvium.platform_admin.bootstrap`.
+
+W skrócie:
+
+1. Raz uruchom `deploy/postgres/roles.sql` jako superuser (role migratora, aplikacji, kopii
+   i testu odtwarzania). W istniejącej instalacji dodaj tylko brakujące role `forvium_backup`
+   i `forvium_restore` (polecenia `CREATE ROLE` z tego pliku).
 2. Przy każdym wdrożeniu, przed startem API, uruchom `alembic upgrade head` i
    `python -m forvium.core.crypto reencrypt` jako `forvium_migrator`.
 3. Uruchom repliki API (`RUN_BACKGROUND_JOBS=false`) i jeden `worker` jako `forvium_app`,

@@ -1,0 +1,143 @@
+# Produkcja: nakladka na compose.yaml.
+#
+#   docker compose -f compose.yaml -f compose.prod.yaml up -d
+#
+# Wszystkie sekrety i adresy pochodza z pliku .env (wzor: .env.prod.example, prawa 600).
+# Zmiennej bez wartosci compose nie uruchomi (skladnia ${VAR:?opis}).
+# Roznice wzgledem srodowiska lokalnego:
+#   * TLS w gatewayu (porty 80/443), HSTS, panel admin ograniczony lista adresow,
+#   * brak Mailpit i danych demo, prawdziwy SMTP, adresy https://{app,admin,api}.<domena>,
+#   * restart uslug po awarii i po restarcie hosta, limity logow,
+#   * operator z kluczem bezpieczenstwa loguje sie wylacznie kluczem.
+
+x-logging: &logging
+  driver: journald
+  options:
+    tag: "forvium/{{.Name}}"
+
+x-backend-env: &backend-env
+  FORVIUM_APP_ORIGIN: https://app.${FORVIUM_DOMAIN:?ustaw FORVIUM_DOMAIN w .env}
+  FORVIUM_ADMIN_ORIGIN: https://admin.${FORVIUM_DOMAIN}
+  FORVIUM_DATA_KEYS: ${FORVIUM_DATA_KEYS:-}
+  FORVIUM_DATA_KEY_ID: ${FORVIUM_DATA_KEY_ID:-}
+  FORVIUM_DATA_KEYS_WRAPPED: ${FORVIUM_DATA_KEYS_WRAPPED:-}
+  FORVIUM_VAULT_ADDR: ${FORVIUM_VAULT_ADDR:-}
+  FORVIUM_VAULT_TOKEN: ${FORVIUM_VAULT_TOKEN:-}
+  FORVIUM_LOG_FORMAT: json
+
+x-runtime-env: &runtime-env
+  <<: *backend-env
+  FORVIUM_DATABASE_URL: postgresql+psycopg://forvium_app:${FORVIUM_APP_PASSWORD:?}@db:5432/forvium
+  FORVIUM_SMTP_HOST: ${FORVIUM_SMTP_HOST:?ustaw serwer SMTP}
+  FORVIUM_SMTP_PORT: ${FORVIUM_SMTP_PORT:-587}
+  FORVIUM_SMTP_USERNAME: ${FORVIUM_SMTP_USERNAME:-}
+  FORVIUM_SMTP_PASSWORD: ${FORVIUM_SMTP_PASSWORD:-}
+  FORVIUM_SMTP_STARTTLS: ${FORVIUM_SMTP_STARTTLS:-true}
+  FORVIUM_SMTP_FROM: ${FORVIUM_SMTP_FROM:?}
+  FORVIUM_SECURITY_TEAM_EMAILS: ${FORVIUM_SECURITY_TEAM_EMAILS:?}
+  FORVIUM_BREAK_GLASS_ENABLED: ${FORVIUM_BREAK_GLASS_ENABLED:-false}
+  FORVIUM_AUDIT_EXPORT_HMAC_KEY: ${FORVIUM_AUDIT_EXPORT_HMAC_KEY:?}
+  FORVIUM_AUDIT_EXPORT_URL: ${FORVIUM_AUDIT_EXPORT_URL:-}
+  FORVIUM_ANOMALY_INTERVAL_SECONDS: "60"
+  FORVIUM_OPERATOR_LOGIN_WEBAUTHN_ONLY: ${FORVIUM_OPERATOR_LOGIN_WEBAUTHN_ONLY:-true}
+  FORVIUM_METRICS_TOKEN: ${FORVIUM_METRICS_TOKEN:-}
+
+services:
+  db:
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_PASSWORD: ${FORVIUM_POSTGRES_PASSWORD:?}
+      FORVIUM_MIGRATOR_PASSWORD: ${FORVIUM_MIGRATOR_PASSWORD:?}
+      FORVIUM_APP_PASSWORD: ${FORVIUM_APP_PASSWORD:?}
+      FORVIUM_BACKUP_PASSWORD: ${FORVIUM_BACKUP_PASSWORD:?}
+      FORVIUM_RESTORE_PASSWORD: ${FORVIUM_RESTORE_PASSWORD:?}
+
+  migrate:
+    logging: *logging
+    environment:
+      <<: *backend-env
+      FORVIUM_DATABASE_URL: postgresql+psycopg://forvium_migrator:${FORVIUM_MIGRATOR_PASSWORD}@db:5432/forvium
+      SEED_DEMO: "false"
+
+  api:
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      <<: *runtime-env
+      FORVIUM_RUN_BACKGROUND_JOBS: "false"
+      FORWARDED_ALLOW_IPS: "*"
+    deploy:
+      replicas: ${FORVIUM_API_REPLICAS:-2}
+
+  worker:
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      <<: *runtime-env
+      FORVIUM_RUN_BACKGROUND_JOBS: "false"
+    # Bez Mailpit (lokalny serwer poczty) - tylko migracje.
+    depends_on: !override
+      migrate:
+        condition: service_completed_successfully
+
+  app:
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      API_ORIGIN: https://api.${FORVIUM_DOMAIN}
+
+  admin:
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      API_ORIGIN: https://api.${FORVIUM_DOMAIN}
+
+  gateway:
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      FORVIUM_DOMAIN: ${FORVIUM_DOMAIN}
+    ports: !override
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/gateway/tls.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ${FORVIUM_CONFIG_DIR:-/etc/forvium-watch}/admin-allow.conf:/etc/nginx/forvium/admin-allow.conf:ro
+      - ${FORVIUM_CONFIG_DIR:-/etc/forvium-watch}/tls:/etc/forvium/tls:ro
+      - ${FORVIUM_ACME_DIR:-/var/www/acme}:/var/www/acme:ro
+
+  backup:
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      BACKUP_PGPASSWORD: ${FORVIUM_BACKUP_PASSWORD}
+      RESTORE_PGPASSWORD: ${FORVIUM_RESTORE_PASSWORD}
+      HEARTBEAT_PGPASSWORD: ${FORVIUM_APP_PASSWORD}
+      # Klucz publiczny age glownego klucza odtwarzania (klucz prywatny NIE trafia na serwer).
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:?wygeneruj pare kluczy age poza serwerem}
+      # >0: kopie sa szyfrowane takze lokalnym kluczem testu odtwarzania (wolumen backup-keys),
+      # 0: serwer nie ma zadnego klucza prywatnego - test odtwarzania recznie poza serwerem.
+      RESTORE_TEST_INTERVAL_SECONDS: ${RESTORE_TEST_INTERVAL_SECONDS:-604800}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+
+  # Lokalny serwer poczty tylko do developmentu.
+  mailpit:
+    profiles: ["dev"]
+
+  prometheus:
+    restart: unless-stopped
+    logging: *logging
+
+  alertmanager:
+    restart: unless-stopped
+    logging: *logging
+    volumes: !override
+      - ${FORVIUM_CONFIG_DIR:-/etc/forvium-watch}/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+
+  grafana:
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${FORVIUM_GRAFANA_PASSWORD:-}

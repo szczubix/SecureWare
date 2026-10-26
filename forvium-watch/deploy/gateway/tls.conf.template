@@ -1,0 +1,100 @@
+# Brama produkcyjna z TLS (compose.prod.yaml montuje ten plik zamiast default.conf.template).
+#   https://app.${FORVIUM_DOMAIN}   -> app
+#   https://admin.${FORVIUM_DOMAIN} -> admin (dodatkowo lista dozwolonych adresow: admin-allow.conf)
+#   https://api.${FORVIUM_DOMAIN}   -> api
+# Certyfikat (SAN dla trzech nazw) w /etc/forvium/tls - kopiuje go tam hook certbota
+# (deploy/tls/certbot-deploy-hook.sh). Port 80 obsluguje tylko wyzwania ACME i przekierowanie.
+
+limit_req_zone $binary_remote_addr zone=auth:10m rate=10r/m;
+limit_req_zone $binary_remote_addr zone=api:10m rate=20r/s;
+limit_req_status 429;
+
+upstream forvium_api {
+    server api:8000;
+    keepalive 16;
+}
+
+# ------------------------------------------------------------------ HTTP (80)
+server {
+    listen 80 default_server;
+    server_name _;
+    server_tokens off;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/acme;
+        default_type text/plain;
+    }
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# ------------------------------------------------------------- wspolne TLS
+ssl_certificate     /etc/forvium/tls/fullchain.pem;
+ssl_certificate_key /etc/forvium/tls/privkey.pem;
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_prefer_server_ciphers off;
+ssl_session_cache shared:TLS:10m;
+ssl_session_timeout 1d;
+ssl_session_tickets off;
+server_tokens off;
+
+# Nieznana nazwa hosta: zamkniecie polaczenia (bez ujawniania certyfikatu domeny).
+server {
+    listen 443 ssl default_server;
+    http2 on;
+    server_name _;
+    ssl_reject_handshake on;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name app.${FORVIUM_DOMAIN};
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+    location / { proxy_pass http://app:80; proxy_set_header Host $host; }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name admin.${FORVIUM_DOMAIN};
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+    # Panel operatorow tylko z sieci Forvium / VPN (plik montowany z hosta).
+    include /etc/nginx/forvium/admin-allow.conf;
+    location / { proxy_pass http://admin:80; proxy_set_header Host $host; }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name api.${FORVIUM_DOMAIN};
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+    client_max_body_size 2m;  # zrzuty widoku do ~1 MB
+
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Request-ID $request_id;
+
+    location ~ ^/api/(app|admin)/auth/ {
+        limit_req zone=auth burst=10 nodelay;
+        proxy_pass http://forvium_api;
+    }
+    location ~ ^/api/(app|admin)/activation/ {
+        limit_req zone=auth burst=10 nodelay;
+        proxy_pass http://forvium_api;
+    }
+    location = /api/app/support/launch {
+        limit_req zone=auth burst=10 nodelay;
+        proxy_pass http://forvium_api;
+    }
+    location = /metrics { return 404; }
+    location / {
+        limit_req zone=api burst=40 nodelay;
+        proxy_pass http://forvium_api;
+    }
+}

@@ -15,8 +15,9 @@ Zestaw kopii:
                    (policzona w TEJ SAMEJ migawce co zrzut) - podstawa testu odtwarzania
 
 Polaczenia przez zmienne libpq: PGHOST/PGPORT/PGDATABASE; kopia jako BACKUP_PGUSER
-(rola forvium_backup: tylko odczyt, BYPASSRLS), odtwarzanie jako RESTORE_PGUSER
-(superuser lub wlasciciel klastra). Stan zadan trafia do tabeli job_runs (jak zadania
+(rola forvium_backup: tylko odczyt, BYPASSRLS), test odtwarzania jako RESTORE_PGUSER
+(rola forvium_restore: tylko CREATEDB). Odtwarzanie awaryjne (`restore`, z zachowaniem
+wlascicieli i uprawnien) uruchamia sie recznie kontem superusera. Stan zadan trafia do tabeli job_runs (jak zadania
 workera), wiec obejmuje go istniejacy monitoring i alerty.
 """
 
@@ -72,25 +73,38 @@ def _sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def _recipient() -> str:
-    recipient = os.environ.get("BACKUP_AGE_RECIPIENT", "").strip()
-    if recipient:
-        return recipient
-    # Tylko lokalnie: klucz generowany przy pierwszym uruchomieniu w osobnym wolumenie.
-    identity = Path(os.environ.get("BACKUP_AGE_IDENTITY_FILE", "/keys/backup.key"))
+def _local_identity() -> Path:
+    return Path(os.environ.get("BACKUP_AGE_IDENTITY_FILE", "/keys/backup.key"))
+
+
+def _recipients() -> list[str]:
+    """Odbiorcy szyfrowania age.
+
+    * BACKUP_AGE_RECIPIENT - klucze publiczne (np. glowny klucz odtwarzania trzymany offline),
+      rozdzielone przecinkami lub spacjami;
+    * klucz lokalny (/keys/backup.key, generowany przy pierwszym starcie) - dodawany, gdy
+      dziala automatyczny test odtwarzania (RESTORE_TEST_INTERVAL_SECONDS > 0) albo gdy nie
+      podano zadnego odbiorcy (srodowisko lokalne). Z RESTORE_TEST_INTERVAL_SECONDS=0 serwer
+      nie ma zadnego klucza prywatnego - test odtwarzania robi sie recznie poza serwerem.
+    """
+    explicit = [r for r in os.environ.get("BACKUP_AGE_RECIPIENT", "").replace(",", " ").split() if r]
+    if explicit and RESTORE_TEST_INTERVAL <= 0:
+        return explicit
+    identity = _local_identity()
     if not identity.exists():
         identity.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(["age-keygen", "-o", str(identity)], check=True, capture_output=True)
-        log("Wygenerowano lokalny klucz kopii (w produkcji ustaw BACKUP_AGE_RECIPIENT)", identity=str(identity))
+        log("Wygenerowano lokalny klucz testu odtwarzania", identity=str(identity))
     out = subprocess.run(["age-keygen", "-y", str(identity)], check=True, capture_output=True, text=True)
-    return out.stdout.strip()
+    return [*explicit, out.stdout.strip()]
 
 
-def _encrypt(src_cmd: list[str], dest: Path, recipient: str, env: dict | None = None) -> None:
+def _encrypt(src_cmd: list[str], dest: Path, recipients: list[str], env: dict | None = None) -> None:
     """Strumieniowo: polecenie -> age -> plik (niezaszyfrowane dane nie trafiaja na dysk)."""
     with dest.open("wb") as out:
         producer = subprocess.Popen(src_cmd, stdout=subprocess.PIPE, env=env)
-        age = subprocess.run(["age", "-r", recipient], stdin=producer.stdout, stdout=out)
+        args = [arg for r in recipients for arg in ("-r", r)]
+        age = subprocess.run(["age", *args], stdin=producer.stdout, stdout=out)
         producer.stdout.close()
         if producer.wait() != 0 or age.returncode != 0:
             raise RuntimeError(f"{src_cmd[0]} albo age zakończyło się błędem")
@@ -129,7 +143,7 @@ def backup() -> Path:
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     work = BACKUP_DIR / f".{stamp}.partial"
     work.mkdir(parents=True)
-    recipient = _recipient()
+    recipients = _recipients()
     env = _pg_env("BACKUP_PGUSER", "BACKUP_PGPASSWORD")
     # Migawka REPEATABLE READ trzymana przez caly zrzut: pg_dump i liczniki widza te same dane.
     with psycopg.connect(_conninfo("BACKUP_PGUSER", "BACKUP_PGPASSWORD")) as conn:
@@ -140,15 +154,15 @@ def backup() -> Path:
         counts = {t: conn.execute(f'SELECT count(*) FROM public."{t}"').fetchone()[0] for t in tables}
         version = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
         server = conn.execute("SHOW server_version").fetchone()[0]
-        _encrypt(["pg_dump", "-Fc", "--snapshot", snapshot, "--no-password"], work / "db.dump.age", recipient, env)
+        _encrypt(["pg_dump", "-Fc", "--snapshot", snapshot, "--no-password"], work / "db.dump.age", recipients, env)
         conn.rollback()
     files = ["db.dump.age"]
     if AUDIT_DIR.is_dir():
-        _encrypt(["tar", "-czf", "-", "-C", str(AUDIT_DIR), "."], work / "audit.tar.gz.age", recipient)
+        _encrypt(["tar", "-czf", "-", "-C", str(AUDIT_DIR), "."], work / "audit.tar.gz.age", recipients)
         files.append("audit.tar.gz.age")
     manifest = {
         "created_at": datetime.now(UTC).isoformat(), "alembic_version": version, "server_version": server,
-        "recipient": recipient, "row_counts": counts,
+        "recipients": recipients, "row_counts": counts,
         "files": {f: {"sha256": _sha256(work / f), "bytes": (work / f).stat().st_size} for f in files},
     }
     (work / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
@@ -184,9 +198,9 @@ def prune() -> None:
 
 
 def _identity() -> str:
-    path = os.environ.get("BACKUP_AGE_IDENTITY_FILE", "/keys/backup.key")
+    path = str(_local_identity())
     if not Path(path).exists():
-        raise SystemExit(f"Brak klucza prywatnego kopii: {path} (BACKUP_AGE_IDENTITY_FILE)")
+        raise RuntimeError(f"Brak klucza prywatnego kopii: {path} (BACKUP_AGE_IDENTITY_FILE)")
     return path
 
 
@@ -198,7 +212,9 @@ def _verify_checksums(backup_set: Path) -> dict:
     return manifest
 
 
-def _restore_into(backup_set: Path, target_db: str) -> None:
+def _restore_into(backup_set: Path, target_db: str, keep_owners: bool = True) -> None:
+    """keep_owners=False (test odtwarzania): obiekty naleza do roli odtwarzajacej, bez GRANT-ow -
+    wystarczy rola z CREATEDB (forvium_restore), bez superusera."""
     env = _pg_env("RESTORE_PGUSER", "RESTORE_PGPASSWORD")
     identity = _identity()
     with tempfile.TemporaryDirectory() as tmp:
@@ -206,7 +222,8 @@ def _restore_into(backup_set: Path, target_db: str) -> None:
         subprocess.run(["age", "-d", "-i", identity, "-o", str(dump), str(backup_set / "db.dump.age")], check=True)
         subprocess.run(["createdb", "--no-password", target_db], check=True, env=env)
         # --exit-on-error: czesciowo odtworzona baza to blad, nie sukces.
-        subprocess.run(["pg_restore", "--no-password", "--exit-on-error", "-d", target_db, str(dump)],
+        extra = [] if keep_owners else ["--no-owner", "--no-privileges"]
+        subprocess.run(["pg_restore", "--no-password", "--exit-on-error", *extra, "-d", target_db, str(dump)],
                        check=True, env=env)
 
 
@@ -233,7 +250,7 @@ def _restore_test() -> dict:
     checks: dict[str, object] = {}
     mismatched: dict[str, dict] = {}
     try:
-        _restore_into(backup_set, RESTORE_TEST_DB)
+        _restore_into(backup_set, RESTORE_TEST_DB, keep_owners=False)
         with psycopg.connect(_conninfo("RESTORE_PGUSER", "RESTORE_PGPASSWORD", dbname=RESTORE_TEST_DB)) as conn:
             version = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
             checks["alembic_version"] = version == manifest["alembic_version"]
@@ -309,7 +326,8 @@ def run_forever() -> None:
     last_test: float | None = None  # pierwszy test zaraz po pierwszej kopii
     while True:
         t0 = time.monotonic()
-        due = last_test is None or time.monotonic() - last_test >= RESTORE_TEST_INTERVAL - INTERVAL / 2
+        due = RESTORE_TEST_INTERVAL > 0 and (
+            last_test is None or time.monotonic() - last_test >= RESTORE_TEST_INTERVAL - INTERVAL / 2)
         if _timed("backup", INTERVAL, backup) and due:
             if _timed("restore-test", RESTORE_TEST_INTERVAL, restore_test):
                 last_test = time.monotonic()

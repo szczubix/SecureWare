@@ -48,8 +48,11 @@ def unusable_password_hash() -> str:
     return hash_password(new_token("x"))
 
 
-def issue(ctx: Ctx, user: User, *, kind: str, created_by: str, actor_type: str = "operator") -> None:
-    """Nowy link aktywacyjny (poprzednie niewykorzystane przestaja dzialac), wyslany e-mailem."""
+def issue(ctx: Ctx, user: User, *, kind: str, created_by: str, actor_type: str = "operator") -> str:
+    """Nowy link aktywacyjny (poprzednie niewykorzystane przestaja dzialac), wyslany e-mailem.
+
+    Zwraca link wylacznie dla polecenia startowego na serwerze (bootstrap) - endpointy API
+    go nie zwracaja."""
     if user.activated_at is not None:
         raise DomainError(409, "already_activated", "Konto jest już aktywne.")
     now = clock.now()
@@ -68,8 +71,9 @@ def issue(ctx: Ctx, user: User, *, kind: str, created_by: str, actor_type: str =
         body=(f"Dzień dobry {user.display_name},\n\nzałożono dla Ciebie konto w {panel}. Aby je aktywować, "
               f"otwórz link (ważny 72 godziny, jednorazowy) i ustaw hasło oraz aplikację uwierzytelniającą:\n\n"
               f"{link}\n\nJeśli nie spodziewasz się tej wiadomości, zignoruj ją."))
-    ctx.audit.log(ctx.db, "identity.activation.issued", actor_user_id=created_by, actor_type=actor_type,
-                  ip_address=ctx.ip, details={"user_id": user.id, "kind": kind})
+    ctx.audit.log(ctx.db, "identity.activation.issued", actor_user_id=None if actor_type == "system" else created_by,
+                  actor_type=actor_type, ip_address=ctx.ip, details={"user_id": user.id, "kind": kind})
+    return link
 
 
 def _load(ctx: Ctx, token: str, kind: str) -> tuple[AccountActivation, User]:

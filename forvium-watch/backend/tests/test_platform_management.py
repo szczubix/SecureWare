@@ -243,3 +243,38 @@ def test_customer_invites_member_who_activates_account(env):
     r = env.client.post(env.org_url("/members"), headers=env.h(dorota),
                         json={"email": "y@acme.example", "display_name": "Y Z", "role": "owner"})
     assert r.status_code == 403
+
+
+def test_bootstrap_only_when_role_missing(env):
+    import pytest
+
+    from forvium.platform_admin.bootstrap import bootstrap
+
+    # Seed ma juz administratora i oficerow - bootstrap odmawia.
+    with pytest.raises(SystemExit):
+        bootstrap(env.app, "drugi@forvium.com", "Drugi Admin", "platform_admin")
+    adam = env.login_admin("adam")
+    for who in ("ewa", "tomasz"):
+        env.client.post(f"/api/admin/operators/{env.ids['users'][who]}/block", headers=env.h(adam),
+                        json={"reason": "test bootstrapu", "mfa_code": env.otp("adam")})
+    link = bootstrap(env.app, "oficer@forvium.com", "Nowy Oficer", "security_officer")
+    token = link.split("#token=", 1)[1]
+    assert link.startswith("https://admin.forvium.test/activate.html#token=")
+    _activate(env, token, panel="admin")
+    with pytest.raises(SystemExit):
+        bootstrap(env.app, "kolejny@forvium.com", "Kolejny", "security_officer")
+
+
+def test_bootstrap_refuses_while_first_account_pending(env):
+    """Konto czekajace na aktywacje tez blokuje kolejny bootstrap."""
+    import pytest
+
+    from forvium.platform_admin.bootstrap import bootstrap
+
+    adam = env.login_admin("adam")
+    for who in ("ewa", "tomasz"):
+        env.client.post(f"/api/admin/operators/{env.ids['users'][who]}/block", headers=env.h(adam),
+                        json={"reason": "test bootstrapu", "mfa_code": env.otp("adam")})
+    bootstrap(env.app, "oficer@forvium.com", "Nowy Oficer", "security_officer")
+    with pytest.raises(SystemExit):
+        bootstrap(env.app, "drugi@forvium.com", "Drugi Oficer", "security_officer")

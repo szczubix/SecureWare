@@ -1,0 +1,12 @@
+# /etc/systemd/system/forvium-backup-offsite.service - kopia zaszyfrowanych zestawow poza serwer.
+# Pliki sa juz zaszyfrowane kluczem publicznym age - zdalne miejsce nie widzi danych.
+[Unit]
+Description=Forvium Watch - kopia zapasowa poza serwerem (rclone)
+After=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/forvium-watch/offsite.env
+ExecStart=/usr/local/sbin/forvium-offsite-sync
+Nice=10
+IOSchedulingClass=idle

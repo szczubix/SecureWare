@@ -52,6 +52,10 @@ server {
         limit_req zone=auth burst=10 nodelay;
         proxy_pass http://forvium_api;
     }
+    location ~ ^/api/(app|admin)/activation/ {
+        limit_req zone=auth burst=10 nodelay;
+        proxy_pass http://forvium_api;
+    }
     location = /api/app/support/launch {
         limit_req zone=auth burst=10 nodelay;
         proxy_pass http://forvium_api;

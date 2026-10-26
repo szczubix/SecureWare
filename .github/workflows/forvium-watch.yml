@@ -60,7 +60,7 @@ jobs:
           psql -h localhost -U postgres -c "DROP ROLE IF EXISTS forvium_app"
           psql -h localhost -U postgres -c "CREATE DATABASE forvium_roles"
           psql -h localhost -U postgres -d forvium_roles -v ON_ERROR_STOP=1 \
-               -v migrator_password="'m'" -v app_password="'a'" -v backup_password="'b'" \
+               -v migrator_password="'m'" -v app_password="'a'" -v backup_password="'b'" -v restore_password="'r'" \
                -f ../deploy/postgres/roles.sql
           alembic -x url=postgresql+psycopg://forvium_migrator:m@localhost:5432/forvium_roles upgrade head
           alembic -x url=postgresql+psycopg://forvium_migrator:m@localhost:5432/forvium_roles check
@@ -74,7 +74,7 @@ jobs:
             docker run --rm --network host -v "$RUNNER_TEMP/backups:/backups" -v "$RUNNER_TEMP/keys:/keys" \
               -e PGHOST=localhost -e PGDATABASE=forvium_roles \
               -e BACKUP_PGUSER=forvium_backup -e BACKUP_PGPASSWORD=b \
-              -e RESTORE_PGUSER=postgres -e RESTORE_PGPASSWORD=ci \
+              -e RESTORE_PGUSER=forvium_restore -e RESTORE_PGPASSWORD=r \
               -e HEARTBEAT_PGUSER=forvium_app -e HEARTBEAT_PGPASSWORD=a forvium-backup "$@"
           }
           run backup
@@ -106,6 +106,10 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker compose config -q
       - run: docker compose build api worker app admin gateway backup
+      - name: Konfiguracja produkcyjna (compose.prod.yaml + .env.prod.example)
+        run: |
+          sed 's/=$/=ci-placeholder/' .env.prod.example > "$RUNNER_TEMP/prod.env"
+          docker compose --env-file "$RUNNER_TEMP/prod.env" -f compose.yaml -f compose.prod.yaml config -q
       - name: Prometheus config and alert rules
         run: >-
           docker run --rm --entrypoint promtool -v "$PWD/deploy/monitoring:/etc/prometheus:ro" prom/prometheus:v3.5.0

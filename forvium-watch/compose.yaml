@@ -52,6 +52,7 @@ services:
       FORVIUM_MIGRATOR_PASSWORD: local-migrator
       FORVIUM_APP_PASSWORD: local-app
       FORVIUM_BACKUP_PASSWORD: local-backup
+      FORVIUM_RESTORE_PASSWORD: local-restore
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./deploy/postgres/roles.sql:/forvium/roles.sql:ro
@@ -137,9 +138,9 @@ services:
       PGDATABASE: forvium
       BACKUP_PGUSER: forvium_backup
       BACKUP_PGPASSWORD: local-backup
-      # Test odtwarzania tworzy i usuwa tymczasowa baze - potrzebne konto z CREATEDB (lokalnie superuser).
-      RESTORE_PGUSER: postgres
-      RESTORE_PGPASSWORD: local-postgres
+      # Test odtwarzania tworzy i usuwa tymczasowa baze - rola z samym CREATEDB.
+      RESTORE_PGUSER: forvium_restore
+      RESTORE_PGPASSWORD: local-restore
       HEARTBEAT_PGUSER: forvium_app
       HEARTBEAT_PGPASSWORD: local-app
       # W produkcji: BACKUP_AGE_RECIPIENT=age1... (klucz prywatny poza hostem kopii).

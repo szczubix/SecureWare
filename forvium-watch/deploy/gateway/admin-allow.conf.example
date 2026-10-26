@@ -1,0 +1,9 @@
+# Kto moze otworzyc panel operatorow (admin.<domena>). Skopiuj do /etc/forvium-watch/admin-allow.conf
+# i wpisz adresy sieci Forvium / VPN. Kolejnosc ma znaczenie: pierwsza pasujaca regula wygrywa.
+#
+# allow 203.0.113.0/24;   # biuro
+# allow 10.8.0.0/16;      # VPN
+# deny all;
+#
+# Bez ograniczen (niezalecane w produkcji):
+allow all;
