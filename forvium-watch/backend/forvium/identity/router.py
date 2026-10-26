@@ -7,10 +7,11 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from forvium.access import AppPrincipal, OperatorPrincipal, get_app_principal, get_operator, require_user_principal
+from forvium.core.clock import clock
 from forvium.core.context import Ctx, DomainError, get_ctx
 from forvium.core.security import hash_password, new_totp_secret, verify_password
 from forvium.identity import service
-from forvium.identity.models import User
+from forvium.identity.models import User, UserSession
 from forvium.organizations.models import Membership, Organization
 
 app_router = APIRouter(prefix="/api/app", tags=["identity (app)"])
@@ -89,11 +90,41 @@ def change_password(body: PasswordChangeIn, principal: AppPrincipal = Depends(re
     return {"ok": True}
 
 
+class MfaResetIn(BaseModel):
+    current_password: str
+    mfa_code: str | None = None
+
+
 @app_router.post("/account/mfa/reset")
-def reset_mfa(principal: AppPrincipal = Depends(require_user_principal), ctx: Ctx = Depends(get_ctx)):
+def reset_mfa(body: MfaResetIn, principal: AppPrincipal = Depends(require_user_principal),
+              ctx: Ctx = Depends(get_ctx)):
+    """Nowy sekret TOTP. Wymaga hasla i biezacego kodu - inaczej skradziony token sesji
+    wystarczylby, by przejac MFA i przejsc kazda ponowna weryfikacje (zgody stale, ustawienia)."""
     user = principal.actor
+    who = {"actor_user_id": user.id, "actor_type": "user", "ip_address": ctx.ip}
+    ctx.throttle.check("mfa_stepup", user.id, **who)
+    ok = verify_password(user.password_hash, body.current_password) and (
+        not user.mfa_secret or service.consume_totp(user, body.mfa_code))
+    if not ok:
+        ctx.audit.record("identity.mfa.reset", outcome="denied", details={"reason": "invalid_credentials"}, **who)
+        ctx.throttle.fail("mfa_stepup", user.id, **who)
+        raise DomainError(401, "invalid_credentials", "Nieprawidłowe hasło lub kod MFA.")
+    ctx.throttle.reset("mfa_stepup", user.id)
     user.mfa_secret = new_totp_secret()
-    ctx.audit.log(ctx.db, "identity.mfa.reset", actor_user_id=user.id, actor_type="user", ip_address=ctx.ip)
+    user.mfa_last_step = None
+    # Pozostale sesje uzytkownika przestaja dzialac (kradziony token traci waznosc).
+    now = clock.now()
+    others = select(UserSession).where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None))
+    if principal.user_session is not None:
+        others = others.where(UserSession.id != principal.user_session.id)
+    for other in ctx.db.scalars(others):
+        other.revoked_at = now
+    ctx.audit.log(ctx.db, "identity.mfa.reset", **who)
+    ctx.notifications.notify(ctx.db, [user], event="identity.mfa.reset",
+                             title="Zmieniono drugi składnik logowania (MFA)",
+                             body="Na Twoim koncie ustawiono nowy sekret aplikacji uwierzytelniającej, a pozostałe "
+                                  "sesje zostały wylogowane. Jeśli to nie Ty - natychmiast zmień hasło i skontaktuj "
+                                  "się z administratorem organizacji.")
     return {"secret": user.mfa_secret}
 
 

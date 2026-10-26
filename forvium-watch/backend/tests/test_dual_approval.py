@@ -82,3 +82,15 @@ def test_disabling_protection_requires_second_person(env):
     # Bez MFA zmiana jest odrzucana; tryb wsparcia nie ma do niej dostepu.
     r = env.client.put(env.org_url("/support-access/settings"), headers=env.h(alice), json={"dual_approval": True, "mfa_code": "000000"})
     assert r.status_code == 401
+
+
+def test_second_approver_cannot_widen_units_with_empty_list(env):
+    # Regresja (przeglad bezpieczenstwa): [] nie moze zamienic ograniczenia na "wszystkie jednostki".
+    alice, dorota = env.login_app("alice"), env.login_app("dorota")
+    _enable(env, alice, "alice")
+    op = env.login_admin("ola")
+    request_id = env.create_request(op).json()["request"]["id"]
+    env.approve(alice, request_id, unit_ids=[env.ids["units"]["waw"]])
+    r = env.approve(dorota, request_id, unit_ids=[])
+    assert r.status_code == 200, r.text
+    assert r.json()["consent"]["unit_ids"] == [env.ids["units"]["waw"]]

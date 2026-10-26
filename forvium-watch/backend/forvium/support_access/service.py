@@ -383,7 +383,8 @@ def approve_request(
 
     if confirming:
         first_units = grant.get("unit_ids")
-        if unit_ids is None:
+        # Pusta lista nie moze znaczyc "wszystkie jednostki" - druga osoba moze tylko zawezic.
+        if not unit_ids:
             unit_ids = first_units
         elif first_units and not set(unit_ids) <= set(first_units):
             raise _deny(ctx, action, "unit_exceeds_first_approval",
