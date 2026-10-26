@@ -1,0 +1,118 @@
+name: Forvium Watch
+
+on:
+  push:
+    paths: ["forvium-watch/**", ".github/workflows/forvium-watch.yml"]
+  pull_request:
+    paths: ["forvium-watch/**", ".github/workflows/forvium-watch.yml"]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: forvium-watch/backend
+
+jobs:
+  backend-sqlite:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: forvium-watch/backend/requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -q
+
+  backend-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: forvium_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # Testy RLS tworza role forvium_app, dlatego konto testowe musi miec CREATEROLE.
+      FORVIUM_TEST_DATABASE_URL: postgresql+psycopg://postgres:ci@localhost:5432/forvium_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: forvium-watch/backend/requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -q -rs
+      - name: Migracje jako konto bez superusera (deploy/postgres/roles.sql)
+        run: |
+          export PGPASSWORD=ci
+          # Rola forvium_app zostala utworzona przez testy RLS - sprawdzamy skrypt na czystym klastrze.
+          psql -h localhost -U postgres -d forvium_test -c "DROP OWNED BY forvium_app"
+          psql -h localhost -U postgres -c "DROP ROLE IF EXISTS forvium_app"
+          psql -h localhost -U postgres -c "CREATE DATABASE forvium_roles"
+          psql -h localhost -U postgres -d forvium_roles -v ON_ERROR_STOP=1 \
+               -v migrator_password="'m'" -v app_password="'a'" -v backup_password="'b'" -v restore_password="'r'" \
+               -f ../deploy/postgres/roles.sql
+          alembic -x url=postgresql+psycopg://forvium_migrator:m@localhost:5432/forvium_roles upgrade head
+          alembic -x url=postgresql+psycopg://forvium_migrator:m@localhost:5432/forvium_roles check
+      - name: Kopia zapasowa i test odtwarzania (deploy/backup)
+        run: |
+          FORVIUM_DATABASE_URL=postgresql+psycopg://forvium_migrator:m@localhost:5432/forvium_roles \
+            FORVIUM_ALLOW_INSECURE_DEV_KEY=true python -m forvium.seed
+          docker build -t forvium-backup ../deploy/backup
+          mkdir -p "$RUNNER_TEMP/backups" "$RUNNER_TEMP/keys" && chmod 777 "$RUNNER_TEMP/backups" "$RUNNER_TEMP/keys"
+          run() {
+            docker run --rm --network host -v "$RUNNER_TEMP/backups:/backups" -v "$RUNNER_TEMP/keys:/keys" \
+              -e PGHOST=localhost -e PGDATABASE=forvium_roles \
+              -e BACKUP_PGUSER=forvium_backup -e BACKUP_PGPASSWORD=b \
+              -e RESTORE_PGUSER=forvium_restore -e RESTORE_PGPASSWORD=r \
+              -e HEARTBEAT_PGUSER=forvium_app -e HEARTBEAT_PGPASSWORD=a forvium-backup "$@"
+          }
+          run backup
+          run restore-test
+          run check
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: forvium-watch/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Skladnia JS
+        run: for f in app/*.js admin/*.js shared/*.js; do node --check "$f"; done
+      - name: Brak skryptow i stylow inline (wymog CSP)
+        run: |
+          ! grep -nE "<script>|style=\"|style: \"" app/*.html admin/*.html app/*.js admin/*.js shared/*.js
+      - name: Tlumaczenia (wersja angielska kompletna, slownik aktualny)
+        run: python3 tools/check_i18n.py
+
+  docker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: forvium-watch
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose config -q
+      - run: docker compose build api worker app admin gateway backup
+      - name: Konfiguracja produkcyjna (compose.prod.yaml + .env.prod.example)
+        run: |
+          sed 's/=$/=ci-placeholder/' .env.prod.example > "$RUNNER_TEMP/prod.env"
+          docker compose --env-file "$RUNNER_TEMP/prod.env" -f compose.yaml -f compose.prod.yaml config -q
+      - name: Prometheus config and alert rules
+        run: >-
+          docker run --rm --entrypoint promtool -v "$PWD/deploy/monitoring:/etc/prometheus:ro" prom/prometheus:v3.5.0
+          check config /etc/prometheus/prometheus.yml

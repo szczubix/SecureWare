@@ -1,0 +1,17 @@
+# /etc/systemd/system/forvium-watch.service - start calego stosu po uruchomieniu hosta.
+[Unit]
+Description=Forvium Watch (docker compose)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/forvium-watch
+ExecStart=/usr/bin/docker compose -f compose.yaml -f compose.prod.yaml up -d --remove-orphans
+ExecStop=/usr/bin/docker compose -f compose.yaml -f compose.prod.yaml stop
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target

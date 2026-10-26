@@ -1,0 +1,210 @@
+# Lokalne srodowisko Forvium Watch: docker compose up --build
+#
+#   http://app.localhost:8080     panel klienta
+#   http://admin.localhost:8080   panel operatorow Forvium
+#   http://api.localhost:8080     API (dokumentacja: /docs)
+#   http://localhost:8025         Mailpit (wyslane e-maile)
+#
+# Uslugi:
+#   gateway  - jedyne wejscie (reverse proxy, limity zapytan, w produkcji TLS)
+#   app, admin - statyczne panele (osobne obrazy, wlasne naglowki CSP)
+#   api      - FastAPI bez zadan w tle (mozna skalowac: deploy.replicas)
+#   worker   - zadania w tle (wygaszanie, e-mail, anomalie, eksport audytu, raporty)
+#   migrate  - jednorazowo: migracje + szyfrowanie danych + dane demo
+#   backup   - zaszyfrowane kopie (age) bazy i eksportu audytu, retencja, cotygodniowy test odtwarzania
+#   db, mailpit
+#   prometheus, alertmanager, grafana - profil "monitoring":
+#     docker compose --profile monitoring up   (Grafana: http://localhost:3000, Prometheus: http://localhost:9090)
+# Sieci: "edge" (brama <-> api/panele) i "backend" (api/worker <-> baza/poczta) - brama nie widzi bazy.
+# Hasla i klucze ponizej sa wylacznie do uzytku lokalnego.
+
+x-backend-env: &backend-env
+  FORVIUM_APP_ORIGIN: http://app.localhost:8080
+  FORVIUM_ADMIN_ORIGIN: http://admin.localhost:8080
+  # Klucz danych TYLKO do uzytku lokalnego. W produkcji: FORVIUM_DATA_KEYS_WRAPPED + Vault Transit.
+  FORVIUM_DATA_KEYS: "local1:sGDH1NVnQXID8+cCMLQbLzopOwhTYIKxaZXapw8etOs="
+  FORVIUM_DATA_KEY_ID: local1
+  FORVIUM_LOG_FORMAT: json
+
+x-runtime-env: &runtime-env
+  <<: *backend-env
+  # Konto aplikacji: bez superusera (RLS dziala), audyt tylko do dopisywania.
+  FORVIUM_DATABASE_URL: postgresql+psycopg://forvium_app:local-app@db:5432/forvium
+  FORVIUM_SMTP_HOST: mailpit
+  FORVIUM_SMTP_PORT: "1025"
+  FORVIUM_SMTP_STARTTLS: "false"
+  FORVIUM_SMTP_FROM: "Forvium Watch <no-reply@forvium.local>"
+  FORVIUM_SECURITY_TEAM_EMAILS: security@forvium.local
+  FORVIUM_DEFAULT_LOCALE: ${FORVIUM_DEFAULT_LOCALE:-pl}
+  FORVIUM_BREAK_GLASS_ENABLED: ${FORVIUM_BREAK_GLASS_ENABLED:-false}
+  FORVIUM_BREAK_GLASS_AUDIT_PATH: /var/forvium/audit/break-glass.jsonl
+  FORVIUM_AUDIT_EXPORT_PATH: /var/forvium/audit/audit.jsonl
+  FORVIUM_AUDIT_EXPORT_HMAC_KEY: local-audit-key
+  FORVIUM_ANOMALY_INTERVAL_SECONDS: ${FORVIUM_ANOMALY_INTERVAL_SECONDS:-60}
+  FORVIUM_OPERATOR_LOGIN_WEBAUTHN_ONLY: ${FORVIUM_OPERATOR_LOGIN_WEBAUTHN_ONLY:-false}
+
+services:
+  db:
+    image: postgres:16-alpine
+    # Repliki API x procesy x (pula glowna + pomocnicza) + worker - patrz deploy/loadtest/README.md
+    command: ["postgres", "-c", "max_connections=200"]
+    environment:
+      POSTGRES_DB: forvium
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: local-postgres
+      FORVIUM_MIGRATOR_PASSWORD: local-migrator
+      FORVIUM_APP_PASSWORD: local-app
+      FORVIUM_BACKUP_PASSWORD: local-backup
+      FORVIUM_RESTORE_PASSWORD: local-restore
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./deploy/postgres/roles.sql:/forvium/roles.sql:ro
+      - ./deploy/postgres/init.sh:/docker-entrypoint-initdb.d/10-forvium-roles.sh:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "forvium"]
+      interval: 3s
+      retries: 20
+    networks: [backend]
+
+  migrate:
+    build: ./backend
+    command: ["sh", "-c", "alembic upgrade head && python -m forvium.core.crypto reencrypt && if [ \"$${SEED_DEMO}\" = true ]; then python -m forvium.seed; fi"]
+    environment:
+      <<: *backend-env
+      FORVIUM_DATABASE_URL: postgresql+psycopg://forvium_migrator:local-migrator@db:5432/forvium
+      SEED_DEMO: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [backend]
+
+  api:
+    build: ./backend
+    environment:
+      <<: *runtime-env
+      FORVIUM_RUN_BACKGROUND_JOBS: "false"
+      # Adres klienta z naglowkow ustawianych przez brame (limity prob, audyt).
+      FORWARDED_ALLOW_IPS: "*"
+      # Procesy uvicorn na replike (deploy/loadtest/README.md).
+      WEB_CONCURRENCY: ${FORVIUM_API_WORKERS:-1}
+    volumes:
+      - audit-export:/var/forvium/audit
+    deploy:
+      replicas: 2
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [edge, backend]
+
+  worker:
+    build: ./backend
+    command: ["python", "-m", "forvium.worker"]
+    environment:
+      <<: *runtime-env
+      FORVIUM_RUN_BACKGROUND_JOBS: "false"
+    volumes:
+      - audit-export:/var/forvium/audit
+    healthcheck:
+      test: ["CMD", "python", "-m", "forvium.worker", "--check"]
+      interval: 60s
+      start_period: 120s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_started
+    networks: [backend]
+
+  app:
+    build: { context: ./frontend, args: { PANEL: app } }
+    environment:
+      API_ORIGIN: http://api.localhost:8080
+    networks: [edge]
+
+  admin:
+    build: { context: ./frontend, args: { PANEL: admin } }
+    environment:
+      API_ORIGIN: http://api.localhost:8080
+    networks: [edge]
+
+  gateway:
+    build: ./deploy/gateway
+    environment:
+      FORVIUM_DOMAIN: localhost
+    ports:
+      - "8080:80"
+    depends_on: [api, app, admin]
+    networks: [edge]
+
+  backup:
+    build: ./deploy/backup
+    environment:
+      PGHOST: db
+      PGDATABASE: forvium
+      BACKUP_PGUSER: forvium_backup
+      BACKUP_PGPASSWORD: local-backup
+      # Test odtwarzania tworzy i usuwa tymczasowa baze - rola z samym CREATEDB.
+      RESTORE_PGUSER: forvium_restore
+      RESTORE_PGPASSWORD: local-restore
+      HEARTBEAT_PGUSER: forvium_app
+      HEARTBEAT_PGPASSWORD: local-app
+      # W produkcji: BACKUP_AGE_RECIPIENT=age1... (klucz prywatny poza hostem kopii).
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      RESTORE_TEST_INTERVAL_SECONDS: ${RESTORE_TEST_INTERVAL_SECONDS:-604800}
+      BACKUP_RETENTION_DAYS: "14"
+    volumes:
+      - backups:/backups
+      - backup-keys:/keys
+      - audit-export:/var/forvium/audit:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [backend]
+
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "8025:8025"
+    networks: [backend]
+
+  # ------------------------------------------------ monitoring (opcjonalnie)
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: [monitoring]
+    volumes:
+      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks: [backend]
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    profiles: [monitoring]
+    volumes:
+      - ./deploy/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    networks: [backend]
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    profiles: [monitoring]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: local-grafana
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./deploy/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./deploy/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks: [backend]
+
+networks:
+  edge:
+  backend:
+
+volumes:
+  db-data:
+  backups:
+  backup-keys:
+  audit-export:

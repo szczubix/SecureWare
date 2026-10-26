@@ -1,0 +1,69 @@
+# Brama (reverse proxy) - jedyne publiczne wejscie do Forvium Watch.
+#   app.${FORVIUM_DOMAIN}   -> kontener app   (panel klienta)
+#   admin.${FORVIUM_DOMAIN} -> kontener admin (panel operatorow)
+#   api.${FORVIUM_DOMAIN}   -> kontener(y) api
+# W produkcji tutaj (albo na load balancerze przed brama) terminuje TLS.
+
+limit_req_zone $binary_remote_addr zone=auth:10m rate=${FORVIUM_RATE_AUTH};
+limit_req_zone $binary_remote_addr zone=api:10m rate=${FORVIUM_RATE_API};
+limit_req_status 429;
+
+upstream forvium_api {
+    server api:8000;
+    keepalive 16;
+}
+
+server {
+    listen 80 default_server;
+    server_name _;
+    return 444;
+}
+
+server {
+    listen 80;
+    server_name app.${FORVIUM_DOMAIN};
+    location / { proxy_pass http://app:80; proxy_set_header Host $host; }
+}
+
+server {
+    listen 80;
+    server_name admin.${FORVIUM_DOMAIN};
+    # Panel operatorow: w produkcji dodatkowo ograniczony do sieci Forvium / VPN, np.:
+    # allow 10.0.0.0/8; deny all;
+    location / { proxy_pass http://admin:80; proxy_set_header Host $host; }
+}
+
+server {
+    listen 80;
+    server_name api.${FORVIUM_DOMAIN};
+    server_tokens off;
+    client_max_body_size 2m;  # zrzuty widoku do ~1 MB
+
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Request-ID $request_id;
+
+    # Logowanie i wymiana kodow startowych: dodatkowy limit na poziomie bramy.
+    location ~ ^/api/(app|admin)/auth/ {
+        limit_req zone=auth burst=10 nodelay;
+        proxy_pass http://forvium_api;
+    }
+    location ~ ^/api/(app|admin)/activation/ {
+        limit_req zone=auth burst=10 nodelay;
+        proxy_pass http://forvium_api;
+    }
+    location = /api/app/support/launch {
+        limit_req zone=auth burst=10 nodelay;
+        proxy_pass http://forvium_api;
+    }
+    # Metryki tylko z sieci wewnetrznej (Prometheus), nie z internetu.
+    location = /metrics { return 404; }
+    location / {
+        limit_req zone=api burst=${FORVIUM_BURST_API} nodelay;
+        proxy_pass http://forvium_api;
+    }
+}

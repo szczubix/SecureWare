@@ -1,0 +1,612 @@
+# Forvium Watch — Support Access
+
+Bezpieczny dostęp serwisowy: operator Forvium może otworzyć panel klienta w jego
+kontekście, w trybie **READ_ONLY**, za zgodą klienta, bez znajomości hasła i bez
+przejmowania sesji użytkownika.
+
+```
+forvium-watch/
+├── compose.yaml        całe środowisko lokalne: gateway, API (2 repliki), worker, oba frontendy,
+│                       PostgreSQL, migracje, Mailpit
+├── backend/            wspólny backend FastAPI (api.forvium.com)
+│   ├── forvium/
+│   │   ├── identity/          Identity & Access – konta, sesje, MFA (TOTP + WebAuthn), limity prób
+│   │   ├── organizations/     Organizations & RBAC – Permission, role, dane organizacji
+│   │   ├── platform_admin/    Platform Administration – role operatorów, użytkownicy, zgłoszenia
+│   │   ├── support_tickets/   Support Tickets – zgłoszenia, do których przypinany jest dostęp
+│   │   ├── audit/             Audit Log – zdarzenia, middleware API, eksport, łańcuch skrótów
+│   │   ├── notifications/     Notification Engine – powiadomienia w aplikacji + wysyłka e-mail
+│   │   ├── support_access/    prośby, zgody (też stałe), sesje, przedłużenia, nagrania, Break Glass
+│   │   ├── security/          wykrywanie anomalii i alerty, sanityzacja zrzutów widoku
+│   │   ├── core/crypto.py     szyfrowanie danych w spoczynku (AES-256-GCM, klucze z KMS)
+│   │   ├── jobs.py, worker.py zadania w tle i ich heartbeat (osobny kontener `worker`)
+│   │   ├── monitoring.py      X-Request-ID, log dostępu, metryki Prometheus
+│   │   ├── reports/           miesięczne raporty dostępu (PDF) dla klientów i audytorów
+│   │   └── access.py          jedno miejsce uwierzytelniania i autoryzacji (RBAC + RLS)
+│   ├── migrations/            Alembic: 0001 schemat (+ trigger audytu), 0002 RLS i uprawnienia,
+│   │                          0003 szyfrowanie, WebAuthn, dwie osoby, przedłużenia, alerty, nagrania,
+│   │                          0004 heartbeat zadań w tle, 0005 raporty dostępu,
+│   │                          0006 aktywacja kont, blokady, zatwierdzanie ról, 0007 zgłoszenia klientów, 0008 polityka haseł
+│   └── tests/
+├── deploy/             role PostgreSQL, gateway (routing po hoście, limity zapytań), kopie zapasowe,
+│                       SIEM (Splunk/Elastic/Wazuh), testy obciążeniowe (k6),
+│                       monitoring (Prometheus, reguły alertów, Alertmanager, Grafana)
+└── frontend/
+    ├── admin/          admin.forvium.com – użytkownicy, prośby, nadzór, alerty, audyt, Break Glass, klucze
+    └── app/            app.forvium.com – zgody, ustawienia, podgląd na żywo, nagrania, baner wsparcia
+```
+
+## Szybki start
+
+```bash
+cd forvium-watch
+docker compose up --build
+```
+
+| Usługa | Adres |
+|---|---|
+| app (klient) | http://app.localhost:8080 |
+| admin (operatorzy) | http://admin.localhost:8080 |
+| API | http://api.localhost:8080 (dokumentacja: `/docs`) |
+| Mailpit (wysłane e-maile) | http://localhost:8025 |
+
+Przeglądarki rozwiązują `*.localhost` na 127.0.0.1 bez zmian w `/etc/hosts`.
+
+### Kontenery
+
+| Kontener | Rola | Sieci |
+|---|---|---|
+| `gateway` | nginx: jedyne wejście (port 8080), routing po nazwie hosta, limity zapytań na logowanie i API, `X-Request-ID`, blokada `/metrics` z zewnątrz, nieznany host → zamknięcie połączenia | edge |
+| `app`, `admin` | statyczne frontendy (nginx, CSP bez inline) z wbudowanym adresem API | edge |
+| `api` | FastAPI, bezstanowe, 2 repliki, **bez** zadań w tle (`RUN_BACKGROUND_JOBS=false`) | edge, backend |
+| `worker` | zadania w tle: wygaszanie sesji, wysyłka e-maili, wykrywanie anomalii, eksport audytu; healthcheck `python -m forvium.worker --check` sprawdza heartbeat w `job_runs` | backend |
+| `migrate` | jednorazowo: migracje jako właściciel schematu + dane demo | backend |
+| `backup` | zaszyfrowane kopie bazy i audytu, retencja, cotygodniowy test odtwarzania | backend |
+| `db` | PostgreSQL 16 z RLS i osobnymi rolami | backend |
+| `mailpit` | przechwytuje wysłane e-maile | backend |
+
+Baza, worker i API nie publikują portów: z zewnątrz dostępny jest tylko `gateway` (i lokalnie UI Mailpit).
+Logi API i workera są w formacie JSON (`FORVIUM_LOG_FORMAT=json`).
+
+Kontener `migrate` uruchamia migracje jako właściciel schematu i ładuje dane demo.
+Hasło wszystkich kont to `Demo-Haslo-2026!`, a sekrety TOTP do zeskanowania lub wpisania
+w aplikacji uwierzytelniającej są w `docker compose logs migrate`.
+
+| Konto | Rola |
+|---|---|
+| `alice@acme.example` | właścicielka organizacji Acme (zatwierdza dostęp) |
+| `dorota@acme.example` | administratorka Acme (druga osoba przy zatwierdzaniu przez dwie osoby) |
+| `bob@acme.example` | członek Acme (użytkownik referencyjny) |
+| `carol@beta.example` | właścicielka organizacji Beta |
+| `ola@forvium.com` | Support L2 (prośby, Break Glass) |
+| `piotr@forvium.com` | Support L1 (bez CVE) |
+| `marta@forvium.com` | kierownik supportu (nadzór sesji, audyt) |
+| `ewa@forvium.com`, `tomasz@forvium.com` | oficerowie bezpieczeństwa (zatwierdzanie i przegląd Break Glass, zatwierdzanie ról uprzywilejowanych) |
+| `adam@forvium.com` | administrator platformy (organizacje, konta, operatorzy, zgłoszenia) |
+
+Break Glass jest domyślnie wyłączony. Żeby go włączyć lokalnie, uruchom
+`FORVIUM_BREAK_GLASS_ENABLED=true docker compose up`.
+
+## Monitoring
+
+* **Identyfikator zadania**: gateway nadaje `X-Request-ID`, API go przyjmuje (albo generuje),
+  zwraca w odpowiedzi i dołącza do każdej linii logu.
+* **Logi JSON** (`FORVIUM_LOG_FORMAT=json`): log dostępu `forvium.access` z metodą, szablonem
+  trasy (bez identyfikatorów i query stringa), kodem, czasem i `request_id`; logi workera
+  z wynikiem każdego zadania.
+* **`/metrics`** (Prometheus): ruch i czasy odpowiedzi per trasa, stan zadań w tle
+  (`forvium_job_stale`, `forvium_job_last_success_age_seconds`, liczba przebiegów i błędów),
+  aktywne sesje wsparcia, czekające prośby, otwarte alerty, kolejka e-mail. Gateway zwraca
+  na `/metrics` 404; dodatkowo można wymagać `FORVIUM_METRICS_TOKEN`.
+* **Stan zadań w tle**: zakładka *Alerty* w panelu admin (`GET /api/admin/security/jobs`)
+  pokazuje ostatni udany przebieg i oznacza zatrzymane zadania; healthcheck kontenera
+  `worker` robi to samo.
+* **Profil `monitoring`**: `docker compose --profile monitoring up` dodaje Prometheus
+  (http://localhost:9090), Alertmanager i Grafanę (http://localhost:3000, `admin` /
+  `local-grafana`) z gotowym dashboardem. Reguły w `deploy/monitoring/alerts.yml`:
+  zatrzymane zadanie w tle, niedostępna replika API, błędy 5xx, alerty bezpieczeństwa
+  o wysokiej wadze, niewysyłane e-maile. Lokalnie Alertmanager wysyła alerty e-mailem
+  do Mailpit (`security@forvium.local`).
+
+## Raporty dostępu (PDF)
+
+Po zakończeniu każdego miesiąca worker (zadanie `access-reports`) tworzy:
+
+* **raport klienta** dla każdej organizacji. Zawiera prośby Forvium o dostęp (operator, powód,
+  zakres, decyzja), sesje wsparcia (czas, przedłużenia, oglądane widoki, liczba operacji
+  i zablokowanych prób, powód zakończenia), zmiany zgód stałych, użycie Break Glass i
+  otwarcia nagrań przez Forvium. Raport powstaje także wtedy, gdy dostępu nie było
+  („Forvium nie prosiło o dostęp…”),
+* **raport audytora** dla całej platformy. Zawiera to samo w podziale na organizacje, a do
+  tego przeglądy Break Glass (zakończone / oczekujące) i alerty bezpieczeństwa.
+
+Każdy raport zawiera **odcisk zdarzeń audytu** z okresu (SHA-256 po identyfikatorach,
+czasach i akcjach), który można porównać z eksportem Audit Log. Skrót SHA-256 samego PDF
+jest zapisany w bazie, podany w powiadomieniu i w nagłówku `X-Content-SHA256`. PDF jest
+przechowywany zaszyfrowany (jak sekrety), a każde pobranie trafia do audytu.
+
+Kto ma dostęp do raportów:
+
+| Strona | Kto | Gdzie / jak |
+|---|---|---|
+| Klient | uprawnienie `org.support_access.view` | Dostęp serwisowy → Raporty dostępu (lista, pobieranie, raport za wybrany zakończony miesiąc) |
+| Forvium | `platform.audit.read` (kierownik supportu, oficerowie bezpieczeństwa) | zakładka Raporty |
+
+Sesja wsparcia nigdy nie ma uprawnień Support Access, więc operator w trybie wsparcia nie
+pobierze raportu o sobie. Powiadomienie (w aplikacji i e-mail) dostają zatwierdzający po
+stronie klienta i role z `platform.audit.read`. PDF generuje fpdf2 z dołączoną czcionką
+DejaVu (polskie znaki). Interwał sprawdzania: `FORVIUM_REPORT_INTERVAL_SECONDS` (3600).
+
+## Kopie zapasowe i test odtwarzania
+
+Kontener `backup` (`deploy/backup/`) co `BACKUP_INTERVAL_SECONDS` (domyślnie doba) tworzy
+zestaw w wolumenie `backups`:
+
+* `db.dump.age`: `pg_dump -Fc` jako rola **`forvium_backup`** (tylko odczyt,
+  `pg_read_all_data`, BYPASSRLS, więc zrzut obejmuje wszystkie organizacje),
+* `audit.tar.gz.age`: archiwum eksportu audytu (łańcuch skrótów, strumień Break Glass),
+* `manifest.json`: SHA-256 plików, wersja migracji i liczba wierszy każdej tabeli,
+  policzona **w tej samej migawce** co zrzut.
+
+Pliki są szyfrowane strumieniowo kluczami publicznymi [age](https://age-encryption.org),
+więc niezaszyfrowany zrzut nie trafia na dysk, a zdalny magazyn kopii nie potrafi ich odczytać.
+
+* `BACKUP_AGE_RECIPIENT` to klucz główny. Jego klucz prywatny trzymaj poza serwerem (sejf, HSM).
+* Przy włączonym teście odtwarzania kopie są szyfrowane także lokalnym kluczem testu
+  (wolumen `backup-keys`).
+* `RESTORE_TEST_INTERVAL_SECONDS=0` oznacza, że serwer nie ma żadnego klucza prywatnego.
+  Test odtwarzania wykonuje się wtedy ręcznie poza serwerem.
+
+Retencja: `BACKUP_RETENTION_DAYS` (14), ale zawsze zostają co najmniej 3 ostatnie zestawy.
+
+**Test odtwarzania** (po pierwszej kopii, potem co `RESTORE_TEST_INTERVAL_SECONDS`, domyślnie
+tydzień) sprawdza sumy kontrolne, odszyfrowuje i odtwarza najnowszy zestaw do tymczasowej
+bazy `forvium_restore_check`. Robi to rola `forvium_restore` (tylko `CREATEDB`, bez
+superusera i bez właścicieli/uprawnień z kopii). Następnie weryfikuje:
+* wersję migracji,
+* liczbę wierszy każdej tabeli względem manifestu,
+* wymuszone RLS,
+* trigger audytu tylko do dopisywania (próba zmiany ma się nie udać),
+* czytelność archiwum audytu.
+
+Na koniec usuwa bazę tymczasową. Wynik trafia do `restore-test.json` i do `job_runs` (zadania
+`backup` i `restore-test`), więc zatrzymane kopie albo nieudany test widać w zakładce *Alerty*,
+w `/metrics` i w alertach Prometheusa. Healthcheck kontenera (`check`) jest czerwony, gdy kopia
+jest starsza niż 2 interwały albo ostatni test się nie powiódł. W CI ten sam cykl (seed →
+kopia → test odtwarzania) działa na PostgreSQL.
+
+```bash
+docker compose exec backup python3 /usr/local/bin/forvium_backup.py list
+docker compose exec backup python3 /usr/local/bin/forvium_backup.py backup
+docker compose exec backup python3 /usr/local/bin/forvium_backup.py restore-test
+# Odtwarzanie awaryjne - zawsze do NOWEJ bazy (istniejącej nie nadpisuje):
+docker compose exec backup python3 /usr/local/bin/forvium_backup.py restore 20261023T154303Z --target-db forvium_dr
+```
+
+Odtwarzanie na nowym klastrze: najpierw `deploy/postgres/roles.sql` (role muszą istnieć,
+żeby zachować właściciela i uprawnienia), potem `restore`, a na koniec przełącz
+`FORVIUM_DATABASE_URL` na odtworzoną bazę.
+
+## Zarządzanie platformą (panel admin)
+
+| Zakładka | Kto | Co |
+|---|---|---|
+| Organizacje | `platform.users.read`; zmiany: `platform.orgs.manage` | lista, szczegóły (członkowie, jednostki, zgłoszenia), nowa organizacja z pierwszym właścicielem, zmiana nazwy i planu |
+| Użytkownicy → Konto | `platform.users.manage` | blokada/odblokowanie konta klienta (z powodem), ponowny link aktywacyjny |
+| Zgłoszenia | `platform.tickets.read`; zmiany: `platform.tickets.manage` (kierownik supportu, administrator) | lista, nowe zgłoszenie, statusy; zamknięcie kończy sesje wsparcia na tym zgłoszeniu |
+| Operatorzy | `platform.operators.manage` (administrator), `platform.operators.approve` (oficer bezpieczeństwa) | nowi operatorzy, zmiana roli, blokada, zatwierdzanie ról uprzywilejowanych |
+
+Zasady:
+
+* **Forvium nie zna haseł ani MFA.** Nowe konto (właściciel organizacji, operator, osoba
+  zaproszona przez klienta) dostaje e-mailem jednorazowy link (`activate.html`, ważny 72 h).
+  Link nie wraca w API do operatora, który zakłada konto. Użytkownik sam ustawia hasło i
+  aplikację uwierzytelniającą (sekret potwierdzony kodem).
+* **Członkami istniejącej organizacji zarządza klient** (app → Członkowie → Zaproś). Forvium
+  może tylko zablokować konto, np. przy przejęciu. Blokada wylogowuje użytkownika i kończy
+  sesje wsparcia, w których jest on użytkownikiem referencyjnym, a administratorzy
+  organizacji dostają powiadomienie. Konta operatora nie da się dodać do organizacji klienta.
+* **Role uprzywilejowane** (administrator platformy, oficer bezpieczeństwa) nadaje się
+  istniejącemu operatorowi. Zmiana czeka na zatwierdzenie przez oficera bezpieczeństwa
+  (inna osoba niż zlecający i niż operator, którego dotyczy). Odebranie roli działa od razu.
+* Nikt nie zmienia własnej roli ani nie blokuje własnego konta. Ostatniego aktywnego
+  administratora platformy nie da się zablokować ani zdegradować.
+* Każda zmiana (oprócz statusu zgłoszenia) wymaga ponownej weryfikacji: klucz WebAuthn
+  albo jednorazowy kod TOTP. Każda trafia do audytu (`platform.*`, `identity.activation.*`),
+  a zainteresowane osoby dostają powiadomienie.
+
+## Zgłoszenia (Support Tickets)
+
+* **Klient** (app → Zgłoszenia): nowe zgłoszenie (temat, opis, priorytet), rozmowa z
+  supportem, lista próśb o dostęp serwisowy złożonych w ramach zgłoszenia, zamknięcie.
+  Czytać mogą wszyscy członkowie (`org.tickets.read`), pisać właściciel, administrator
+  i członek (`org.tickets.create`).
+* **Forvium** (admin → Zgłoszenia → Otwórz): rozmowa z klientem i **notatki wewnętrzne**
+  (klient ich nie widzi), zmiana statusu. Odpowiedź supportu przestawia nowe zgłoszenie
+  na „w toku”.
+* Dostęp serwisowy zawsze wymaga otwartego zgłoszenia danej organizacji. Zamknięcie
+  zgłoszenia (przez klienta albo Forvium) kończy oparte na nim sesje wsparcia.
+* Sesja wsparcia nie ma uprawnień do zgłoszeń, więc operator nie pisze w imieniu klienta.
+  Opis i wiadomości są szyfrowane w bazie, a wiadomości chroni RLS jak resztę danych
+  organizacji.
+* Powiadomienia (w aplikacji i e-mailem): nowe zgłoszenie trafia do kierownika supportu
+  i administratora. Odpowiedzi trafiają do drugiej strony rozmowy, a zmiana statusu do
+  zgłaszającego.
+
+## Hasła i reset dostępu
+
+Polityka haseł (`forvium/identity/passwords.py`) jest zgodna z NIST SP 800-63B: liczy się
+długość, a nie wymuszone znaki specjalne. Wszystko działa offline.
+
+* Minimum 12 znaków (`FORVIUM_PASSWORD_MIN_LENGTH`), maksimum 128.
+* Odrzucane są hasła z wycieków: dołączona lista ~46 tys. haseł (UK NCSC / Have I Been Pwned,
+  przez SecLists). Opcjonalnie pełna baza Pwned Passwords (`FORVIUM_BREACHED_PASSWORDS_FILE`,
+  posortowane skróty SHA-1, przeszukiwane binarnie bez wczytywania do pamięci).
+* Odrzucane są też hasła zawierające e-mail, imię lub nazwisko albo nazwę Forvium oraz
+  hasła trywialne (powtórzenia, sekwencje).
+* Polityka obowiązuje przy aktywacji konta i zmianie hasła (app → Konto, admin → Konto;
+  operator potwierdza zmianę kluczem albo kodem MFA). Zmiana hasła wylogowuje pozostałe sesje.
+* **Hasło sprawdzane jest przy każdym logowaniu.** Jeśli przestało spełniać politykę, np.
+  trafiło na listę wycieków, konto po zalogowaniu może tylko zmienić hasło: pozostałe API
+  zwraca `403 password_change_required`.
+
+**Reset dostępu** (zgubiony telefon albo hasło):
+
+* Wykonuje go właściciel lub administrator organizacji (app → Członkowie → Resetuj dostęp).
+  Konto administratora resetuje tylko właściciel. Wymagany jest kod MFA osoby resetującej.
+* Hasło i MFA osoby resetowanej są kasowane, a sesje unieważniane. Nowy link aktywacyjny
+  trafia **tylko na jej e-mail**, więc osoba resetująca nie może zalogować się na to konto.
+* Osoby należące także do innych organizacji, a także jedynego właściciela, resetuje
+  Forvium (admin → Użytkownicy → Konto → Resetuj dostęp, z powodem i ponowną weryfikacją).
+  Administratorzy organizacji dostają powiadomienie.
+
+## Wersje językowe (PL / EN)
+
+Oba panele, komunikaty API, powiadomienia, e-maile i raporty PDF są dostępne po polsku i po
+angielsku.
+
+| Co | Język |
+|---|---|
+| Interfejs panelu | przełącznik **PL / EN** w nagłówku; bez wyboru: język przeglądarki (polski albo angielski) |
+| Komunikaty błędów API | nagłówek `Accept-Language` (panel wysyła wybrany język) |
+| Powiadomienia i e-maile | język odbiorcy: wybór na koncie (zapisywany przełącznikiem), potem język organizacji, potem `FORVIUM_DEFAULT_LOCALE` |
+| Link aktywacyjny | otwiera stronę aktywacji w języku odbiorcy (`?lang=`) |
+| Raport dostępu klienta (PDF) | język organizacji (admin → Organizacje → Dane organizacji) |
+| Raport audytora, e-maile do zespołu bezpieczeństwa | `FORVIUM_DEFAULT_LOCALE` (domyślnie `pl`) |
+
+Tekst źródłowy (polski) jest kluczem tłumaczenia:
+
+* **Backend:** `L("Czas sesji: 1-{n} min.", n=15)` i katalog `forvium/locales/en.py`.
+  Teksty zapisane w bazie po polsku (np. tytuły alertów) są tłumaczone przy wyświetleniu.
+* **Panele:** `tr("Dodano {email} do organizacji.", { email })` i słownik `frontend/tools/en.py`.
+  Plik `shared/i18n-en.js` generuje `python3 tools/en.py > shared/i18n-en.js`.
+
+Kompletność sprawdza CI: `tests/test_i18n.py` (każdy polski tekst w kodzie backendu ma
+tłumaczenie, a tekst z parametrami jest szablonem `L(...)`, nie f-stringiem) oraz
+`frontend/tools/check_i18n.py` (każde `tr()` ma tłumaczenie, w kodzie nie ma polskiego tekstu
+poza `tr()`, parametry `{...}` się zgadzają). Nowy język to nowy słownik i wpis w `LANGS`.
+
+## Logowanie operatora
+
+Hasło + drugi składnik: kod TOTP albo **klucz bezpieczeństwa (WebAuthn)**. Przy kluczu
+panel najpierw wysyła e-mail i hasło do `POST /api/admin/auth/login/webauthn/options`
+(błędne hasło liczy się do limitu prób, a lista kluczy nie wycieka bez hasła), a potem
+asercję do `POST /api/admin/auth/login`. Wyzwanie logowania jest jednorazowe i ma osobny
+cel (`login`) - asercja z ponownej weryfikacji go nie zastąpi. Przy
+`FORVIUM_OPERATOR_LOGIN_WEBAUTHN_ONLY=true` operator, który ma klucz, nie zaloguje się już
+kodem TOTP. W audycie `identity.login.operator` ma `second_factor`: `webauthn` albo `totp`.
+
+## Przepływ
+
+1. **Prośba** (`admin`): operator wybiera organizację i użytkownika referencyjnego, podaje
+   powód, numer otwartego zgłoszenia tej organizacji, czas (1–15 min) i zakres. Wymagana jest
+   **ponowna weryfikacja MFA**. Każdy kod TOTP jest jednorazowy.
+2. **Zgoda** (`app`): właściciel lub administrator organizacji zatwierdza prośbę (może
+   zawęzić zakres i jednostki oraz ustawić ważność) albo ją odrzuca. Prośba mieszcząca się
+   w **zgodzie stałej** klienta jest zatwierdzana automatycznie. Operator nie zatwierdzi
+   własnej prośby, a żadne konto Forvium nie może zatwierdzać zgód.
+3. **Sesja** (`admin` → `app`): start wymaga ponownie MFA. Backend tworzy osobny rekord
+   `SupportSession` i jednorazowy kod startowy ważny 60 s. Panel otwiera
+   `app…/support-launch.html#code=…` w nowej karcie (`noopener`), a strona wymienia kod na
+   token `fws_…`, trzymany tylko w `sessionStorage` tej karty.
+4. **Każde żądanie** z tokenem `fws_` przechodzi pełną walidację: sesja, czas, zgoda (także
+   stała), prośba, operator i jego rola, użytkownik referencyjny, organizacja, zgłoszenie.
+   Na PostgreSQL transakcja jest dodatkowo ograniczona przez RLS do organizacji sesji.
+5. **Zakończenie** może nastąpić z kilku stron:
+   * operator: „Zakończ dostęp” na banerze albo zakończenie w panelu admin,
+   * kierownik supportu: wymuszone zakończenie w zakładce „Nadzór sesji”,
+   * klient: zakończenie sesji albo cofnięcie zgody,
+   * automatycznie: po upływie czasu albo po zamknięciu zgłoszenia.
+
+   Klient zawsze dostaje podsumowanie: czas, oglądane widoki i zablokowane próby.
+
+## Model bezpieczeństwa
+
+* **Brak osobnego systemu uprawnień.** Sesja wsparcia przechodzi przez tę samą zależność
+  `require_org_permission(Permission.X)` co klient:
+
+  ```
+  uprawnienia roli użytkownika referencyjnego
+  ∩ zakresy z zgody klienta  ∩ zakresy dopuszczone dla roli operatora
+  ∩ SUPPORT_READ_ONLY_PERMISSIONS  − SUPPORT_FORBIDDEN_PERMISSIONS
+  ```
+
+  Twarda lista zakazów obejmuje: ustawienia, role i członkostwa, usunięcie organizacji,
+  eksport, płatności, subskrypcję, SMTP, webhooki, sekrety, tokeny API i zatwierdzanie zgód.
+* **READ_ONLY na dwóch poziomach.** Token `fws_` może wysyłać tylko żądania odczytu
+  (GET/HEAD/OPTIONS). Jedyny wyjątek to zakończenie własnej sesji. Niezależnie od tego
+  działa RBAC.
+* **Izolacja sesji.** Są trzy rozłączne typy tokenów (`fwu_`, `fwo_`, `fws_`), każdy
+  weryfikowany we własnej tabeli i przechowywany wyłącznie jako skrót SHA-256. Sesja
+  wsparcia nie dotyka sesji klienta ani operatora.
+* **Izolacja organizacji.** Działa w aplikacji (dostęp tylko do organizacji z sesji,
+  opcjonalnie do wybranych jednostek) i w bazie (**Row-Level Security**, migracja `0002`).
+  Gdy transakcja ma ustawione `forvium.support_org`, tabele z danymi organizacji pokazują
+  i przyjmują tylko jej wiersze, więc nawet błąd w kodzie nie ujawni innej organizacji.
+* **Role bazy** (`deploy/postgres/roles.sql`):
+  * `forvium_migrator` jest właścicielem schematu i służy tylko do migracji;
+  * `forvium_app` to konto API bez superusera (więc RLS działa); na tabelach audytu ma
+    wyłącznie `SELECT` i `INSERT`.
+
+  Dodatkowo trigger odrzuca `UPDATE` i `DELETE` na `audit_events` dla każdego.
+* **Limity prób.** Blokada 429 na 15 min po:
+  * 5 nieudanych logowaniach na konto albo 20 na IP,
+  * 5 nieudanych kodach MFA przy ponownej weryfikacji,
+  * 10 złych kodach startowych z jednego IP,
+  * 30 nieprawidłowych tokenach wsparcia z jednego IP.
+
+  Każda blokada trafia do audytu (`security.lockout`, `security.throttled`). Klucze
+  liczników są przechowywane jako skróty, bez e-maili i adresów IP.
+* **Spójność.** `commit` następuje przed wysłaniem odpowiedzi (`Depends(get_db, scope="function")`),
+  więc klient nie może zobaczyć potwierdzenia zmiany, której jeszcze nie ma w bazie.
+* **Frontendy** działają pod ścisłym CSP: bez skryptów i stylów inline, z `frame-ancestors 'none'`.
+  Dochodzą do tego `nosniff`, `no-referrer` i `COOP`.
+
+## Zgoda stała
+
+Klient (`Dostęp serwisowy` → `Zgody stałe`, potwierdzenie kodem MFA) z góry określa:
+* zakres i jednostki,
+* maksymalny czas sesji (do 15 min),
+* role supportu, które mogą z niej korzystać,
+* ważność (do 365 dni).
+
+Prośba mieszcząca się w tych granicach jest zatwierdzana automatycznie (`basis=standing`).
+Zgoda z niej wynikająca jest ważna 4 h, a klient i tak dostaje powiadomienie. Cofnięcie
+zgody stałej natychmiast cofa wszystkie wynikające z niej zgody i kończy ich sesje.
+
+## Szyfrowanie danych w spoczynku
+
+Sekrety TOTP, sekrety i konfiguracja SMTP/webhooków organizacji oraz nagrania sesji są w
+bazie szyfrowane (AES-256-GCM, `core/crypto.py`). Każdy szyfrogram jest związany z kolumną
+(AAD) i oznaczony identyfikatorem klucza, co pozwala rotować klucze bez przestojów.
+
+* **Źródło kluczy:** HashiCorp Vault Transit (`FORVIUM_DATA_KEYS_WRAPPED`, `FORVIUM_VAULT_*`).
+  Klucze danych są odszyfrowywane w Vault przy starcie i trzymane tylko w pamięci. Alternatywnie
+  `FORVIUM_DATA_KEYS` (np. z menedżera sekretów). Bez klucza API **nie wystartuje**.
+* **Rotacja:** dodaj nowy klucz, ustaw go jako `FORVIUM_DATA_KEY_ID`, a potem uruchom
+  `python -m forvium.core.crypto reencrypt`. Ta sama komenda szyfruje dane zapisane przed
+  migracją 0003 (Compose robi to automatycznie w kontenerze `migrate`).
+* Nowy klucz: `python -m forvium.core.crypto generate-key`.
+
+## WebAuthn (klucze bezpieczeństwa / passkeys)
+
+Operator dodaje klucz FIDO2 albo passkey w zakładce `Konto`, potwierdzając to kodem TOTP.
+Od tej chwili każda ponowna weryfikacja odbywa się kluczem, z weryfikacją użytkownika (PIN lub
+biometria):
+* prośba o dostęp,
+* start i przedłużenie sesji,
+* zatwierdzenie Break Glass.
+
+Ochrona:
+* wyzwania są jednorazowe (zużywane atomowo), ważne 2 minuty i przypięte do osoby i celu;
+* sprawdzane są origin i RP ID (ochrona przed phishingiem);
+* licznik podpisów wykrywa sklonowane klucze;
+* dodanie i usunięcie klucza są audytowane, a właściciel konta dostaje powiadomienie.
+
+**Break Glass wymaga klucza:** sam kod TOTP nie wystarcza do wniosku, zatwierdzenia ani startu
+sesji awaryjnej.
+
+## Zatwierdzanie przez dwie osoby
+
+Organizacja może włączyć wymóg dwóch zatwierdzeń (`Dostęp serwisowy` → `Zatwierdzanie przez dwie
+osoby`, potwierdzenie kodem MFA).
+* Pierwsze zatwierdzenie tylko zapisuje parametry zgody.
+* Druga, **inna** osoba może je potwierdzić albo zawęzić (nigdy rozszerzyć). Dopiero wtedy
+  powstaje zgoda z obiema tożsamościami w audycie.
+* Zgody stałe w tym trybie też wymagają potwierdzenia przez drugą osobę.
+* Wyłączenie ochrony również wymaga drugiej osoby: jedna je zgłasza, druga potwierdza.
+
+## Przedłużanie sesji
+
+Zakładka `Moje prośby` → `Przedłuż`:
+* wymaga ponownej weryfikacji i powodu, który klient widzi w powiadomieniu;
+* jedno przedłużenie to maksymalnie 15 min, maksymalnie 2 przedłużenia;
+* łącznie sesja trwa najwyżej 45 min (Break Glass: 60 min) i nigdy nie dłużej niż ważność zgody.
+
+Baner w trybie wsparcia odświeża pozostały czas co 15 s.
+
+## Podgląd na żywo i nagrania sesji
+
+W trybie wsparcia frontend po każdym widoku wysyła zrzut DOM. Pola tekstowe formularzy nie są
+wysyłane. Backend:
+* sanityzuje zrzut białą listą (bez skryptów, stylów, linków i obrazów),
+* szyfruje go,
+* ogranicza rozmiar i częstotliwość zrzutów,
+* usuwa zrzuty po 30 dniach.
+
+Klient w `Historii sesji`:
+* **Podgląd na żywo** – co operator ogląda teraz (odświeżane co 2 s, iframe w piaskownicy
+  bez skryptów), ostatnie operacje i przycisk `Przerwij sesję`;
+* **Nagranie** – odtwarzanie klatka po klatce.
+
+Po stronie Forvium nagrania widzą tylko role z `platform.audit.read`, a otwarcie każdej klatki
+trafia do audytu (`support.recording.viewed`). Operator widzi na banerze, że klient może go
+obserwować.
+
+## Wykrywanie anomalii
+
+Proces w tle (co `FORVIUM_ANOMALY_INTERVAL_SECONDS`) przegląda audyt i tworzy alerty
+(zakładka `Alerty`, deduplikacja po kluczu):
+
+| Reguła | Waga | Akcja |
+|---|---|---|
+| seria ≥5 odmów w sesji w ciągu 10 min | wysoka | **automatyczne zakończenie sesji** |
+| ≥3 próby użycia tokenu zakończonej sesji | wysoka | – |
+| ≥5 sesji operatora / sesje w ≥3 organizacjach w ciągu godziny | średnia | – |
+| blokada operatora po nieudanych próbach MFA/logowania | średnia | – |
+| sesja poza godzinami pracy (pn–pt 7–19, Europe/Warsaw) | niska | – |
+| każde zatwierdzenie Break Glass | wysoka | – |
+
+Alerty średnie i wyższe trafiają do kierownika supportu i oficerów bezpieczeństwa, a wysokie
+dodatkowo e-mailem do zespołu bezpieczeństwa. Alertu nie może obsłużyć osoba, której dotyczy.
+
+## Break Glass
+
+Dostęp awaryjny bez zgody klienta. Domyślnie jest **wyłączony**
+(`FORVIUM_BREAK_GLASS_ENABLED=false`).
+
+1. Operator z uprawnieniem `platform.break_glass.request` (Support L2 lub kierownik)
+   składa wniosek, potwierdzając go **kluczem WebAuthn**. Wymagane są:
+   * kategoria incydentu,
+   * uzasadnienie (min. 200 znaków),
+   * otwarte zgłoszenie,
+   * czas sesji do 30 min.
+2. **Inny** oficer bezpieczeństwa zatwierdza wniosek własnym kluczem WebAuthn (4 oczy). Wniosek
+   wygasa po 1 h, zgoda awaryjna po 2 h. Administrator platformy nie uczestniczy w
+   procedurze (rozdział obowiązków).
+3. Powiadomienia trafiają do:
+   * oficerów bezpieczeństwa i na adresy `FORVIUM_SECURITY_TEAM_EMAILS` przy wniosku,
+     zatwierdzeniu i starcie sesji;
+   * klienta (w aplikacji i e-mailem) przy zatwierdzeniu, starcie i końcu sesji.
+
+   Klient może natychmiast cofnąć zgodę awaryjną.
+4. Sesja jest nadal READ_ONLY, z banerem „TRYB AWARYJNY FORVIUM (BREAK GLASS) — TYLKO ODCZYT”.
+5. **Niezależny audyt.** Każde zdarzenie procedury jest oznaczane `is_break_glass`. Dotyczy
+   to także każdej operacji API w sesji awaryjnej, a flaga jest wyliczana z trybu prośby,
+   więc kod nie może jej pominąć. Zdarzenia są dodatkowo zapisywane do osobnego pliku z
+   łańcuchem skrótów (`FORVIUM_BREAK_GLASS_AUDIT_PATH`).
+6. **Przegląd po incydencie** wykonuje oficer niezależny od wnioskującego i zatwierdzającego.
+   Klient dostaje z niego raport.
+
+## Audyt
+
+| Zdarzenie | Akcja |
+|---|---|
+| utworzenie prośby / auto-zatwierdzenie | `support.request.created` / `support.request.auto_approved` |
+| akceptacja / odrzucenie | `support.request.approved` / `support.request.rejected` |
+| rozpoczęcie / zakończenie sesji | `support.session.started`, `.launched` / `.ended` |
+| każda operacja API w trybie wsparcia | `support.api_call` (metoda, szablon trasy, kod HTTP) |
+| cofnięcie zgody (też stałej) | `support.consent.revoked`, `support.standing_consent.revoked` + `support.session.revoked` |
+| automatyczne wygaśnięcie | `support.session.expired`, `support.request.expired` |
+| nieudane próby i blokady | `support.access_denied`, `*.create/approve/start` z `outcome=denied`, `security.lockout` |
+| Break Glass | `break_glass.requested/approved/rejected/reviewed` + wszystko z `is_break_glass=true` |
+| eksport audytu | `audit.exported` |
+
+* Każdy wpis ma identyfikator operatora (`actor_user_id`) i użytkownika referencyjnego
+  (`on_behalf_of_user_id`). Do logu nie trafia treść żądań ani odpowiedzi, a klucze
+  wyglądające na poufne są maskowane.
+* Udane operacje zapisują się w tej samej transakcji co zmiana. Odmowy i operacje API
+  zapisują się we własnej transakcji, więc przetrwają rollback.
+* **Panel audytu** (`admin` → `Audyt`, uprawnienie `platform.audit.read`) ma filtry: operator,
+  organizacja, zgłoszenie, sesja, akcja, wynik, tryb Break Glass i daty. Ma też paginację
+  i eksport CSV.
+* **Eksport do zewnętrznego magazynu** działa co `FORVIUM_AUDIT_EXPORT_INTERVAL_SECONDS`:
+  * plik JSONL z łańcuchem skrótów HMAC (`FORVIUM_AUDIT_EXPORT_PATH`, np. wolumen WORM),
+  * lub partie JSON do SIEM (`FORVIUM_AUDIT_EXPORT_URL`, podpis `X-Forvium-Signature`).
+
+  Weryfikacja łańcucha: `python -m forvium.audit.verify audit.jsonl --key …`.
+
+## Konfiguracja (zmienne `FORVIUM_*`)
+
+| Zmienna | Domyślnie | Opis |
+|---|---|---|
+| `DATABASE_URL` | `sqlite:///./forvium.db` | w produkcji `postgresql+psycopg://forvium_app:…` |
+| `APP_ORIGIN`, `ADMIN_ORIGIN` | `https://app.forvium.com`, `https://admin.forvium.com` | CORS, link startowy sesji |
+| `SMTP_HOST`, `_PORT`, `_USERNAME`, `_PASSWORD`, `_FROM`, `_STARTTLS` | brak hosta = e-maile tylko logowane | platformowy SMTP Forvium |
+| `EMAIL_INTERVAL_SECONDS` | 15 | wysyłka kolejki e-mail (ponowienia 2/4/8… min, maks. 5 prób) |
+| `SUPPORT_SWEEP_INTERVAL_SECONDS` | 60 | wygaszanie sesji i prośb w tle |
+| `BREAK_GLASS_ENABLED` | `false` | procedura awaryjna |
+| `SECURITY_TEAM_EMAILS` | — | adresy zespołu bezpieczeństwa (po przecinku) |
+| `BREAK_GLASS_AUDIT_PATH` | — | niezależny strumień zdarzeń Break Glass |
+| `AUDIT_EXPORT_PATH`, `AUDIT_EXPORT_URL`, `AUDIT_EXPORT_HMAC_KEY`, `AUDIT_EXPORT_INTERVAL_SECONDS` | —, —, —, 30 | eksport audytu |
+| `AUDIT_SIEM_TYPE`, `AUDIT_SIEM_URL`, `AUDIT_SIEM_TOKEN`, `AUDIT_SIEM_INDEX`, `AUDIT_SIEM_CA_FILE` | — | SIEM: Splunk HEC, Elastic (ECS) albo syslog (Wazuh) - [deploy/siem/README.md](deploy/siem/README.md) |
+| `DATA_KEYS_WRAPPED`, `VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_TRANSIT_KEY` | —, —, —, `forvium-data` | klucze danych z Vault Transit |
+| `DATA_KEYS`, `DATA_KEY_ID` | — | klucze danych wprost (`kid:base64,...`) i aktywny klucz |
+| `ALLOW_INSECURE_DEV_KEY` | `false` | tylko lokalnie: stały klucz deweloperski |
+| `WEBAUTHN_RP_ID` | host `ADMIN_ORIGIN` | identyfikator RP dla kluczy (np. `forvium.com`) |
+| `OPERATOR_LOGIN_WEBAUTHN_ONLY` | `false` | operator z kluczem loguje się wyłącznie kluczem (zalecane w produkcji) |
+| `ANOMALY_INTERVAL_SECONDS` | 60 | wykrywanie anomalii |
+| `AUTO_CREATE_SCHEMA` | `false` | tylko eksperymenty; schemat tworzą migracje |
+| `RUN_BACKGROUND_JOBS` | `true` | `false` w replikach API, gdy zadania wykonuje osobny `worker` |
+| `LOG_FORMAT`, `LOG_LEVEL` | `text`, `INFO` | `json` = jeden obiekt JSON na linię (logi aplikacji i dostępu) |
+| `DB_POOL_SIZE`, `DB_MAX_OVERFLOW`, `DB_AUX_POOL_SIZE` | 10, 10, 5 | pule połączeń na proces; liczba jednoczesnych żądań = pool + overflow (`deploy/loadtest/README.md`) |
+| `METRICS_TOKEN` | — | wymagany `Authorization: Bearer …` dla `/metrics` |
+| `PASSWORD_MIN_LENGTH` | 12 | minimalna długość hasła (nie mniej niż 8) |
+| `BREACHED_PASSWORDS_FILE` | — | opcjonalnie pełna baza Pwned Passwords (posortowane skróty SHA-1) |
+| `DEFAULT_LOCALE` | `pl` | język domyślny: `pl` albo `en` (patrz [Wersje językowe](#wersje-językowe-pl--en)) |
+| `REPORT_INTERVAL_SECONDS` | 3600 | sprawdzanie, czy są raporty dostępu za poprzedni miesiąc do utworzenia (0 = wyłączone) |
+
+### Wdrożenie
+
+Pełna instrukcja produkcyjna (AlmaLinux 10: Docker CE, SELinux, firewalld, TLS z Let's
+Encrypt, systemd, kopie poza serwerem, monitoring, aktualizacje):
+[docs/wdrozenie-almalinux-10.md](docs/wdrozenie-almalinux-10.md). Konfiguracja produkcyjna
+to nakładka `compose.prod.yaml` (sekrety z `.env`, wzór `.env.prod.example`), a pierwsze konta
+operatorów tworzy `python -m forvium.platform_admin.bootstrap`.
+
+W skrócie:
+
+1. Raz uruchom `deploy/postgres/roles.sql` jako superuser (role migratora, aplikacji, kopii
+   i testu odtwarzania). W istniejącej instalacji dodaj tylko brakujące role `forvium_backup`
+   i `forvium_restore` (polecenia `CREATE ROLE` z tego pliku).
+2. Przy każdym wdrożeniu, przed startem API, uruchom `alembic upgrade head` i
+   `python -m forvium.core.crypto reencrypt` jako `forvium_migrator`.
+3. Uruchom repliki API (`RUN_BACKGROUND_JOBS=false`) i jeden `worker` jako `forvium_app`,
+   za gatewayem z `deploy/gateway/` (w produkcji z TLS).
+4. Frontendy budują się z `frontend/Dockerfile` (`--build-arg PANEL=app|admin`).
+
+## Rozwój bez Dockera
+
+```bash
+cd backend
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements-dev.txt
+export FORVIUM_DATABASE_URL=sqlite:///./forvium.db \
+       FORVIUM_APP_ORIGIN=http://localhost:8001 FORVIUM_ADMIN_ORIGIN=http://localhost:8002
+python -m forvium.seed                 # migracje + dane demo
+uvicorn forvium.asgi:app --port 8000
+python -m http.server 8001 -d ../frontend/app      # w osobnych terminalach
+python -m http.server 8002 -d ../frontend/admin
+```
+
+Każda zmiana modelu wymaga migracji: `alembic revision --autogenerate -m "…"`. Test
+`test_migrations_match_models` nie przepuści zmiany bez migracji.
+
+## Testy i CI
+
+```bash
+cd backend && pytest                                                          # SQLite
+FORVIUM_TEST_DATABASE_URL=postgresql+psycopg://postgres@host/forvium_test pytest   # PostgreSQL (+ testy RLS i ról)
+```
+
+| Plik | Zakres |
+|---|---|
+| `test_support_access.py` | 10 obowiązkowych scenariuszy (`test_01`…`test_10`) + MFA, limity czasu, jednostki, powiadomienia |
+| `test_standing_consent.py` | zgoda stała: auto-zatwierdzanie, granice, cofnięcie, wygaśnięcie, MFA |
+| `test_break_glass.py` | pełna procedura, 4 oczy, uprawnienia, wygaśnięcie, cofnięcie przez klienta, wykrywanie manipulacji |
+| `test_admin_oversight.py` | filtry i paginacja audytu, CSV, nadzór i wymuszone zakończenie sesji |
+| `test_throttle.py` | limity prób logowania, MFA i kodów startowych |
+| `test_infrastructure.py` | migracje ↔ modele, e-mail z ponawianiem, eksport audytu, commit przed odpowiedzią |
+| `test_postgres_isolation.py` | RLS, uprawnienia `forvium_app`, pełny przepływ jako konto bez superusera |
+| `test_crypto.py` | szyfrogramy w bazie, wiązanie z kolumną, rotacja, Vault Transit, CLI `reencrypt` |
+| `test_webauthn.py` | rejestracja i step-up kluczem, powtórzenie asercji, zły origin/RP/brak UV, klon klucza, Break Glass |
+| `test_dual_approval.py` | dwie osoby: prośby, zgody stałe, wyłączenie ochrony |
+| `test_session_extension.py` | przedłużenia: MFA, limity, granica 45 min i ważności zgody, powiadomienia |
+| `test_anomalies.py` | reguły, automatyczne zakończenie sesji, deduplikacja, obsługa alertów |
+| `test_recording.py` | podgląd na żywo, nagrania, sanityzacja, szyfrowanie, limity, retencja, audyt otwarć |
+
+Workflow `.github/workflows/forvium-watch.yml` uruchamia:
+* testy na SQLite (Python 3.12 i 3.13),
+* testy na PostgreSQL 16 oraz migracje jako `forvium_migrator` z `alembic check`,
+* kontrolę składni JS i braku skryptów i stylów inline,
+* budowę obrazu Docker.
